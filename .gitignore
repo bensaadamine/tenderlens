@@ -1,0 +1,52 @@
+# ---------------------------------------------------------------
+# Data — never committed. The scripts regenerate all of it.
+# tenders.jsonl runs to hundreds of MB, and data/docs/ holds
+# documents that belong to other people. GitHub also rejects
+# single files over 100 MB.
+# ---------------------------------------------------------------
+data/
+
+# ---------------------------------------------------------------
+# Reports — generated output, except the one file that defines
+# the project scope and must stay reproducible for the team.
+# ---------------------------------------------------------------
+reports/*
+!reports/
+!reports/selected_cpv4.json
+
+# ---------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+
+# ---------------------------------------------------------------
+# Secrets and local config
+# ---------------------------------------------------------------
+.env
+.env.*
+*.key
+
+# ---------------------------------------------------------------
+# Editors and OS noise
+# ---------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------
+# Scratch — anything you want to keep locally but not share
+# ---------------------------------------------------------------
+scratch/
+tmp/
+*.log

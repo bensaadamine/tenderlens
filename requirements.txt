@@ -1,0 +1,16 @@
+# TenderLens — Python dependencies
+# Install:  pip install -r requirements.txt
+
+# --- API access and analysis (scripts 01-07) ---
+requests>=2.31
+pandas>=2.0
+
+# --- Specification document parsing (next step) ---
+python-docx>=1.1          # .docx  — 58% of documents
+pdfplumber>=0.11          # .pdf   — 4% of documents
+
+# NOTE: .doc (12% of documents) is a legacy binary format with no pure-Python
+# reader. Convert it first with a system tool, not with pip:
+#   Linux / macOS :  sudo apt install libreoffice   (or: brew install libreoffice)
+#   Windows       :  install LibreOffice, then use soffice.exe --convert-to docx
+# Alternative on Linux: sudo apt install antiword
