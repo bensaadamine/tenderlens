@@ -1,117 +1,138 @@
-# TenderLens
+# TenderLens — Canada
 
-**Was the competition real?**
+Reads published federal procurement records and returns a ranked audit queue:
+which contracts a state auditor should inspect first, with the evidence already
+assembled.
 
-An audit triage system for public procurement. It reads published tender records and returns a ranked queue telling auditors which contracts to inspect first — with the evidence already assembled.
+One question per contract: **was the competition real, or staged?**
 
-It does **not** decide who should win a contract, and it never accuses anyone of fraud. It flags contracts where the competition does not appear to have been genuine, cites the exact source of every claim, and leaves the decision to a human.
-
-Agentic AI project — Option Data Science, 2026/2027. Theme: Legal / Contract Analysis.
-
----
-
-## Status
-
-| Phase | State |
-|---|---|
-| 1 — Business understanding | ✅ done |
-| 2 — Data acquisition & understanding | ✅ done (structured data) |
-| 3 — Modeling | 🔜 next |
-| 4 — Deployment & dashboard | ⬜ |
-
-10,000 tenders cached. Project scope fixed at 20 product categories.
-Current work: opening the specification documents.
+This folder is the Canadian data pipeline. It feeds the four-agent system.
 
 ---
 
-## Setup
+## Requirements
 
 ```bash
-git clone <repo-url>
-cd tenderlens
-
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-
-pip install -r requirements.txt
+pip install requests pdfminer.six
 ```
 
-No API key needed. The Prozorro API is public and free.
+`pandas` is **not** used — Application Control blocks it on our Windows
+machines. Everything runs on the standard library plus those two packages.
+`pdfminer.six` is pure Python, so it is not affected.
 
 ---
 
-## Rebuilding the dataset
+## Pipeline
 
-The dataset is not in git — the scripts regenerate it. Run them in order from `scripts/`:
+Run in order. Every script is resumable and never re-downloads.
+
+### `01_profile_tenders.py` — profile the source
 
 ```bash
-python 01_sample_feed.py --pages 50        # walk the feed, cheap fields only
-python 02_fetch_tenders.py --max 300       # fetch full records, resumable
-python 03_profile.py                       # what fields exist, how often filled
-python 04_diagnose.py                      # documents, baselines, labels, depth
-python 05_harvest.py --target 10000        # harvest at scale (~45 min)
-python 06_pick_categories.py               # choose the 20 working categories
-python 07_fetch_docs.py --max 60           # download specification files
+python 01_profile_tenders.py
 ```
 
-Every script is **resumable**. Stop any of them with Ctrl-C and run it again — nothing is re-downloaded.
+Downloads the CanadaBuys tender notice feed (185 MB) if `data/tenders.csv` is
+missing, then reports what is being bought, bidding windows per procurement
+method, limited-tendering justifications, attachment coverage, and category
+depth.
 
-Expect about an hour for a full rebuild, almost all of it in `05_harvest.py`.
+Writes `reports/selected_unspsc4.json` — the project scope, the top 20 UNSPSC-4
+goods categories ranked by *usable* tender count.
+
+### `02_fetch_docs.py` — download the specifications
+
+```bash
+python 02_fetch_docs.py --dry-run     # see the plan first
+python 02_fetch_docs.py               # top 5 categories, 60 tenders each
+```
+
+Re-ranks the scope groups, takes the top N, samples tenders inside each, and
+downloads every direct attachment.
+
+| flag | default | note |
+|---|---|---|
+| `--top` | 5 | how many UNSPSC-4 groups |
+| `--per-cat` | 60 | tenders per group; `0` = all |
+| `--max-att` | 0 | attachments per tender; `0` = all |
+| `--order` | recent | `recent`, `oldest` or `spread` |
+| `--include-zip` | off | also fetch `.zip` appendix bundles |
+| `--jobs` | 4 | parallel downloads |
+
+Writes `data/docs/<unspsc4>/<reference>/`, `reports/docs_manifest.csv` and
+`reports/category_counts.json`.
+
+### `03_inspect_specs.py` — can the specs be parsed?
+
+```bash
+python 03_inspect_specs.py
+python 03_inspect_specs.py --refresh    # after changing extraction settings
+```
+
+Extracts text (pdfminer for PDF, stdlib `zipfile` for `.docx`/`.xlsx`), counts
+numeric requirement lines and constraints, previews both brand-naming and
+exact-value signals, and prints a go/no-go verdict per category.
+
+Caches text under `reports/text/`, so re-measuring is instant. **Pass
+`--refresh` whenever extraction settings change**, or it re-reads stale text.
+
+Writes `reports/spec_inspection.csv`, `reports/spec_inspection_summary.txt` and
+`reports/spec_samples.txt` — read the samples file, it is the evidence that
+parsing works.
+
+---
+
+## Where things stand
+
+Phase 2 is closed. Measured on 930 attachments from 300 tenders:
+
+| group | spec-rich rate | projected comparable peers | |
+|---|---|---|---|
+| 2510 motor vehicles | 75.0% | ~145 | PASS |
+| 4110 lab & scientific equipment | 63.3% | ~292 | PASS |
+| 4111 spectroscopic equipment | 38.3% | ~82 | PASS |
+| 5610 furniture | 18.3% | ~81 | PASS |
+| 2520 aircraft tires | 15.0% | ~26 | out of scope |
+
+**The Spec Auditor agent is buildable.** Only 0.8% of documents are scans, so
+OCR is not needed. 2520 is excluded because tires are specified by standardized
+size codes, not numeric thresholds — there is nothing for a within-category
+outlier test to compare.
+
+Two findings that shape the agent design:
+
+- **The specification lives in the solicitation body, not in an annex file.**
+  Documents named `spec`/`annex` are 10.3% spec-rich; those named
+  `rfp`/`rfq`/`itq` are 32.6%.
+- **Never cap pdfminer pages.** The technical requirements sit at the *back* of
+  a solicitation. A 40-page cap truncated 18% of documents and made every
+  category look unbuildable.
+
+---
+
+## Data source
+
+CanadaBuys open data, no API key, bilingual EN/FR.
+Updated **daily** — new notices every 2 hours (06:15–22:15 EST), full files
+refreshed each morning 07:00–08:30 EST.
+
+Two gotchas worth knowing before you parse anything:
+
+- Attachments on `sscp2pspc.ssc-spc.gc.ca` return an 86 KB HTML login page, not
+  a file. Filter to `canadabuys.canada.ca`.
+- `Content-Type` is `application/octet-stream` for everything. Identify files by
+  magic bytes (`%PDF`, `PK`), not by header.
 
 ---
 
 ## Layout
 
 ```
-CLAUDE.md                  project context: decisions, data facts, conventions
-docs/
-  data-understanding.md    what we learned from 10,000 real tenders
-  Phase1_Theme_and_Objectives.md
-scripts/
-  prozorro.py              API client
-  01_ … 07_                the pipeline above
-reports/
-  selected_cpv4.json       the 20 categories in scope  (the only committed report)
-data/                      not in git — regenerate with the scripts
+01_profile_tenders.py
+02_fetch_docs.py
+03_inspect_specs.py
+data/        not in git — tenders.csv (185 MB), docs/
+reports/     not in git, except selected_unspsc4.json
 ```
 
----
-
-## Data source
-
-[Prozorro](https://prozorro-api-docs.readthedocs.io/) — Ukraine's national public procurement system.
-Public API, free, no key, OCDS-compatible, records from February 2015.
-
-`https://public-api.prozorro.gov.ua/api/2.5`
-
-Two properties worth knowing before reading the code:
-
-- It is a **change log**, not a database. You walk it by date; you cannot query by category.
-- The list view carries only id, date, procedure type and status. Everything else needs the full record — which is why we download broadly and filter afterwards.
-
-Specification documents are in Ukrainian. Most of the analysis is language-independent (numbers, units, operators, Latin-script brand names); the rest relies on a small term dictionary.
-
-Please keep the ~0.25 s delay between requests in `prozorro.py`. It is a free public service.
-
----
-
-## Team
-
-Four members, one agent each:
-
-| | Agent | Role |
-|---|---|---|
-| M1 | Screener | filters the volume using cheap signals |
-| M2 | Spec Auditor | reads the tender document for tailored requirements |
-| M3 | Investigator | checks whether the bidders were truly rivals |
-| M4 | Case Builder | scores, verifies the evidence, writes the case file |
-
-The agents are chained, so the parts have to work together.
-
----
-
-## Reading order for someone new
-
-1. This file
-2. `CLAUDE.md` — the decisions and why they were made
-3. `docs/data-understanding.md` — what the data actually looks like
+`data/` and `reports/` are gitignored. Nobody commits a 185 MB CSV.

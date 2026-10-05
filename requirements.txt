@@ -1,16 +1,7 @@
-# TenderLens — Python dependencies
-# Install:  pip install -r requirements.txt
+# TenderLens — Canada pipeline
+# Everything else is the Python standard library (csv, zipfile, re).
+# pandas is deliberately absent: Application Control blocks its compiled DLL
+# on our Windows machines. Do not add it.
 
-# --- API access and analysis (scripts 01-07) ---
 requests>=2.31
-pandas>=2.0
-
-# --- Specification document parsing (next step) ---
-python-docx>=1.1          # .docx  — 58% of documents
-pdfplumber>=0.11          # .pdf   — 4% of documents
-
-# NOTE: .doc (12% of documents) is a legacy binary format with no pure-Python
-# reader. Convert it first with a system tool, not with pip:
-#   Linux / macOS :  sudo apt install libreoffice   (or: brew install libreoffice)
-#   Windows       :  install LibreOffice, then use soffice.exe --convert-to docx
-# Alternative on Linux: sudo apt install antiword
+pdfminer.six>=20231228
