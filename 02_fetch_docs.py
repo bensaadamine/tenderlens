@@ -181,17 +181,27 @@ def retype(path, kind):
 
 
 # ----------------------------------------------------------------- pass 1
-def scan(tenders_path, scope):
-    """One streaming pass. Returns (counts, candidates, labels)."""
+def scan(tenders_path, scope, refs=None):
+    """One streaming pass. Returns (counts, candidates, labels).
+
+    `refs`: tenders asked for BY NAME skip the goods-only filter. That
+    filter is right for building a category's peer group and wrong for a
+    list M1 chose on purpose - 7 of the 8 fetchable tenders in M1's 2510
+    deep queue are classed as services (vehicle rentals, leases), and an
+    unqualified brand in a rental specification is still a lock-in.
+    """
     counts = defaultdict(int)
     cand = defaultdict(list)
     labels = {}
     n = 0
+    refs = refs or set()
     with open(tenders_path, encoding="utf-8-sig", errors="replace",
               newline="") as f:
         for row in csv.DictReader(f):
             n += 1
-            if not (categories(row.get(C["category"])) & GOODS):
+            named = (row.get(C["ref"]) or "").strip() in refs
+            if not named and not (categories(row.get(C["category"]))
+                                  & GOODS):
                 continue
             att = row.get(C["att"]) or ""
             if GOOD_HOST not in att:
@@ -409,6 +419,14 @@ def main():
     ap.add_argument("--max-mb", type=int, default=80,
                     help="skip any single file larger than this; 0 = no cap")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--refs", default="",
+                    help="fetch ONLY the tenders listed in this file, one "
+                         "reference per line, whatever their category. "
+                         "Written by `tenderlens.py --deep-refs`: the "
+                         "tenders M1 says are worth reading. Selection by "
+                         "category depth answers 'what makes a peer group'; "
+                         "this answers 'what is worth reading', a different "
+                         "question.")
     args = ap.parse_args()
 
     if not os.path.exists(args.tenders):
@@ -416,8 +434,16 @@ def main():
 
     only = {g.strip() for g in args.only.split(",") if g.strip()}
 
+    refs = set()
+    if args.refs:
+        with open(args.refs, encoding="utf-8") as f:
+            refs = {l.strip() for l in f if l.strip()}
+        print(f"--refs: {len(refs)} tender(s) from {args.refs}")
+
     scope = None
-    if only:
+    if refs:
+        print("Scope: every group (a listed tender may be in any)")
+    elif only:
         # Narrowing the scan too, not just the ranking: scan() skips anything
         # outside scope, so a group named here must be in it.
         scope = set(only)
@@ -432,9 +458,19 @@ def main():
     os.makedirs(args.out, exist_ok=True)
     os.makedirs(os.path.dirname(args.manifest) or ".", exist_ok=True)
 
-    counts, cand, labels = scan(args.tenders, scope)
+    counts, cand, labels = scan(args.tenders, scope, refs)
 
-    if only:
+    if refs:
+        cand = {g: [m for m in ms if m["reference"] in refs]
+                for g, ms in cand.items()}
+        cand = {g: ms for g, ms in cand.items() if ms}
+        found = {m["reference"] for ms in cand.values() for m in ms}
+        print(f"  {len(found)} fetchable; {len(refs - found)} not (no direct "
+              f"canadabuys attachment, not goods, or no UNSPSC)")
+        args.per_cat = 0
+        ranked = sorted(((len(ms), g) for g, ms in cand.items()),
+                        reverse=True)
+    elif only:
         ranked = sorted(((counts.get(g, 0), g) for g in only), reverse=True)
     else:
         ranked = sorted(((counts[g], g) for g in (scope or counts)),
@@ -459,11 +495,16 @@ def main():
                         prev.setdefault(k, {}).update(v)
         except Exception as e:
             print(f"  (could not read {counts_path}: {e} - starting fresh)")
-    prev["usable"].update({g: counts[g] for g in (scope or counts)})
-    prev["labels"].update({g: labels.get(g, "") for g in (scope or counts)})
-    prev["sampled"].update({g: 0 for _v, g in ranked})
-    with open(counts_path, "w", encoding="utf-8") as f:
-        json.dump(prev, f, indent=2)
+    # A --refs run is not a sample of a category, so it must not touch the
+    # counts 03 uses to project a sampled rate onto a whole category -
+    # writing "2510 sampled 8" over "2510 sampled 193" would corrupt it.
+    if not refs:
+        prev["usable"].update({g: counts[g] for g in (scope or counts)})
+        prev["labels"].update({g: labels.get(g, "")
+                               for g in (scope or counts)})
+        prev["sampled"].update({g: 0 for _v, g in ranked})
+        with open(counts_path, "w", encoding="utf-8") as f:
+            json.dump(prev, f, indent=2)
 
     exts = {("." + e.strip().lstrip(".").lower())
             for e in args.ext.split(",") if e.strip()}
@@ -490,11 +531,12 @@ def main():
                 jobs.append((meta, u, i))
         print(f"  {g}: {len(chosen):4d} tenders selected, {n_urls:5d} attachments")
 
-    with open(counts_path, "r+", encoding="utf-8") as f:
-        d = json.load(f)
-        d.setdefault("sampled", {}).update(sampled)
-        f.seek(0), f.truncate()
-        json.dump(d, f, indent=2)
+    if not refs and os.path.exists(counts_path):
+        with open(counts_path, "r+", encoding="utf-8") as f:
+            d = json.load(f)
+            d.setdefault("sampled", {}).update(sampled)
+            f.seek(0), f.truncate()
+            json.dump(d, f, indent=2)
 
     man = Manifest(args.manifest)
     todo = [(m, u, i) for (m, u, i) in jobs if not man.already(u)]

@@ -56,6 +56,35 @@ RE_CAND = re.compile(
 # A model number beside a word makes that word much more likely to be a brand.
 RE_MODEL_NEAR = re.compile(r"(?=[A-Z0-9-]*\d)[A-Z0-9][A-Z0-9\-]{1,8}\b")
 
+# The model code as the VERY NEXT TOKEN after the name: "Leica TS16",
+# "Michelin 275/80R22.5", "Caterpillar 320". Anchored at the start of the
+# text that follows the candidate.
+#
+# Measured 2026-10-15: the old per-candidate test accepted RE_MODEL_NEAR
+# anywhere within 25 characters BEFORE or after the name, and every one of
+# the 13 rule-based findings on 400 tenders of 4110 - and all 3 alerts the
+# first full TenderLens run raised on 2510 - was false:
+#     "PPP-C-96, Type V, Round, Square, Oval"       spec reference before
+#     "in column 76. Ensure that the number"         column number before
+#     "( ) B2. The Bidder is a Joint Venture"        form item before
+# A number BEFORE a word is a clause, a column, a standard. The model of a
+# product follows its maker's name.
+#
+# An explicit introducer may sit between name and code: "The crane must be
+# Palfinger model PK11001 or Equivalent". The first version of this rule
+# dropped exactly that line - the one real brand among the 6 verified
+# candidates across 2510 and 4110 - while correctly dropping the other 5.
+# "type" and "no." are deliberately NOT introducers: "Type V" and "No. 3"
+# are how specifications cite classes and clauses.
+RE_MODEL_NEXT = re.compile(
+    r"^[\s\-]{0,2}"
+    r"(?:(?:model|modèle|series|série|p/?n|part\s+(?:no\.?|number))"
+    r"\s*[:#]?\s*)?"
+    r"(?=[A-Za-z0-9\-/.]*\d)[A-Z0-9][A-Za-z0-9\-/.]{1,14}\b", re.I)
+
+# Capitalised because a sentence begins here, mid-line: "column 76. Ensure".
+RE_SENTENCE_START = re.compile(r"[.!?;:]\s+$")
+
 RE_TRADEMARK = re.compile(r"[®™]")
 
 # Lines that explicitly introduce a product.
@@ -240,14 +269,60 @@ def verify_brand(name, cache=None, offline=False, timeout=20, sleep=0.15):
     return verdict
 
 
+# Bidders' questions in an amendment's Q&A. Text between "Question #11" and
+# "Answer #11" is written by a SUPPLIER, so a brand in it is the supplier
+# naming its own product, never the buyer requiring one.
+#
+# Measured 2026-10-15: the first --online run over 2510 produced exactly one
+# level-1 finding, and it was this - "3.7 We use a Honda GX390 engine mounted
+# in rear of gooseneck. Is this sufficient...?" under Question #11, answered
+# "The engine must meet the requirements of the purchase description." The
+# model-code rule (decision 29) correctly saw "Honda GX390"; it could not see
+# who was speaking.
+# The whole word is safe followed by any number. A single letter is not:
+# "A 5.08 cm (2 in) rear receiver hitch" would read as Answer 5, and a loose
+# "Q" could open a question block over a real requirement and hide it. So a
+# single letter needs a separator right after its number - "Q1:", "A1.",
+# "Q 3)" - and a dot only if no digit follows it, which rules out decimals.
+_QA_NUM = r"\s*(?:#|no\.?|n[oº]\.?)?\s*\d+"
+_QA_SEP = r"\s*(?:[:)\-]|\.(?!\d)|$)"
+RE_QUESTION = re.compile(
+    rf"^\s*(?:question{_QA_NUM}\b|q{_QA_NUM}{_QA_SEP})", re.I)
+# Answers are often unnumbered ("Answer:", "Response:"). Requiring a number
+# left 26 files ending INSIDE a question block, hiding the buyer's answers -
+# which are buyer text and can carry real requirements.
+RE_ANSWER = re.compile(
+    rf"^\s*(?:(?:answer|response|réponse|reply)\b"
+    rf"|[ar]{_QA_NUM}{_QA_SEP}|[ar]\s*[:)\-])", re.I)
+
+
 # ------------------------------------------------------------------- the tool
 def _candidates(text):
     """Brand candidates in one document, with where they are."""
     found = {}
     lines = text.splitlines()
     run = 0
+    # A bidder's question is ONE PARAGRAPH: the block closes at an answer
+    # marker, or at the first blank line after the question's text. Without
+    # the blank-line close, a stray "Question 7" inside a catalogue RFSO
+    # body opened a block of 4,943 lines and hid most of its specification.
+    in_question = has_text = False
     for i, line in enumerate(lines):
         start, run = run, run + len(line) + 1
+        mq = RE_QUESTION.match(line)
+        if mq:
+            in_question = True
+            has_text = bool(line[mq.end():].strip(" :.)-#\t"))
+        elif in_question:
+            if RE_ANSWER.match(line):
+                in_question = False
+            elif not line.strip():
+                if has_text:
+                    in_question = False
+            else:
+                has_text = True
+        if in_question:
+            continue
         if len(line) > 400:
             continue
         tm = bool(RE_TRADEMARK.search(line))
@@ -269,11 +344,16 @@ def _candidates(text):
             # 36 of 50 findings without it). A real brand lock-in in a
             # specification reads "Leica TS16" or "Michelin 275/80R22.5" - the
             # model or size is right there. A legal phrase never has one.
+            # "Within a few characters" was then implemented as 25 characters
+            # either side, which let a clause number BEFORE the word count -
+            # see RE_MODEL_NEXT. Now: a trademark symbol, or the model code
+            # as the very next token.
             tail = line[m.end():m.end() + 25]
-            head = line[max(0, m.start() - 25):m.start()]
             if not (RE_TRADEMARK.search(tail[:3])
-                    or RE_MODEL_NEAR.search(tail)
-                    or RE_MODEL_NEAR.search(head)):
+                    or RE_MODEL_NEXT.match(tail)):
+                continue
+            # Capitalised because a sentence starts here, mid-line.
+            if RE_SENTENCE_START.search(line[:m.start()]):
                 continue
             # "Ensure all other products function properly" - capitalised
             # because it opens a sentence or a numbered item, not because it

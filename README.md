@@ -6,7 +6,8 @@ assembled.
 
 One question per contract: **was the competition real, or staged?**
 
-This folder is the Canadian data pipeline. It feeds the four-agent system.
+TenderLens never says "fraud". Every case is a hypothesis with a quoted,
+checkable source; a human decides.
 
 ---
 
@@ -18,121 +19,144 @@ pip install requests pdfminer.six
 
 `pandas` is **not** used — Application Control blocks it on our Windows
 machines. Everything runs on the standard library plus those two packages.
-`pdfminer.six` is pure Python, so it is not affected.
+
+**Network access is needed only on Windows**, for: downloads (`01`, `02`,
+`m3_investigator.py --fetch`), the LLM (`05`, `--llm`) and Wikidata
+(`--online`). Everything else runs offline.
 
 ---
 
-## Pipeline
-
-Run in order. Every script is resumable and never re-downloads.
-
-### `01_profile_tenders.py` — profile the source
+## Running the system
 
 ```bash
-python 01_profile_tenders.py
+python 03_inspect_specs.py                       # text cache, if not built
+python 04_census.py --group 2510 --map           # level-2 knowledge base
+python m3_investigator.py --fetch                # award notices, once
+python m3_investigator.py --columns              # check what was detected
+python tenderlens.py --group 2510 --online       # run the four agents
 ```
 
-Downloads the CanadaBuys tender notice feed (185 MB) if `data/tenders.csv` is
-missing, then reports what is being bought, bidding windows per procurement
-method, limited-tendering justifications, attachment coverage, and category
-depth.
+Open **`reports/audit_queue.html`**. Also written: `audit_queue.csv` (one row
+per tender, for scoring precision@50 later) and `audit_queue.json` (every
+claim, source and agent trace).
 
-Writes `reports/selected_unspsc4.json` — the project scope, the top 20 UNSPSC-4
-goods categories ranked by *usable* tender count.
-
-### `02_fetch_docs.py` — download the specifications
+One tender, with the full reasoning of every agent:
 
 ```bash
-python 02_fetch_docs.py --dry-run     # see the plan first
-python 02_fetch_docs.py               # top 5 categories, 60 tenders each
+python tenderlens.py --tender cb-258-72766150
 ```
 
-Re-ranks the scope groups, takes the top N, samples tenders inside each, and
-downloads every direct attachment.
-
-| flag | default | note |
-|---|---|---|
-| `--top` | 5 | how many UNSPSC-4 groups |
-| `--per-cat` | 60 | tenders per group; `0` = all |
-| `--max-att` | 0 | attachments per tender; `0` = all |
-| `--order` | recent | `recent`, `oldest` or `spread` |
-| `--include-zip` | off | also fetch `.zip` appendix bundles |
-| `--jobs` | 4 | parallel downloads |
-
-Writes `data/docs/<unspsc4>/<reference>/`, `reports/docs_manifest.csv` and
-`reports/category_counts.json`.
-
-### `03_inspect_specs.py` — can the specs be parsed?
+Point the downloader at the tenders the screener wants read:
 
 ```bash
+python tenderlens.py --group 2510 --deep-refs reports/m1_deep_refs.txt
+python 02_fetch_docs.py --refs reports/m1_deep_refs.txt
 python 03_inspect_specs.py
-python 03_inspect_specs.py --refresh    # after changing extraction settings
 ```
 
-Extracts text (pdfminer for PDF, stdlib `zipfile` for `.docx`/`.xlsx`), counts
-numeric requirement lines and constraints, previews both brand-naming and
-exact-value signals, and prints a go/no-go verdict per category.
+Check the agents enforce their own rules (no data needed):
 
-Caches text under `reports/text/`, so re-measuring is instant. **Pass
-`--refresh` whenever extraction settings change**, or it re-reads stale text.
+```bash
+python test_agents.py
+```
 
-Writes `reports/spec_inspection.csv`, `reports/spec_inspection_summary.txt` and
-`reports/spec_samples.txt` — read the samples file, it is the evidence that
-parsing works.
+| flag | effect |
+|---|---|
+| `--online` | verify brand names on Wikidata. **Needed in practice** — offline, the brand cache resolves almost nothing outside 4110 |
+| `--llm` | let M2's LLM judge each suspected lock-in on tenders M1 routes deep. Spends tokens |
+| `--limit N` | first N tenders only |
+
+---
+
+## The four agents
+
+Each works on one tender at a time, calls tools, and chooses its next step
+from what the tools return. Every step is written to a trace.
+
+| | file | reads | decides |
+|---|---|---|---|
+| M1 Screener | `m1_screener.py` | the notice only | how deep the expensive work goes |
+| M2 Spec Auditor | `m2_spec_auditor.py` | the specification | whether to verify online / ask the LLM |
+| M3 Investigator | `m3_investigator.py` | award notices | whether to look at the supplier's other buyers |
+| M4 Case Builder | `m4_case_builder.py` | M1 + M2 + M3 | alert / watch / close |
+
+M2's tools: `spec_tools.py` (level 1 — brand named without "or equivalent")
+and `level2.py` (level 2 — requirements bounded tighter than peers).
+
+**What can raise an ALERT:** only a level-1 finding quoted from the document —
+a concrete departure from the CFTA/CETA duty to write a functional
+specification. Notice signals (ACAN, a limited-tendering reason) are things the
+buyer *declared*, so they make a case worth **watching**. A buyer that keeps
+awarding to the same supplier is **context**: it strengthens a case that has
+document evidence and adds nothing to one that does not. Level 2 can add to a
+case but never make one.
+
+**Scores are uncalibrated orderings, not probabilities.** The weights live in
+one table in `m4_case_builder.py`; there is no ground truth yet to fit them.
 
 ---
 
 ## Where things stand
 
-Phase 2 is closed. Measured on 930 attachments from 300 tenders:
+On UNSPSC-4 2510 (motor vehicles, 613 notices, 193 with documents):
+**0 alert, 16 watch, 597 close** — without award data or `--online`, which
+are the next two runs.
 
-| group | spec-rich rate | projected comparable peers | |
-|---|---|---|---|
-| 2510 motor vehicles | 75.0% | ~145 | PASS |
-| 4110 lab & scientific equipment | 63.3% | ~292 | PASS |
-| 4111 spectroscopic equipment | 38.3% | ~82 | PASS |
-| 5610 furniture | 18.3% | ~81 | PASS |
-| 2520 aircraft tires | 15.0% | ~26 | out of scope |
+- **Level 1 is now precise but sparse.** Its rules used to accept a "model
+  number" anywhere within 25 characters, so `Square`, `Ensure` and
+  `Joint Venture` passed on a nearby clause number — every rule-based finding
+  on 400 tenders was false. It now needs the model code as the next token
+  (`Michelin XZL2`, `Palfinger model PK11001`). The only two genuine brands in
+  2510 both say "or equivalent", so they are correctly cleared.
+- **Level 2's peer comparison was measured not to work on this corpus.** Clean
+  peer groups (UNSPSC-8) leave no attribute with 8 peers; wider ones (UNSPSC-6)
+  mix vehicle classes, so its top "finding" was a semi-trailer compared with
+  pickup trucks. It ships as the within-document test, reported low-confidence.
+- **The 16 watch cases are all buyer-declared limited competition**, and the
+  documents for 15 of them were never downloaded. `--deep-refs` fixes that.
 
-**The Spec Auditor agent is buildable.** Only 0.8% of documents are scans, so
-OCR is not needed. 2520 is excluded because tires are specified by standardized
-size codes, not numeric thresholds — there is nothing for a within-category
-outlier test to compare.
+---
 
-Two findings that shape the agent design:
+## Pipeline scripts
 
-- **The specification lives in the solicitation body, not in an annex file.**
-  Documents named `spec`/`annex` are 10.3% spec-rich; those named
-  `rfp`/`rfq`/`itq` are 32.6%.
-- **Never cap pdfminer pages.** The technical requirements sit at the *back* of
-  a solicitation. A 40-page cap truncated 18% of documents and made every
-  category look unbuildable.
+Every script is resumable and never re-downloads.
+
+| script | does |
+|---|---|
+| `01_profile_tenders.py` | downloads the tender feed (185 MB), profiles methods, windows, limited tendering, coverage; writes the project scope |
+| `02_fetch_docs.py` | downloads specification attachments — by category (`--only 2510 --per-cat 0`) or by name (`--refs FILE`) |
+| `03_inspect_specs.py` | extracts text (pdfminer, `zipfile`), caches it in `reports/text/`. **`--refresh`** after changing extraction settings |
+| `04_census.py` | extracts numeric requirements scoped to the requirement section, resolves units, dedups — the level-2 knowledge base. `--map` applies the attribute map |
+| `05_attribute_map.py` | LLM canonicalisation of requirement labels. `--recheck-unknown` re-asks only failed labels |
+| `llm.py` | LLM access (Groq → Cerebras → Mistral → Gemini), caching, token log |
 
 ---
 
 ## Data source
 
-CanadaBuys open data, no API key, bilingual EN/FR.
-Updated **daily** — new notices every 2 hours (06:15–22:15 EST), full files
-refreshed each morning 07:00–08:30 EST.
+CanadaBuys open data, no API key, bilingual EN/FR, updated daily.
 
-Two gotchas worth knowing before you parse anything:
-
-- Attachments on `sscp2pspc.ssc-spc.gc.ca` return an 86 KB HTML login page, not
-  a file. Filter to `canadabuys.canada.ca`.
+- Attachments on `sscp2pspc.ssc-spc.gc.ca` return an HTML login page, not a
+  file. Filter to `canadabuys.canada.ca`.
 - `Content-Type` is `application/octet-stream` for everything. Identify files by
-  magic bytes (`%PDF`, `PK`), not by header.
+  magic bytes, not by header.
+- The notice feed has no contract value, and the contracts file does not join
+  to it — so value is not a signal anywhere in the system.
 
 ---
 
 ## Layout
 
 ```
-01_profile_tenders.py
-02_fetch_docs.py
-03_inspect_specs.py
-data/        not in git — tenders.csv (185 MB), docs/
-reports/     not in git, except selected_unspsc4.json
+01 .. 05_*.py         pipeline
+m1_screener.py        agents
+m2_spec_auditor.py
+m3_investigator.py
+m4_case_builder.py
+tenderlens.py         orchestrator + dashboard
+spec_tools.py         M2 tool: level 1
+level2.py             M2 tool: level 2
+test_agents.py        the agents' rules, as tests
+data/     not in git — tenders.csv, awards.csv, docs/
+reports/  not in git, except selected_unspsc4.json
 ```
-
-`data/` and `reports/` are gitignored. Nobody commits a 185 MB CSV.
