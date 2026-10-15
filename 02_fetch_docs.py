@@ -19,6 +19,7 @@ re-downloaded.
 Run:
     pip install requests
     python 02_fetch_docs.py                  # top 5 groups, 60 tenders each
+    python 02_fetch_docs.py --only 4110 --per-cat 0   # ALL of one group
     python 02_fetch_docs.py --top 5 --per-cat 0     # everything in top 5
     python 02_fetch_docs.py --include-zip --jobs 6
 
@@ -64,7 +65,7 @@ GOODS = {"GD"}
 GOOD_HOST = "canadabuys.canada.ca"
 
 MANIFEST_COLS = [
-    "unspsc4", "unspsc_desc", "reference", "solicitation", "pub_date",
+    "unspsc4", "unspsc8", "unspsc_desc", "reference", "solicitation", "pub_date",
     "method", "title", "url", "local_path", "http_status", "bytes",
     "sniffed", "error",
 ]
@@ -211,6 +212,11 @@ def scan(tenders_path, scope):
                 continue
             cand[g].append({
                 "unspsc4": g,
+                # The full 8-digit code is the PRODUCT FAMILY (411015 vs
+                # 411021). Level 2 compares inside the family, not inside the
+                # 4-digit category: a freezer's volume and a water bath's
+                # volume are both "4110 volume" and are not comparable.
+                "unspsc8": u[:8],
                 "unspsc_desc": labels.get(g, ""),
                 "reference": (row.get(C["ref"]) or "").strip(),
                 "solicitation": (row.get(C["sol"]) or "").strip(),
@@ -376,6 +382,11 @@ def main():
     ap.add_argument("--scope", default="reports/selected_unspsc4.json")
     ap.add_argument("--out", default="data/docs")
     ap.add_argument("--manifest", default="reports/docs_manifest.csv")
+    ap.add_argument("--only", default="",
+                    help="fetch ONLY these UNSPSC-4 groups (comma separated), "
+                         "ignoring --scope and --top. Depth-first on one good "
+                         "is decision 12: peers come from fetching all of one "
+                         "category, not a thin sample of many.")
     ap.add_argument("--top", type=int, default=5,
                     help="how many UNSPSC-4 groups, ranked by usable count")
     ap.add_argument("--per-cat", type=int, default=60,
@@ -403,8 +414,15 @@ def main():
     if not os.path.exists(args.tenders):
         sys.exit(f"missing {args.tenders} - run 01_profile_tenders.py first")
 
+    only = {g.strip() for g in args.only.split(",") if g.strip()}
+
     scope = None
-    if os.path.exists(args.scope):
+    if only:
+        # Narrowing the scan too, not just the ranking: scan() skips anything
+        # outside scope, so a group named here must be in it.
+        scope = set(only)
+        print(f"Scope: --only {', '.join(sorted(only))}")
+    elif os.path.exists(args.scope):
         with open(args.scope, encoding="utf-8") as f:
             scope = set(json.load(f))
         print(f"Scope: {len(scope)} UNSPSC-4 groups from {args.scope}")
@@ -416,8 +434,11 @@ def main():
 
     counts, cand, labels = scan(args.tenders, scope)
 
-    ranked = sorted(((counts[g], g) for g in (scope or counts)),
-                    reverse=True)[:args.top]
+    if only:
+        ranked = sorted(((counts.get(g, 0), g) for g in only), reverse=True)
+    else:
+        ranked = sorted(((counts[g], g) for g in (scope or counts)),
+                        reverse=True)[:args.top]
     print(f"\nTop {len(ranked)} groups by usable count:\n")
     for v, g in ranked:
         print(f"  {g}  {v:5,} usable   {labels.get(g, '')}")
@@ -425,10 +446,24 @@ def main():
     # 03 needs these to scale a sampled rate up to the whole category.
     counts_path = os.path.join(os.path.dirname(args.manifest) or ".",
                                "category_counts.json")
+    # MERGE, never overwrite. counts[] only holds what this run scanned, and a
+    # narrow run (--only 4110) would otherwise wipe the other 19 groups'
+    # usable counts - which 03 needs to project a sampled rate onto a whole
+    # category, and which the Phase 2 table in CLAUDE.md quotes.
+    prev = {"usable": {}, "labels": {}, "sampled": {}}
+    if os.path.exists(counts_path):
+        try:
+            with open(counts_path, encoding="utf-8") as f:
+                for k, v in json.load(f).items():
+                    if isinstance(v, dict):
+                        prev.setdefault(k, {}).update(v)
+        except Exception as e:
+            print(f"  (could not read {counts_path}: {e} - starting fresh)")
+    prev["usable"].update({g: counts[g] for g in (scope or counts)})
+    prev["labels"].update({g: labels.get(g, "") for g in (scope or counts)})
+    prev["sampled"].update({g: 0 for _v, g in ranked})
     with open(counts_path, "w", encoding="utf-8") as f:
-        json.dump({"usable": {g: counts[g] for g in (scope or counts)},
-                   "labels": {g: labels.get(g, "") for g in (scope or counts)},
-                   "sampled": {g: 0 for _v, g in ranked}}, f, indent=2)
+        json.dump(prev, f, indent=2)
 
     exts = {("." + e.strip().lstrip(".").lower())
             for e in args.ext.split(",") if e.strip()}
@@ -457,7 +492,7 @@ def main():
 
     with open(counts_path, "r+", encoding="utf-8") as f:
         d = json.load(f)
-        d["sampled"] = sampled
+        d.setdefault("sampled", {}).update(sampled)
         f.seek(0), f.truncate()
         json.dump(d, f, indent=2)
 

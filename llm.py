@@ -29,6 +29,7 @@ prompt, so a re-run costs nothing and the team gets identical results. Commit
 that file.
 """
 
+import csv
 import hashlib
 import json
 import os
@@ -39,6 +40,14 @@ import urllib.error
 import urllib.request
 
 CACHE_PATH = "reports/llm_cache.json"
+USAGE_PATH = "reports/llm_usage.csv"
+
+# Groq's free tier is ~6,000 tokens per MINUTE. Staying a little under it is
+# cheaper than discovering the ceiling: a 429 costs the Retry-After wait plus
+# a round trip, and the retry spends the tokens again anyway. _throttle()
+# keeps a sliding 60-second window and sleeps rather than colliding.
+TPM_BUDGET = 5500
+_recent = []          # (unix_time, tokens) within the last 60s
 
 # Order matters: first with a key present wins, and the rest are fallbacks.
 # model is the cheap/fast one for triage; model_strong for judgement calls.
@@ -206,11 +215,104 @@ def _post(provider, model, system, user, max_tokens, temperature, timeout):
                  "User-Agent": "TenderLens/0.1"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         data = json.load(r)
-    return data["choices"][0]["message"]["content"]
+    # Every provider here speaks the OpenAI schema, so usage comes back the
+    # same way - but not all of them send it, so the caller must cope with {}.
+    return (data["choices"][0]["message"]["content"], data.get("usage") or {})
+
+
+def _estimate(text):
+    """Rough token count for a provider that sends no usage block.
+
+    ~4 characters per token. Only used to keep the throttle honest and to
+    stop the log having holes; never reported as if it were measured.
+    """
+    return max(1, len(text) // 4)
+
+
+def _throttle(est, verbose=False):
+    """Sleep if this call would breach the tokens-per-minute budget."""
+    now = time.time()
+    _recent[:] = [(t, n) for t, n in _recent if now - t < 60]
+    spent = sum(n for _t, n in _recent)
+    if spent + est <= TPM_BUDGET:
+        return
+    wait = 60 - (now - _recent[0][0]) + 1 if _recent else 0
+    if wait > 0:
+        if verbose:
+            print(f"    [throttle] {spent} tok in the last minute, "
+                  f"waiting {wait:.0f}s before spending ~{est} more")
+        time.sleep(min(wait, 65))
+        now = time.time()
+        _recent[:] = [(t, n) for t, n in _recent if now - t < 60]
+
+
+USAGE_COLS = ["ts", "tag", "provider", "model", "cached",
+              "prompt_tokens", "completion_tokens", "total_tokens",
+              "estimated"]
+
+
+def _log_usage(tag, provider, model, usage, cached, est_total):
+    """Append one row per call to reports/llm_usage.csv.
+
+    Cache hits are logged too, with zero tokens. That is the point: the file
+    has to show what the cache SAVED, otherwise there is no way to tell a
+    cheap pipeline from one that simply did not run.
+    """
+    pt = usage.get("prompt_tokens")
+    ct = usage.get("completion_tokens")
+    tt = usage.get("total_tokens")
+    estimated = 0
+    if tt is None:
+        tt = 0 if cached else est_total
+        estimated = 0 if cached else 1
+    if not cached:
+        _recent.append((time.time(), tt or 0))
+    row = {
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "tag": tag or "", "provider": provider, "model": model,
+        "cached": int(bool(cached)),
+        "prompt_tokens": pt if pt is not None else "",
+        "completion_tokens": ct if ct is not None else "",
+        "total_tokens": tt, "estimated": estimated,
+    }
+    try:
+        os.makedirs(os.path.dirname(USAGE_PATH) or ".", exist_ok=True)
+        new = not os.path.exists(USAGE_PATH)
+        with open(USAGE_PATH, "a", encoding="utf-8", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=USAGE_COLS)
+            if new:
+                w.writeheader()
+            w.writerow(row)
+    except OSError:
+        pass      # never let bookkeeping break a pipeline run
+
+
+def usage_summary(path=USAGE_PATH):
+    """(calls, cached_calls, total_tokens, by_tag) from the log."""
+    if not os.path.exists(path):
+        return 0, 0, 0, {}
+    calls = cached = total = 0
+    by_tag = {}
+    with open(path, encoding="utf-8", newline="") as f:
+        for r in csv.DictReader(f):
+            calls += 1
+            c = r.get("cached") == "1"
+            cached += int(c)
+            try:
+                t = int(r.get("total_tokens") or 0)
+            except ValueError:
+                t = 0
+            total += t
+            d = by_tag.setdefault(r.get("tag", ""), {"calls": 0, "tok": 0,
+                                                     "cached": 0})
+            d["calls"] += 1
+            d["tok"] += t
+            d["cached"] += int(c)
+    return calls, cached, total, by_tag
 
 
 def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
-        timeout=60, retries=2, verbose=False):
+        timeout=60, retries=2, verbose=False, tag=""):
     """Ask the first working provider. Returns the raw text answer.
 
     Raises NoProvider if no key is set, or RuntimeError if every provider
@@ -234,11 +336,15 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
         # Caching one poisoned the cache: the next run returned "" instantly
         # and never retried. Ignore them, and they get overwritten below.
         if ck in cache and cache[ck].get("answer", "").strip():
+            _log_usage(tag, p["name"], model, {}, True, 0)
             return cache[ck]["answer"]
         for attempt in range(retries + 1):
             try:
-                answer = _post(p, model, system, user, max_tokens,
-                               temperature, timeout)
+                _throttle(_estimate(system + user) + max_tokens // 4, verbose)
+                answer, usage = _post(p, model, system, user, max_tokens,
+                                      temperature, timeout)
+                _log_usage(tag, p["name"], model, usage, False,
+                           _estimate(system + user + answer))
                 # Reasoning models (gpt-oss, magistral, o-series) spend the
                 # budget thinking and return an EMPTY message when it runs
                 # out. That is not a refusal, it is truncation, so retry with
@@ -290,6 +396,7 @@ RE_JSON = re.compile(r"\{.*\}|\[.*\]", re.S)
 
 
 def ask_json(system, user, **kw):
+    # kw passes straight through, so tag= reaches the usage log.
     """ask(), but parse the answer as JSON. Models wrap JSON in prose and in
     ``` fences often enough that stripping them is not optional."""
     raw = ask(system, user, **kw)
@@ -313,6 +420,16 @@ if __name__ == "__main__":
         print("  GROQ_API_KEY=gsk_...")
         sys.exit(1)
 
+    if "--usage" in sys.argv:
+        calls, cached, total, by_tag = usage_summary()
+        print(f"{calls} calls logged, {cached} served from cache, "
+              f"{total:,} tokens spent\n")
+        print(f"  {'tag':24s} {'calls':>6} {'cached':>7} {'tokens':>9}")
+        for t, d in sorted(by_tag.items(), key=lambda x: -x[1]["tok"]):
+            print(f"  {(t or '(none)'):24s} {d['calls']:6d} "
+                  f"{d['cached']:7d} {d['tok']:9,}")
+        sys.exit(0)
+
     refresh = "--refresh" in sys.argv
     show_all = "--list" in sys.argv
     print("configured, in fallback order:")
@@ -331,7 +448,7 @@ if __name__ == "__main__":
         r = ask_json(
             "You answer only with JSON.",
             'Is "Leica" a company? Answer {"company": true or false}.',
-            verbose=True)
+            verbose=True, tag="selftest")
         print("  ->", r)
     except Exception as e:
         print(f"  failed: {type(e).__name__}: {e}")
