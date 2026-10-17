@@ -143,8 +143,10 @@ def audit(reference, depth="standard", rows=None, online=False):
             "claim": f"'{f['attribute']}' set at {f.get('stated')} against "
                      f"a peer median of {f['peer_median']} {f.get('unit','')} "
                      f"(n={f['peer_n']})",
-            "detail": "Peer group is UNSPSC-6 and mixes vehicle classes; "
-                      "check the peers are the same kind of product.",
+            "detail": f"Peer group is UNSPSC-{level2.LEVEL[0]}"
+                      + ("; it mixes vehicle classes" if level2.LEVEL[0] < 8
+                         else "") + " - check the peers are the same kind "
+                      "of product.",
             "source": {"file": f.get("file"), "where": f.get("section"),
                        "line": f.get("source_line"),
                        "context": f.get("context")},

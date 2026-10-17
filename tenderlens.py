@@ -108,13 +108,18 @@ def select(notices, group=None, refs=None):
     return sorted(out)
 
 
-def write_outputs(cases, meta):
-    os.makedirs("reports", exist_ok=True)
+def write_outputs(cases, meta, prefix=None):
+    """Write the ranked queue. `prefix` (no extension) defaults to
+    reports/audit_queue; the incremental run writes one per batch."""
+    out_json, out_csv, out_html = (
+        (OUT_JSON, OUT_CSV, OUT_HTML) if prefix is None
+        else (prefix + ".json", prefix + ".csv", prefix + ".html"))
+    os.makedirs(os.path.dirname(out_json) or ".", exist_ok=True)
     cases.sort(key=lambda c: (ROUTE_ORDER[c["route"]], -c["score"],
                               c["reference"]))
-    with io.open(OUT_JSON, "w", encoding="utf-8") as f:
+    with io.open(out_json, "w", encoding="utf-8") as f:
         json.dump({"meta": meta, "cases": cases}, f, indent=1, default=str)
-    with io.open(OUT_CSV, "w", encoding="utf-8", newline="") as f:
+    with io.open(out_csv, "w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
         w.writerow(["rank", "reference", "route", "score", "m1_route",
                     "readable", "verified_claims", "title", "entity",
@@ -125,7 +130,7 @@ def write_outputs(cases, meta):
                         sum(1 for x in c["claims"] if x["verified"]),
                         c["title"], c["entity"],
                         (c.get("award") or {}).get("supplier", "")])
-    with io.open(OUT_HTML, "w", encoding="utf-8") as f:
+    with io.open(out_html, "w", encoding="utf-8") as f:
         f.write(render_html(cases, meta))
 
 
@@ -255,7 +260,11 @@ def main():
     ap.add_argument("--deep-refs", metavar="FILE",
                     help="write the references M1 routes deep, for "
                          "02_fetch_docs.py --refs, and stop")
+    ap.add_argument("--l2-level", type=int, choices=[6, 8], default=8,
+                    help="UNSPSC digits for level-2 peer groups (default 8; "
+                         "6 restores the old grouping)")
     a = ap.parse_args()
+    level2.LEVEL[0] = a.l2_level
 
     shared = load_shared()
     notices = shared[0]
