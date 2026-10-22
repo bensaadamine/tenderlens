@@ -1,8 +1,6 @@
 """
 CANADA - STEP 1: profile the tender notices.
 
-Replaces what took scripts 03, 04 and 06 on the Ukrainian data. One pass,
-no pandas (Windows Application Control blocks its compiled DLL).
 
 Answers:
   A. What is being bought, and by which procurement method?
@@ -16,12 +14,26 @@ Answers:
 
 Run:
     pip install requests
-    python 01_profile_tenders.py
+    python prepare/01_profile_tenders.py
 
 It reuses data/tenders.csv if present, otherwise downloads it (185 MB).
 If you already have it from the spike, copy it in first:
     copy ..\\canada\\canada_spike\\all_tenders.csv data\\tenders.csv
 """
+
+# --- repo layout: find the agents/, tools/, prepare/ folders and run from
+# the repository root, whatever folder the script sits in (2026-10-22).
+import os as _os
+import sys as _sys
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+for _d in ("agents", "tools", "prepare", "tests", ""):
+    _p = _os.path.join(_ROOT, _d)
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+if __name__ == "__main__":
+    _os.chdir(_ROOT)
+# ---
+
 
 import argparse
 import csv

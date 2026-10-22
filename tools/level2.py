@@ -7,6 +7,20 @@ two-sided bands, which needs no peers. Measured on 2510: peer comparison
 finds nothing usable (see MEASUREMENT_LOG), so results are low confidence.
 """
 
+# --- repo layout: find the agents/, tools/, prepare/ folders and run from
+# the repository root, whatever folder the script sits in (2026-10-22).
+import os as _os
+import sys as _sys
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+for _d in ("agents", "tools", "prepare", "tests", ""):
+    _p = _os.path.join(_ROOT, _d)
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+if __name__ == "__main__":
+    _os.chdir(_ROOT)
+# ---
+
+
 import argparse
 import collections
 import csv
@@ -45,7 +59,7 @@ def mad(values, med=None):
 def load_observations(census=CENSUS):
     """Load the mapped census; key each row by (family, dimension, attribute)."""
     if not os.path.exists(census):
-        raise SystemExit(f"missing {census} - run 04_census.py --map first")
+        raise SystemExit(f"missing {census} - run prepare/04_census.py --map first")
     with io.open(census, encoding="utf-8", errors="replace", newline="") as f:
         return prepare(csv.DictReader(f))
 

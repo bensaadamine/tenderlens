@@ -4,7 +4,7 @@
     python tenderlens_stream.py --group 2510 --until 2024-12-31   # simulate an early batch
     python tenderlens_stream.py --group 2510 --status
     python tenderlens_stream.py --group 2510 --feedback      # apply the auditor's verdicts
-    python tenderlens_stream.py --group 2510 --export-labels # raw labels for 05_attribute_map.py
+    python tenderlens_stream.py --group 2510 --export-labels # raw labels for prepare/05_attribute_map.py
 
 The batch run (tenderlens.py) is unchanged and still available.
 
@@ -12,7 +12,7 @@ HOW A RUN WORKS
   New tenders = notices of the group not yet in the register (plus tenders
   registered without documents whose text has since been extracted).
   They are processed in PUBLICATION-DATE order. For each one:
-    1. extract its numeric requirements (04_census.py's own steps: section
+    1. extract its numeric requirements (prepare/04_census.py's own steps: section
        scoping, number parsing, band collapse, unit conversion, restatements)
     2. run the four agents, with the BASE as level 2's peers - so a tender
        is compared only with tenders processed before it
@@ -39,6 +39,20 @@ STORAGE  reports/kb/<group>/  - append-only, so a crash loses at most the
   The attribute map is applied ON READ, so labels 05 learns later improve
   the base retroactively. Labels not yet in the map are kept as written.
 """
+
+# --- repo layout: find the agents/, tools/, prepare/ folders and run from
+# the repository root, whatever folder the script sits in (2026-10-22).
+import os as _os
+import sys as _sys
+_ROOT = _os.path.dirname(_os.path.abspath(__file__))
+for _d in ("agents", "tools", "prepare", "tests", ""):
+    _p = _os.path.join(_ROOT, _d)
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+if __name__ == "__main__":
+    _os.chdir(_ROOT)
+# ---
+
 import argparse
 import collections
 import csv
@@ -62,7 +76,8 @@ try:
 except Exception:
     pass
 
-_spec = importlib.util.spec_from_file_location("census", "04_census.py")
+_spec = importlib.util.spec_from_file_location(
+    "census", _os.path.join(_ROOT, "prepare", "04_census.py"))
 census = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(census)
 
@@ -155,7 +170,7 @@ def notice_meta(row):
 
 
 def extract_tender(ref, row, group, run_id):
-    """Raw observations for one tender, through 04_census.py's own steps."""
+    """Raw observations for one tender, through prepare/04_census.py's own steps."""
     docs = spec_tools.tender_documents(ref)
     rows = []
     for d in docs:
@@ -348,7 +363,7 @@ def status(a):
 
 
 def export_labels(a):
-    """Raw rows of every registered tender, as 05_attribute_map.py --census reads them."""
+    """Raw rows of every registered tender, as prepare/05_attribute_map.py --census reads them."""
     kb = KB(a.group, a.kb_root)
     state = kb.state()
     out = os.path.join(kb.dir, "census_raw.csv")
@@ -361,7 +376,7 @@ def export_labels(a):
                 w.writerows(rs)
                 n += len(rs)
     print(f"{n:,} rows -> {out}")
-    print(f"next: python 05_attribute_map.py --group {a.group} --census {out}")
+    print(f"next: python prepare/05_attribute_map.py --group {a.group} --census {out}")
 
 
 def main():
@@ -378,7 +393,9 @@ def main():
     ap.add_argument("--status", action="store_true")
     ap.add_argument("--feedback", action="store_true")
     ap.add_argument("--export-labels", action="store_true")
+    spec_tools.add_l1_args(ap)
     a = ap.parse_args()
+    spec_tools.apply_l1_args(a)
     if a.status:
         status(a)
     elif a.feedback:

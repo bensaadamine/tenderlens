@@ -27,8 +27,8 @@ text is reusable by later steps.
 
 Run:
     pip install pdfminer.six
-    python 03_inspect_specs.py
-    python 03_inspect_specs.py --max-pages 60 --limit 50
+    python prepare/03_inspect_specs.py
+    python prepare/03_inspect_specs.py --max-pages 60 --limit 50
 
 Writes:
     reports/text/<unspsc4>/<reference>__<file>.txt   cached plain text
@@ -36,6 +36,20 @@ Writes:
     reports/spec_inspection_summary.txt              the verdict
     reports/spec_samples.txt                         real requirement lines
 """
+
+# --- repo layout: find the agents/, tools/, prepare/ folders and run from
+# the repository root, whatever folder the script sits in (2026-10-22).
+import os as _os
+import sys as _sys
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+for _d in ("agents", "tools", "prepare", "tests", ""):
+    _p = _os.path.join(_ROOT, _d)
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+if __name__ == "__main__":
+    _os.chdir(_ROOT)
+# ---
+
 
 import argparse
 import csv
@@ -222,6 +236,26 @@ def pdf_pages(path):
         return 0
 
 
+def _save_pages(cache, pages):
+    try:
+        with open(cache + ".pages", "w") as fh:
+            fh.write(str(pages))
+    except OSError:
+        pass
+
+
+def cached_pages(cache, path):
+    """Page count stored beside the cached text, so a re-run stops reading
+    every PDF's bytes again. Missing -> count once and store."""
+    try:
+        with open(cache + ".pages") as fh:
+            return int(fh.read().strip() or 0)
+    except (OSError, ValueError):
+        n = pdf_pages(path)
+        _save_pages(cache, n)
+        return n
+
+
 RE_XML_TAG = re.compile(r"<[^>]+>")
 
 
@@ -376,7 +410,7 @@ def main():
     args = ap.parse_args()
 
     if not os.path.exists(args.manifest):
-        sys.exit(f"missing {args.manifest} - run 02_fetch_docs.py first")
+        sys.exit(f"missing {args.manifest} - run prepare/02_fetch_docs.py first")
 
     want = {k.strip().lower() for k in args.kinds.split(",") if k.strip()}
     os.makedirs(args.out, exist_ok=True)
@@ -446,7 +480,7 @@ def main():
             try:
                 with open(cache, encoding="utf-8") as fh:
                     txt = fh.read()
-                pages = pdf_pages(path) if kind == "pdf" else 0
+                pages = cached_pages(cache, path) if kind == "pdf" else 0
             except Exception:
                 txt = None
         if txt is None:
@@ -454,6 +488,8 @@ def main():
                 txt, pages = get_text(path, kind, args.max_pages)
                 with open(cache, "w", encoding="utf-8") as fh:
                     fh.write(txt)
+                if kind == "pdf":
+                    _save_pages(cache, pages)
             except Exception as e:
                 out["verdict"] = "UNREADABLE"
                 out["error"] = f"{type(e).__name__}: {e}"[:160]

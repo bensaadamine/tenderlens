@@ -29,6 +29,20 @@ prompt, so a re-run costs nothing and the team gets identical results. Commit
 that file.
 """
 
+# --- repo layout: find the agents/, tools/, prepare/ folders and run from
+# the repository root, whatever folder the script sits in (2026-10-22).
+import os as _os
+import sys as _sys
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+for _d in ("agents", "tools", "prepare", "tests", ""):
+    _p = _os.path.join(_ROOT, _d)
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+if __name__ == "__main__":
+    _os.chdir(_ROOT)
+# ---
+
+
 import csv
 import hashlib
 import json
@@ -47,7 +61,25 @@ USAGE_PATH = "reports/llm_usage.csv"
 # a round trip, and the retry spends the tokens again anyway. _throttle()
 # keeps a sliding 60-second window and sleeps rather than colliding.
 TPM_BUDGET = 5500
-_recent = []          # (unix_time, tokens) within the last 60s
+_recent = []          # (unix_time, tokens) within the last 60s - legacy name
+
+# LOAD SHARING (user decision 2026-10-19). With two or more keys, each call
+# goes to the provider with the most free capacity in ITS OWN 60-second
+# window, instead of always to the first one. A provider that errors still
+# falls back to the next. SPREAD = "fallback" restores the earlier behaviour
+# (always the first provider, others only on error). Budgets are per provider
+# and deliberately under each free tier:
+#   groq     ~6,000 tokens/min                  -> 5,500
+#   mistral  free tier: about 1 request/second  -> 1 call per 1.1 s
+#   others   unknown                            -> 5,500 tokens/min
+SPREAD = os.environ.get("TENDERLENS_LLM_SPREAD", "share")
+BUDGETS = {"groq": 5500, "mistral": 400000, "cerebras": 5500,
+           "gemini": 5500}
+MIN_GAP = {"mistral": 1.1}     # seconds between two calls
+_windows = {}         # provider -> [(unix_time, tokens)]
+_last_call = {}       # provider -> unix_time
+_down_until = {}      # provider -> unix_time; a provider that errored rests
+DOWN_FOR = 60         # seconds
 
 # Order matters: first with a key present wins, and the rest are fallbacks.
 # model is the cheap/fast one for triage; model_strong for judgement calls.
@@ -80,13 +112,19 @@ PROVIDERS = [
 # wins. Add a pattern rather than an ID when a new model appears.
 PREFER_FAST = [
     r"llama.*8b.*instant", r"llama.*3\.1.*8b", r"gpt-oss-20b",
-    r"qwen3-32b", r"llama.*scout", r"mistral-small", r"gemini.*flash",
+    r"qwen3-32b", r"llama.*scout", r"mistral-small",
+    # Gemini 2.5 Flash has a tiny free quota (about 20 requests a day); prefer 3.x.
+    r"gemini-[3-9][\w.-]*flash-lite", r"gemini-[3-9][\w.-]*flash", r"gemini.*flash",
     r"8b", r"small", r"mini", r"instant", r"flash",
 ]
 PREFER_STRONG = [
     r"llama.*3\.3.*70b", r"llama.*70b", r"gpt-oss-120b", r"zai-glm",
     r"llama.*maverick", r"qwen3-32b", r"mistral-large", r"magistral",
-    r"gemini.*pro", r"120b", r"70b", r"large",
+    # Gemini Pro left the free tier in 2026: the strong Gemini is the newest
+    # non-lite Flash. Picking a paid-only model just errors and rests the
+    # provider, which defeats load sharing.
+    r"gemini-[3-9][\d.]*-flash(?!-lite)", r"gemini.*flash(?!-lite)",
+    r"120b", r"70b", r"large",
 ]
 # Never pick these for text: speech, embedding, vision-only, moderation.
 EXCLUDE_MODELS = re.compile(
@@ -229,6 +267,42 @@ def _estimate(text):
     return max(1, len(text) // 4)
 
 
+def _wait_needed(name, est, now=None):
+    """Seconds before this provider can take a call of `est` tokens."""
+    now = time.time() if now is None else now
+    win = _windows.setdefault(name, [])
+    win[:] = [(t, n) for t, n in win if now - t < 60]
+    budget = BUDGETS.get(name, TPM_BUDGET)
+    wait = 0.0
+    spent = sum(n for _t, n in win)
+    if spent + est > budget and win:
+        wait = 60 - (now - win[0][0]) + 1
+    gap = MIN_GAP.get(name, 0) - (now - _last_call.get(name, 0))
+    return max(wait, gap, 0.0)
+
+
+def _order(provs, est):
+    """Providers sorted by how soon they can take this call (share mode)."""
+    if SPREAD != "share" or len(provs) < 2:
+        return provs
+    now = time.time()
+    return sorted(provs, key=lambda p: (_down_until.get(p["name"], 0) > now,
+                                        _wait_needed(p["name"], est, now),
+                                        _last_call.get(p["name"], 0)))
+
+
+def _throttle_p(name, est, verbose=False):
+    """Per-provider throttle: sleep until this provider has room."""
+    wait = _wait_needed(name, est)
+    if wait > 0:
+        if verbose:
+            print(f"    [{name} throttle] waiting {wait:.0f}s")
+        time.sleep(min(wait, 65))
+    now = time.time()
+    _windows.setdefault(name, []).append((now, est))
+    _last_call[name] = now
+
+
 def _throttle(est, verbose=False):
     """Sleep if this call would breach the tokens-per-minute budget."""
     now = time.time()
@@ -325,11 +399,12 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
 
     cache = _load_cache()
     errors = []
+    # A saved answer is reused whichever provider gave it - otherwise sharing
+    # the load would re-ask, on the other provider, questions already paid for.
     for p in provs:
         fast, strg = models_for(p, verbose=verbose)
         model = (strg if strong else fast)
         if not model:
-            errors.append(f"{p['name']}: no usable model")
             continue
         ck = _key(model, system, user)
         # An empty cached answer is a truncated reasoning model, not a result.
@@ -338,9 +413,20 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
         if ck in cache and cache[ck].get("answer", "").strip():
             _log_usage(tag, p["name"], model, {}, True, 0)
             return cache[ck]["answer"]
+    est = _estimate(system + user) + max_tokens // 4
+    for p in _order(provs, est):
+        fast, strg = models_for(p, verbose=verbose)
+        model = (strg if strong else fast)
+        if not model:
+            errors.append(f"{p['name']}: no usable model")
+            continue
+        ck = _key(model, system, user)
         for attempt in range(retries + 1):
             try:
-                _throttle(_estimate(system + user) + max_tokens // 4, verbose)
+                if SPREAD == "share":
+                    _throttle_p(p["name"], est, verbose)
+                else:
+                    _throttle(est, verbose)
                 answer, usage = _post(p, model, system, user, max_tokens,
                                       temperature, timeout)
                 _log_usage(tag, p["name"], model, usage, False,
@@ -385,9 +471,11 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
                         model, ck = new, _key(new, system, user)
                         continue
                 errors.append(f"{p['name']}: HTTP {e.code}")
+                _down_until[p["name"]] = time.time() + DOWN_FOR
                 break
             except Exception as e:
                 errors.append(f"{p['name']}: {type(e).__name__}")
+                _down_until[p["name"]] = time.time() + DOWN_FOR
                 break
     raise RuntimeError("every provider failed -> " + "; ".join(errors))
 

@@ -10,8 +10,8 @@ for ONE tender: who won it, and is that a pattern?
 Get the data once, ON WINDOWS (canadabuys.canada.ca is blocked from the
 agent's container and from the device shell - CLAUDE.md gotchas):
 
-    python m3_investigator.py --fetch          # -> data/awards.csv
-    python m3_investigator.py --columns        # check what was detected
+    python agents/m3_investigator.py --fetch          # -> data/awards.csv
+    python agents/m3_investigator.py --columns        # check what was detected
 
 ---------------------------------------------------------------- the stance
 
@@ -41,6 +41,20 @@ by the person who wrote this module; guessing its column names would be the
 same mistake as guessing a unit (decision 15). If detection fails, the error
 lists every header so the mapping can be fixed in one line.
 """
+
+# --- repo layout: find the agents/, tools/, prepare/ folders and run from
+# the repository root, whatever folder the script sits in (2026-10-22).
+import os as _os
+import sys as _sys
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+for _d in ("agents", "tools", "prepare", "tests", ""):
+    _p = _os.path.join(_ROOT, _d)
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+if __name__ == "__main__":
+    _os.chdir(_ROOT)
+# ---
+
 
 import argparse
 import collections
@@ -219,7 +233,7 @@ def investigate(reference, notice_row=None, graph=None):
     trace = []
     if graph is None:
         trace.append("no award data (data/awards.csv) - run "
-                     "`python m3_investigator.py --fetch` on Windows")
+                     "`python agents/m3_investigator.py --fetch` on Windows")
         return {"reference": reference, "available": False,
                 "award": None, "findings": [], "trace": trace}
 

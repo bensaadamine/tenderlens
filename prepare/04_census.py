@@ -33,14 +33,28 @@ to the attribute map, and the near-duplicates in it ("chamber volume" /
 Reads the text cached by 03 - nothing is re-extracted, nothing downloaded.
 
 Run:
-    python 04_census.py                      # group 4110
-    python 04_census.py --group 2510 --min-peers 8
+    python prepare/04_census.py                      # group 4110
+    python prepare/04_census.py --group 2510 --min-peers 8
 
 Writes:
     reports/census_<grp>.csv          every extracted tuple, one per row
     reports/census_<grp>_labels.csv   per label: tenders, comparator mix
     reports/census_<grp>.txt          the summary printed below
 """
+
+# --- repo layout: find the agents/, tools/, prepare/ folders and run from
+# the repository root, whatever folder the script sits in (2026-10-22).
+import os as _os
+import sys as _sys
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+for _d in ("agents", "tools", "prepare", "tests", ""):
+    _p = _os.path.join(_ROOT, _d)
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+if __name__ == "__main__":
+    _os.chdir(_ROOT)
+# ---
+
 
 import argparse
 import csv
@@ -957,7 +971,7 @@ def main():
                          "baseline stays reproducible.")
     ap.add_argument("--map", nargs="?", const="reports/attribute_map.json",
                     default="",
-                    help="apply an attribute map built by 05_attribute_map.py "
+                    help="apply an attribute map built by prepare/05_attribute_map.py "
                          "before counting, so synonyms count as one attribute "
                          "and labels marked 'unknown' are dropped. Without "
                          "this the census reports RAW labels, which is the "
@@ -968,12 +982,12 @@ def main():
     # tenders.csv join is ~2 minutes, and erroring at the end of that is just
     # two wasted minutes.
     if args.map and not os.path.exists(args.map):
-        sys.exit(f"missing {args.map} - run 05_attribute_map.py first")
+        sys.exit(f"missing {args.map} - run prepare/05_attribute_map.py first")
 
     tdir = os.path.join(args.text_dir, args.group)
     if not os.path.isdir(tdir):
-        sys.exit(f"missing {tdir} - run 02_fetch_docs.py --only {args.group} "
-                 f"--per-cat 0, then 03_inspect_specs.py")
+        sys.exit(f"missing {tdir} - run prepare/02_fetch_docs.py --only {args.group} "
+                 f"--per-cat 0, then prepare/03_inspect_specs.py")
     files = sorted(f for f in os.listdir(tdir) if f.endswith(".txt"))
     if not files:
         sys.exit(f"no cached text in {tdir}")

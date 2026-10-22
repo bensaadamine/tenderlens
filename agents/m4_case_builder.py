@@ -44,6 +44,20 @@ table so that calibrating them later is one edit. Do not quote a score as a
 probability.
 """
 
+# --- repo layout: find the agents/, tools/, prepare/ folders and run from
+# the repository root, whatever folder the script sits in (2026-10-22).
+import os as _os
+import sys as _sys
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+for _d in ("agents", "tools", "prepare", "tests", ""):
+    _p = _os.path.join(_ROOT, _d)
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+if __name__ == "__main__":
+    _os.chdir(_ROOT)
+# ---
+
+
 import re
 
 WEIGHTS = {
@@ -70,6 +84,69 @@ WEIGHTS = {
 CAPS = {"brand_without_equivalent": 2, "level2": 2}
 
 ALERT = 5
+ALERT_FROM = "documents"   # or "all" - see build_case
+# What the buyer DECLARES on the notice: an advance award notice, a limited
+# tendering method or reason. User decision 2026-10-19: alone, these rank a
+# case but never put it in the queue - measured on 4110, an ACAN alone sent
+# 194 of 957 tenders (20%) to WATCH, burying any document finding. They
+# still reach WATCH together with anything not declared (a brand, a short
+# window, a recurring supplier ...). DECLARED_ALONE = "watch" restores.
+DECLARED = {"acan", "limited_tendering_method", "limited_tendering_reason"}
+DECLARED_ALONE = "close"
+# "No trade agreement" is context, not a sign: it only means the rule against
+# naming brands does not apply. User decision 2026-10-19: it no longer lifts
+# declared signals into WATCH on its own. CONTEXT_ALONE = "watch" restores.
+CONTEXT_ONLY = {"no_trade_agreement"}
+CONTEXT_ALONE = "close"
+# Wording of the case page. "plain" (2026-10-19): one sentence per reason,
+# each marked declared / found in the documents / context; no internal codes.
+# "v1" restores the earlier text.
+NARRATIVE = "plain"
+NATURE = {
+    "acan": "Declared by the buyer",
+    "limited_tendering_method": "Declared by the buyer",
+    "limited_tendering_reason": "Declared by the buyer",
+    "short_window": "From the notice dates",
+    "no_trade_agreement": "Context",
+    "brand_without_equivalent": "Found in the documents",
+    "brand_matches_winner": "Found in the documents + award",
+    "narrow_band": "Low-confidence comparison",
+    "extreme_threshold": "Low-confidence comparison",
+    "within_document_bands": "Low-confidence comparison",
+    "recurring_supplier": "Award history",
+    "dependent_supplier": "Award history",
+}
+
+
+def plain_text(c, award=None):
+    """One plain sentence for a claim, for a reader who is not us."""
+    k, s = c["kind"], c.get("source") or {}
+    ev = str(s.get("line") or "").strip()
+    who = (award or {}).get("supplier") or "a supplier it named"
+    if k == "acan":
+        return (f"The buyer announced in advance that it would give this "
+                f"contract to {who} without an open competition (Advance "
+                f"Contract Award Notice).")
+    if k == "limited_tendering_method":
+        return ("The buyer used a limited-tendering procedure: the contract "
+                "was not opened to competition.")
+    if k == "limited_tendering_reason":
+        return f"The buyer's stated reason for not competing: \u201c{ev}\u201d."
+    if k == "short_window":
+        d, m = c.get("days"), c.get("median")
+        if d is not None and m is not None:
+            return (f"Bidders had {d:g} days to respond; tenders run the same "
+                    f"way usually get {m:g}. A short window favours a bidder "
+                    f"who already knew.")
+        return "Bidders had an unusually short time to respond."
+    if k == "no_trade_agreement":
+        return ("The contract is not covered by any trade agreement, so the "
+                "rule against naming brands does not apply.")
+    if k == "brand_without_equivalent":
+        b = c.get("brand") or "a brand"
+        return (f"The specification requires {b} and does not accept an "
+                f"equivalent product.")
+    return c.get("claim", "")
 WATCH = 2
 
 LEVEL2_KINDS = {"narrow_band", "extreme_threshold", "within_document_bands"}
@@ -111,6 +188,7 @@ def build_case(m1, m2, m3):
         claims.append({
             "agent": "M1", "kind": s["signal"], "level": 0,
             "confidence": "declared" if s["weight"] == "strong" else "weak",
+            "days": s.get("days"), "median": s.get("median"),
             "claim": s["why"],
             "source": {"file": "tender notice (CanadaBuys feed)",
                        "where": s["signal"], "line": s["evidence"],
@@ -191,8 +269,22 @@ def build_case(m1, m2, m3):
     # signal measured not to work cannot be what puts a tender in front of
     # an auditor.
     has_other = any(c.get("points") and c["kind"] not in LEVEL2_KINDS
+                    and (DECLARED_ALONE == "watch"
+                         or c["kind"] not in DECLARED)
+                    and (CONTEXT_ALONE == "watch"
+                         or c["kind"] not in CONTEXT_ONLY)
                     for c in claims)
-    if score >= ALERT and can_alert:
+    # Measured 2026-10-19: one brand (3) + an ACAN (2) + no trade agreement
+    # (1) = 6 reached ALERT, against the routing rule - notice signals are
+    # what the buyer declared, so they can rank a case, never make it an
+    # alert. An alert now needs ALERT points from document findings alone
+    # (two brands, or a brand that is the winner). ALERT_FROM = "all"
+    # restores the earlier rule.
+    doc_score = sum(c.get("points") or 0 for c in claims
+                    if c.get("agent") in ("M2", "M4")
+                    and c["kind"] not in LEVEL2_KINDS)
+    alert_score = doc_score if ALERT_FROM == "documents" else score
+    if alert_score >= ALERT and can_alert:
         route = "alert"
     elif score >= WATCH and has_other:
         route = "watch"
@@ -209,13 +301,75 @@ def build_case(m1, m2, m3):
         "score": score,
         "breakdown": breakdown,
         "claims": claims,
-        "narrative": narrative(route, claims, award),
+        "narrative": (narrative(route, claims, award)
+                      if NARRATIVE == "v1"
+                      else narrative_plain(route, claims, award, m2)),
         "readable": bool((m2 or {}).get("readable")),
         "award": award or None,
         "trace": {"M1": f"route={(m1 or {}).get('route')}",
                   "M2": (m2 or {}).get("trace", []),
                   "M3": (m3 or {}).get("trace", [])},
     }
+
+
+def narrative_plain(route, claims, award, m2):
+    """The case page text: why it is listed, what we could not check, the
+    supplier's history. Built only from scored, verified claims."""
+    for c in claims:
+        c["plain"] = plain_text(c, award)
+        c["nature"] = NATURE.get(c["kind"], "Context")
+    scored = sorted([c for c in claims if c.get("points")],
+                    key=lambda c: -c["points"])
+    if route == "alert":
+        head = ("The competition on this contract does not appear to have "
+                "been genuine.")
+    elif route == "watch":
+        head = "This contract is worth an auditor's review."
+    elif scored:
+        head = ("Not in the audit queue: the only signals are what the buyer "
+                "declared on the notice, or context. Kept for ranking.")
+    else:
+        head = ("No checkable signal suggests the competition on this "
+                "contract was anything other than genuine.")
+    out = [head]
+    if scored:
+        out.append("\nWhy it is listed" if route != "close"
+                   else "\nSignals on record")
+        for c in scored[:6]:
+            out.append(f"- {c['plain']} ({c['nature']}.)")
+    gaps = []
+    m2 = m2 or {}
+    if not m2.get("readable"):
+        gaps.append("No tender documents were published, so the "
+                    "specification was not read.")
+    else:
+        un = (m2.get("level1") or {}).get("unresolved") or 0
+        if un:
+            gaps.append(f"{un} name(s) in the documents could not be "
+                        f"confirmed as brands (needs the online check or the "
+                        f"language model).")
+    if not award:
+        gaps.append("No award notice was found, so the winner is unknown.")
+    if gaps:
+        out.append("\nWhat we could not check")
+        out += [f"- {g}" for g in gaps]
+    if award and award.get("supplier"):
+        out.append("\nSupplier history")
+        tot, mine = award.get("buyer_awards_in_group"), \
+            award.get("to_this_supplier")
+        sup = award["supplier"].rstrip(". ")
+        line = f"- Awarded to {sup}."
+        if tot:
+            line += (f" This buyer gave {tot} contract(s) in this category to "
+                     f"{award.get('distinct_suppliers')} supplier(s); "
+                     f"{sup} won {mine}.")
+            if not any(c["kind"] in ("recurring_supplier",
+                                     "dependent_supplier") for c in claims):
+                line += " No sign of a favoured supplier."
+        out.append(line)
+    out.append("\nThese are hypotheses with evidence attached, not findings "
+               "of wrongdoing. A person decides.")
+    return "\n".join(out)
 
 
 def narrative(route, claims, award):

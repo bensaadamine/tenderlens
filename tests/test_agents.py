@@ -2,11 +2,25 @@
 Tests for the rules M3 and M4 claim to enforce. No data needed - builds a
 synthetic award file and synthetic agent outputs.
 
-    python test_agents.py
+    python tests/test_agents.py
 
 Each check is one sentence of the design stated as a test. If one fails, the
 module's docstring is lying about what it does.
 """
+
+# --- repo layout: find the agents/, tools/, prepare/ folders and run from
+# the repository root, whatever folder the script sits in (2026-10-22).
+import os as _os
+import sys as _sys
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+for _d in ("agents", "tools", "prepare", "tests", ""):
+    _p = _os.path.join(_ROOT, _d)
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+if __name__ == "__main__":
+    _os.chdir(_ROOT)
+# ---
+
 
 import csv
 import os
@@ -139,7 +153,20 @@ def main():
         {"signal": "acan", "weight": "strong", "why": "w",
          "evidence": "Advance Contract Award Notice"}]}
     c6 = m4.build_case(acan, {"readable": False, "findings": []}, None)
-    check("a DECLARED ACAN -> WATCH, never ALERT", c6["route"] == "watch")
+    check("a DECLARED ACAN alone -> CLOSE, keeps its score for ranking",
+          c6["route"] == "close" and c6["score"] == 2)
+    acan2 = {"reference": "cb-x", "signals": acan["signals"] + [
+        {"signal": "short_window", "weight": "weak", "why": "w",
+         "evidence": "11 days"}]}
+    c7 = m4.build_case(acan2, {"readable": False, "findings": []}, None)
+    check("ACAN + a short window -> WATCH, never ALERT",
+          c7["route"] == "watch")
+    acan3 = {"reference": "cb-x", "signals": acan["signals"] + [
+        {"signal": "no_trade_agreement", "weight": "weak", "why": "w",
+         "evidence": "*None"}]}
+    c8 = m4.build_case(acan3, {"readable": False, "findings": []}, None)
+    check("ACAN + no trade agreement -> CLOSE (context only)",
+          c8["route"] == "close" and c8["score"] == 3)
 
     print(f"\n{FAILS} failure(s)")
     sys.exit(1 if FAILS else 0)

@@ -38,6 +38,20 @@ with its peer group attached, and the within-document test is reported
 beside it as the level-2 signal that does not depend on peers.
 """
 
+# --- repo layout: find the agents/, tools/, prepare/ folders and run from
+# the repository root, whatever folder the script sits in (2026-10-22).
+import os as _os
+import sys as _sys
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+for _d in ("agents", "tools", "prepare", "tests", ""):
+    _p = _os.path.join(_ROOT, _d)
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+if __name__ == "__main__":
+    _os.chdir(_ROOT)
+# ---
+
+
 import argparse
 import json
 import sys
@@ -99,9 +113,12 @@ def audit(reference, depth="standard", rows=None, online=False):
     # only what costs tokens. Measured: the brand cache was built on 4110,
     # so offline it resolves 0 of 129 candidates on a 2510 tender - level 1
     # without --online finds nothing.
-    if l1.get("unresolved") and online:
-        trace.append("unresolved brands remain - re-running level 1 with "
-                     "online verification")
+    # With --online, ALWAYS take the online pass: fresh cache entries cost
+    # nothing, and entries written under an older verification rule are
+    # re-checked. Measured 2026-10-17: gating this on "unresolved" let two
+    # stale "is a brand" entries ("Dec", "Refer") raise watch cases.
+    if online:
+        trace.append("re-running level 1 with online verification")
         l1 = spec_tools.brands_without_equivalent(
             reference, offline=False, use_llm=use_llm)
         trace.append(f"level 1 (online): {len(l1.get('findings', []))} "
@@ -111,6 +128,24 @@ def audit(reference, depth="standard", rows=None, online=False):
         trace.append("unresolved brands left as unresolved - neither a "
                      "finding nor a clearance (run with --online to "
                      "resolve)")
+
+    # depth "auto" (user decision 2026-10-17): the LLM is used on ANY tender
+    # whose rules leave names Wikidata could not settle, or a brand finding
+    # to judge - not only on tenders M1 routed deep. Before this, a rigged
+    # OPEN tender naming a brand Wikidata does not know could never be
+    # caught (synthetic: 2 of 46 such brands found). Tokens are spent only
+    # where the rules leave something open.
+    if depth == "auto" and (l1.get("unresolved") or l1.get("findings")):
+        if _llm_available():
+            trace.append("names left open by the rules - asking the LLM "
+                         "(triage, then judge)")
+            l1 = spec_tools.brands_without_equivalent(
+                reference, offline=not online, use_llm=True)
+            trace.append(f"level 1 (LLM): {len(l1.get('findings', []))} "
+                         f"finding(s), {len(l1.get('unresolved', []))} "
+                         f"still unresolved")
+        else:
+            trace.append("--llm asked but no LLM key is set - left as is")
 
     # ------------------------------------------------------------ level 2
     if rows is None:
@@ -207,7 +242,7 @@ def _slim_l2(l2):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tender", required=True)
-    ap.add_argument("--depth", choices=["standard", "full"],
+    ap.add_argument("--depth", choices=["standard", "full", "auto"],
                     default="standard")
     ap.add_argument("--online", action="store_true")
     ap.add_argument("--json", action="store_true")

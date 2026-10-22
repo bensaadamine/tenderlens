@@ -54,6 +54,20 @@ concentration is context, not evidence. A department that buys a lot of
 trucks is a department that buys a lot of trucks.
 """
 
+# --- repo layout: find the agents/, tools/, prepare/ folders and run from
+# the repository root, whatever folder the script sits in (2026-10-22).
+import os as _os
+import sys as _sys
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+for _d in ("agents", "tools", "prepare", "tests", ""):
+    _p = _os.path.join(_ROOT, _d)
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+if __name__ == "__main__":
+    _os.chdir(_ROOT)
+# ---
+
+
 import argparse
 import collections
 import csv
@@ -119,7 +133,7 @@ def parse_date(s):
 def load_notices(path=TENDERS):
     """{reference: row}. One streaming pass, stdlib csv (pandas is blocked)."""
     if not os.path.exists(path):
-        raise SystemExit(f"missing {path} - run 01_profile_tenders.py")
+        raise SystemExit(f"missing {path} - run prepare/01_profile_tenders.py")
     out = {}
     with io.open(path, encoding="utf-8-sig", errors="replace",
                  newline="") as f:
@@ -162,8 +176,9 @@ def method_windows(notices):
     return stats
 
 
-def has_documents(reference, text_dir=TEXT_DIR):
+def has_documents(reference, text_dir=None):
     """Can M2 read anything at all? A routing fact, not a risk signal."""
+    text_dir = text_dir or TEXT_DIR
     if not os.path.isdir(text_dir):
         return 0
     n = 0
@@ -175,7 +190,7 @@ def has_documents(reference, text_dir=TEXT_DIR):
     return n
 
 
-def screen(reference, notices=None, wstats=None, text_dir=TEXT_DIR):
+def screen(reference, notices=None, wstats=None, text_dir=None):
     """Screen ONE tender. Returns route, signals and the reason for each."""
     notices = load_notices() if notices is None else notices
     row = notices.get(reference)
@@ -221,7 +236,8 @@ def screen(reference, notices=None, wstats=None, text_dir=TEXT_DIR):
                 "why": f"{d:.1f} days against a median of {st['median']} "
                        f"for {method!r} (n={st['n']}). Short favours a "
                        f"bidder who already knew.",
-                "evidence": f"z={z:.2f}"})
+                "evidence": f"z={z:.2f}",
+                "days": round(d, 1), "median": st["median"]})
     elif d is not None and not st:
         signals.append({"signal": "window_not_comparable", "weight": "info",
                         "why": f"Too few notices on method {method!r} to say "

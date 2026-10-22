@@ -7,7 +7,7 @@ the ranked audit queue:
     python tenderlens.py --group 2510            # whole category
     python tenderlens.py --tender cb-258-72766150   # one tender, full trace
     python tenderlens.py --deep-refs reports/m1_deep_refs.txt --group 2510
-        -> the tenders M1 wants read; feed to 02_fetch_docs.py --refs
+        -> the tenders M1 wants read; feed to prepare/02_fetch_docs.py --refs
 
 Writes:
     reports/audit_queue.json    every case, every claim, every trace
@@ -33,6 +33,20 @@ The agent works per tender (CLAUDE.md); batching belongs to the tools, so
 the shared data - notices, observations, awards - is loaded once here and
 handed to each agent.
 """
+
+# --- repo layout: find the agents/, tools/, prepare/ folders and run from
+# the repository root, whatever folder the script sits in (2026-10-22).
+import os as _os
+import sys as _sys
+_ROOT = _os.path.dirname(_os.path.abspath(__file__))
+for _d in ("agents", "tools", "prepare", "tests", ""):
+    _p = _os.path.join(_ROOT, _d)
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+if __name__ == "__main__":
+    _os.chdir(_ROOT)
+# ---
+
 
 import argparse
 import collections
@@ -83,7 +97,9 @@ def run_one(ref, shared, use_llm=False, online=False):
     notices, wstats, rows, graph = shared
     m1 = m1_screener.screen(ref, notices, wstats)
     if m1.get("documents"):
+        scope = getattr(m2_spec_auditor.spec_tools, "LLM_SCOPE", "deep")
         depth = "full" if (use_llm and m1["route"].startswith("deep")) \
+            else "auto" if (use_llm and scope == "unresolved") \
             else "standard"
         m2 = m2_spec_auditor.audit(ref, depth=depth, rows=rows,
                                    online=online)
@@ -220,28 +236,37 @@ def render_html(cases, meta):
             f"<pre class=narr>{_e(c['narrative'])}</pre>")
         for x in c["claims"]:
             s = x.get("source") or {}
-            tag = (f"{x.get('agent')} · {x['kind']} · {x.get('confidence','')}"
-                   f" · {x.get('points', 0)} pt")
+            if x.get("plain"):
+                tag = f"{x.get('nature')} · {x.get('points', 0)} pt"
+            else:
+                tag = (f"{x.get('agent')} · {x['kind']} · "
+                       f"{x.get('confidence','')} · {x.get('points', 0)} pt")
             if not x["verified"]:
                 tag += " · UNVERIFIED"
             elif x.get("not_scored_because"):
                 tag += f" · not scored: {x['not_scored_because']}"
+            plain = bool(x.get("plain"))
+            src = _e(s.get("file"))
+            if not plain and s.get("where"):
+                src += " - " + _e(s.get("where"))
             out.append(f"<div class='claim{' v' if x['verified'] else ''}'>"
-                       f"<div class=k>{_e(tag)}</div>{_e(x['claim'])}"
-                       f"<div class=k>{_e(s.get('file'))}"
-                       f"{' - ' + _e(s.get('where')) if s.get('where') else ''}"
-                       f"</div>")
-            if s.get("line"):
+                       f"<div class=k>{_e(tag)}</div>"
+                       f"{_e(x.get('plain') or x['claim'])}"
+                       f"<div class=k>Source: {src}</div>")
+            # On the plain page a notice field is already in the sentence;
+            # the quote is shown for document and award evidence only.
+            if s.get("line") and (not plain or x.get("agent") != "M1"):
                 out.append(f"<q>{_e(str(s['line'])[:400])}</q>")
             out.append("</div>")
         tr = c.get("trace", {})
-        out.append("<div class=trace>")
+        out.append("<details class=trace><summary>Technical details"
+                   "</summary>")
         for k in ("M1", "M2", "M3"):
             v = tr.get(k)
             v = [v] if isinstance(v, str) else (v or [])
             for line in v:
                 out.append(f"{k}: {_e(line)}<br>")
-        out.append("</div></div></details>")
+        out.append("</details></div></details>")
     out.append(f"</main><script>{JS}</script></body></html>")
     return "".join(out)
 
@@ -259,12 +284,14 @@ def main():
                     help="let M2 verify unknown brands online (Wikidata)")
     ap.add_argument("--deep-refs", metavar="FILE",
                     help="write the references M1 routes deep, for "
-                         "02_fetch_docs.py --refs, and stop")
+                         "prepare/02_fetch_docs.py --refs, and stop")
     ap.add_argument("--l2-level", type=int, choices=[6, 8], default=8,
                     help="UNSPSC digits for level-2 peer groups (default 8; "
                          "6 restores the old grouping)")
+    m2_spec_auditor.spec_tools.add_l1_args(ap)
     a = ap.parse_args()
     level2.LEVEL[0] = a.l2_level
+    m2_spec_auditor.spec_tools.apply_l1_args(a)
 
     shared = load_shared()
     notices = shared[0]

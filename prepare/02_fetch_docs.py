@@ -18,15 +18,29 @@ re-downloaded.
 
 Run:
     pip install requests
-    python 02_fetch_docs.py                  # top 5 groups, 60 tenders each
-    python 02_fetch_docs.py --only 4110 --per-cat 0   # ALL of one group
-    python 02_fetch_docs.py --top 5 --per-cat 0     # everything in top 5
-    python 02_fetch_docs.py --include-zip --jobs 6
+    python prepare/02_fetch_docs.py                  # top 5 groups, 60 tenders each
+    python prepare/02_fetch_docs.py --only 4110 --per-cat 0   # ALL of one group
+    python prepare/02_fetch_docs.py --top 5 --per-cat 0     # everything in top 5
+    python prepare/02_fetch_docs.py --include-zip --jobs 6
 
 Writes:
     data/docs/<unspsc4>/<reference>/<file>
     reports/docs_manifest.csv      one row per attachment URL
 """
+
+# --- repo layout: find the agents/, tools/, prepare/ folders and run from
+# the repository root, whatever folder the script sits in (2026-10-22).
+import os as _os
+import sys as _sys
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+for _d in ("agents", "tools", "prepare", "tests", ""):
+    _p = _os.path.join(_ROOT, _d)
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+if __name__ == "__main__":
+    _os.chdir(_ROOT)
+# ---
+
 
 import argparse
 import csv
@@ -430,7 +444,7 @@ def main():
     args = ap.parse_args()
 
     if not os.path.exists(args.tenders):
-        sys.exit(f"missing {args.tenders} - run 01_profile_tenders.py first")
+        sys.exit(f"missing {args.tenders} - run prepare/01_profile_tenders.py first")
 
     only = {g.strip() for g in args.only.split(",") if g.strip()}
 
@@ -572,7 +586,7 @@ def main():
             print(f"    {c:6,}  {k}")
     print(f"\n  files    -> {args.out}/<unspsc4>/<reference>/")
     print(f"  manifest -> {args.manifest}")
-    print("\nNext: python 03_inspect_specs.py")
+    print("\nNext: python prepare/03_inspect_specs.py")
 
 
 if __name__ == "__main__":
