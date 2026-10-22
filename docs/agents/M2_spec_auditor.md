@@ -1,6 +1,6 @@
 # M2 — Spec Auditor
 
-**Code:** `agents/m2_spec_auditor.py` 
+**Code:** `agents/m2_spec_auditor.py` (the auditor) · `agents/m2_agent.py` (its agent) · **Owner:** _(to assign)_
 
 ## Role
 Reads the **specification documents** of one tender and looks for requirements written so that only one product can win.
@@ -11,42 +11,60 @@ Find, with a quoted line, a departure from the trade-agreement rule: *a specific
 ## Input
 - `reports/text/<group>/<reference>__<document>.txt` — text extracted by `prepare/03_inspect_specs.py`.
 - The knowledge base of past tenders (for level 2).
-- `depth` from M1 and the run flags `--online` / `--llm`.
+- The run flags `--online`, `--agent` (or the older `--llm`).
 
-## Tools
-| Tool | File | Does |
-|---|---|---|
-| Level 1 — brand without equivalent | `tools/spec_tools.py` → `brands_without_equivalent()` | finds brand-like names next to a model code, checks Wikidata, checks for "or equivalent" anywhere in the tender, optionally asks the LLM |
-| Level 2 — tighter than peers | `tools/level2.py` → `tight_requirements()` | compares numeric requirements with the same product group (8-digit code); speaks only when an attribute has 8 comparable tenders |
-| Wikidata | inside `spec_tools.verify_brand()` | is this name a company? cached in `reports/brand_cache.json` |
-| LLM | `tools/llm.py` | triage of unconfirmed names, then a judge reading every mention in context |
+## How it works
+1. **Rules find candidates** (`tools/spec_tools.py`): brand-like names next to a model code, outside bidders' questions. Names Wikidata knows are not companies are dropped. A name is cleared for good only when the text accepts an equivalent ("or equivalent", or the standard "Equivalent Products … form, fit, function" clause).
+2. **The agent judges the rest** (`--agent`, `agents/m2_agent.py`). Goal: give every remaining candidate the auditor's letter, with a quote:
 
-## Steps
-1. Level 1 offline (rules + cache).
-2. With `--online`: same again, checking names on Wikidata.
-3. With `--llm`: if names are still unconfirmed or a brand was found, ask the LLM.
-4. Level 2 against the knowledge base.
+   | | |
+   |---|---|
+   | a | not a brand (acronym, ordinary word, standard, URL, date, payment term, material grade) |
+   | b | a bidder is speaking |
+   | c | the buyer's own equipment |
+   | d | one of several brands listed |
+   | e | an equivalent is accepted |
+   | **f** | **brand required, no equivalent → the only letter that becomes a finding** |
 
-A brand is **cleared** (not a finding) when the tender accepts an equivalent: next to it, above its table, or through Canada's standard "Equivalent Products … form, fit, function" clause; also when it is the buyer's own equipment, a list of several makes, the tender's own acronym, or text written by a bidder.
+   It runs a loop (LangGraph): **decide** (the LLM picks a tool) → **act** (the tool runs) → decide… until every candidate has a letter, it says `finish`, or 8 steps are used.
+3. **Level 2** compares numeric requirements with the same product group (8-digit code); it speaks only when an attribute has 8 comparable tenders.
+
+## Tools the agent chooses from
+| Tool | Gives |
+|---|---|
+| `search` | every line containing a text, bidders' questions marked |
+| `read` | the lines around a line |
+| `equivalents` | every sentence of the tender accepting an equivalent |
+| `wikidata` | whether a name is a company (cached) |
+| `classify` | letters + quotes for one or several candidates |
+| `finish` | stop; unlettered candidates stay unresolved |
+
+**Kept in code, never left to the model:** every verdict must quote text really in the named document (the line recorded is where the quote is); an "f" quote must contain the brand; a refused verdict is explained back to the model; a candidate without a valid letter is **unresolved** — neither a finding nor a clearance.
 
 ## Output
-`audit(reference)` returns:
-- `findings` — each with `kind` (`brand_without_equivalent`, `narrow_band`, …), `claim`, `confidence`, and `source` {document, location, quoted line}
+`audit(reference, ...)` returns:
+- `findings` — each with `kind` (`brand_without_equivalent`, `narrow_band`, …), `claim`, `confidence`, `source` {document, location, quoted line}
 - `level1` — counts: findings, cleared, unresolved
 - `level2` — score, attributes without enough peers
 - `readable` — False if no text exists
-- `trace` — every step taken and why
+- `trace` — every step, including each agent step (tool, arguments, result)
 
 ## Run it alone
 ```bash
-python agents/m2_spec_auditor.py --tender cb-425-92729935 --depth standard
-python tools/spec_tools.py --tender cb-425-92729935 --offline
+python agents/m2_spec_auditor.py --tender cb-425-92729935 --online --agent
+python tools/spec_tools.py --tender cb-425-92729935 --offline      # rules only
 ```
+
+## How it is checked
+- `python tests/test_m2_agent.py` — the agent's rules with a scripted fake model (no network).
+- `python tests/m2_eval.py [--agent --online]` — the 36 cases judged by hand (`tests/m2_labels.csv`). Rules alone: **10 of 11 findings false, 1 of 4 real lock-ins found**.
+- `python tests/synth_rig.py --run [--agent]` — synthetic rigged tenders.
 
 ## Rules it must keep
 - Every finding quotes its line; no quote, no finding.
 - An unconfirmed name is neither a finding nor a clearance.
-- Every change to detection gets a flag that restores the old behaviour (`--l1-...` flags in `spec_tools.add_l1_args`).
+- Every change to detection gets a flag that restores the old behaviour (`--l1-...` flags in `spec_tools.add_l1_args`; `--agent` off = rules only).
 
-## Open work — **the priority of the project**
-Rules + Wikidata produce too many false findings (4110: 9 of 11 false). Planned: rules only collect candidates; the LLM classifies each into the auditor's categories a–f (see README), measured against the cases already checked by hand.
+## Open work
+- Run `tests/m2_eval.py --agent --online` on Windows and tune the agent's instructions on its mistakes — not the rules.
+- Cost: about 2–4 model calls per tender with candidates; tenders with the general equivalence clause need none.

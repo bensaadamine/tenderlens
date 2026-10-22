@@ -640,6 +640,10 @@ def add_l1_args(ap):
                     help="clear a brand the text shows is the buyer's own "
                          "equipment (intended, existing, transporting, repair "
                          "of ...)")
+    ap.add_argument("--l1-clear-unconfirmed", choices=["on", "off"],
+                    default="on",
+                    help="apply the text clearances to names not confirmed "
+                         "as brands too (off: they stay unresolved)")
     ap.add_argument("--l1-equiv-clause", choices=["on", "off"], default="on",
                     help="clear brands in a tender carrying the standard "
                          "'Equivalent Products' clause (equivalent in form, "
@@ -704,6 +708,8 @@ def apply_l1_args(a):
     EQUIV_CLAUSE = a.l1_equiv_clause == "on"
     LLM_SCOPE = a.llm_scope
     global DEFINED_TERMS, SKIP_URLS, BUYER_EQUIPMENT, LOWER_NOT_BRAND
+    global CLEAR_UNCONFIRMED
+    CLEAR_UNCONFIRMED = a.l1_clear_unconfirmed == "on"
     LOWER_NOT_BRAND = a.l1_lower_label == "on"
     DEFINED_TERMS = a.l1_defined_terms == "on"
     SKIP_URLS = a.l1_urls == "on"
@@ -733,27 +739,29 @@ def _strong_support(tail, rest):
 
 
 # ------------------------------------------------------------------- the tool
-def _candidates(text):
-    """Brand candidates in one document, with where they are."""
-    found = {}
-    lines = text.splitlines()
-    run = 0
-    # A bidder's question is ONE PARAGRAPH: the block closes at an answer
-    # marker, or at the first blank line after the question's text. Without
-    # the blank-line close, a stray "Question 7" inside a catalogue RFSO
-    # body opened a block of 4,943 lines and hid most of its specification.
-    #
-    # Measured 2026-10-17: the blank-line close let a real bidder's text
-    # through - "Question 28" quotes the spec clause, a blank line, then
-    # "We will not provide a battery blanket as the coach is configured with
-    # a ProHeat X45 Plus ..." read as the buyer naming a brand. So when an
-    # answer marker follows within QA_LOOKAHEAD lines, the block runs to it;
-    # only without one does the blank-line close apply. 0 restores the old
-    # rule (--l1-qa blank).
+def question_mask(lines):
+    """For each line: is it inside a bidder's question (amendment Q&A)?
+
+    Shared by the brand rules (_candidates) and the M2 agent, so both use one
+    definition of "a bidder is speaking".
+
+    A bidder's question is ONE PARAGRAPH: the block closes at an answer
+    marker, or at the first blank line after the question's text. Without
+    the blank-line close, a stray "Question 7" inside a catalogue RFSO
+    body opened a block of 4,943 lines and hid most of its specification.
+
+    Measured 2026-10-17: the blank-line close let a real bidder's text
+    through - "Question 28" quotes the spec clause, a blank line, then
+    "We will not provide a battery blanket as the coach is configured with
+    a ProHeat X45 Plus ..." read as the buyer naming a brand. So when an
+    answer marker follows within QA_LOOKAHEAD lines, the block runs to it;
+    only without one does the blank-line close apply. 0 restores the old
+    rule (--l1-qa blank).
+    """
+    mask = []
     in_question = has_text = False
     until = -1
     for i, line in enumerate(lines):
-        start, run = run, run + len(line) + 1
         mq = RE_QUESTION.match(line)
         if mq:
             in_question = True
@@ -775,7 +783,19 @@ def _candidates(text):
                     in_question = False
             else:
                 has_text = True
-        if in_question:
+        mask.append(in_question)
+    return mask
+
+
+def _candidates(text):
+    """Brand candidates in one document, with where they are."""
+    found = {}
+    lines = text.splitlines()
+    in_q = question_mask(lines)
+    run = 0
+    for i, line in enumerate(lines):
+        start, run = run, run + len(line) + 1
+        if in_q[i]:
             continue
         if len(line) > 400:
             continue
@@ -1261,6 +1281,13 @@ def _in_make_list(lines, line_no):
 DEFINED_TERMS = True
 SKIP_URLS = True
 BUYER_EQUIPMENT = True
+# A name not confirmed as a brand still goes through the text clearances
+# ("or equivalent", the clauses, buyer's equipment, make list) - before
+# 2026-10-22 it went straight to "unresolved", so the M2 agent was asked
+# about "a trailer for transporting a Fat Truck" and called it a lock-in.
+# Cleared that way it is "ok" with brand_unconfirmed=True.
+#    --l1-clear-unconfirmed off
+CLEAR_UNCONFIRMED = True
 _SMALL = ("for", "of", "and", "the", "de", "du", "des", "et", "la", "le")
 RE_DEFINED = re.compile(
     r"((?:[A-Z][\w'\u2019-]*\s+(?:(?:for|of|and|the|de|du|des|et|la|le)\s+)?){2,8})"
@@ -1305,6 +1332,28 @@ def _buyer_equipment(docs, hits):
         before = _sentence_before(text_of[h["document"]], h["pos"])
         if RE_BUYER_EQUIP.search(before):
             return _norm(before)[-120:]
+    return None
+
+
+def _text_clearance(docs, name, hits, lines_of, window, window_before,
+                    blanket, equiv_clause):
+    """The first thing in the text that clears this name, as row fields
+    ({"status": ...}), else None. Same order as before 2026-10-22."""
+    qualified = _qualified_anywhere(docs, name, window, window_before)
+    if qualified:
+        # The tender allows an equivalent for this product somewhere.
+        # Conservative on purpose: one allowance clears the brand.
+        return {"status": "OK", "qualified_at": qualified}
+    if blanket:
+        return {"status": "OK_BLANKET_CLAUSE"}
+    if equiv_clause:
+        return {"status": "OK_EQUIV_PRODUCTS_CLAUSE"}
+    equipment = BUYER_EQUIPMENT and _buyer_equipment(docs, hits)
+    if equipment:
+        return {"status": "OK_BUYER_EQUIPMENT", "buyer_equipment": equipment}
+    if MAKE_LIST and all(_in_make_list(lines_of[h["document"]], h["line_no"])
+                         for h in hits):
+        return {"status": "OK_MAKE_LIST"}
     return None
 
 
@@ -1411,32 +1460,19 @@ def brands_without_equivalent(reference, text_dir=None, window=200,
                                                                h["page"]))],
             "blanket_clause": best["blanket_clause"],
         }
-        if verdict is None:
-            row["reason"] = "could not confirm this is a brand"
-            unresolved.append(row)
-        elif verdict is False:
+        if verdict is False:
             continue                          # not a brand: not a finding
-        elif _qualified_anywhere(docs, b["name"], window, window_before):
-            # The tender allows an equivalent for this product somewhere.
-            # Conservative on purpose: one allowance clears the brand.
-            row["status"] = "OK"
-            row["qualified_at"] = _qualified_anywhere(docs, b["name"], window,
-                                                      window_before)
-            ok.append(row)
-        elif blanket:
-            row["status"] = "OK_BLANKET_CLAUSE"
-            ok.append(row)
-        elif equiv_clause:
-            row["status"] = "OK_EQUIV_PRODUCTS_CLAUSE"
-            ok.append(row)
-        elif BUYER_EQUIPMENT and _buyer_equipment(docs, hits):
-            row["status"] = "OK_BUYER_EQUIPMENT"
-            row["buyer_equipment"] = _buyer_equipment(docs, hits)
-            ok.append(row)
-        elif MAKE_LIST and all(
-                _in_make_list(lines_of[h["document"]], h["line_no"])
-                for h in hits):
-            row["status"] = "OK_MAKE_LIST"
+        clear = _text_clearance(docs, b["name"], hits, lines_of, window,
+                                window_before, blanket, equiv_clause)
+        if verdict is None:
+            if CLEAR_UNCONFIRMED and clear:
+                row.update(clear, brand_unconfirmed=True)
+                ok.append(row)
+            else:
+                row["reason"] = "could not confirm this is a brand"
+                unresolved.append(row)
+        elif clear:
+            row.update(clear)
             ok.append(row)
         else:
             # The rules say this looks like a lock-in. Before reporting it, let

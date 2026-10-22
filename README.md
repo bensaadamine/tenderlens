@@ -50,7 +50,7 @@ Run every command **from the repository root**.
 ## Setup
 
 ```bash
-pip install requests pdfminer.six
+pip install -r requirements.txt     # requests, pdfminer.six, langgraph
 ```
 
 No `pandas` (blocked on our Windows machines) — standard library plus those two.
@@ -78,14 +78,15 @@ Open `reports/kb/2510/batches/<date>_queue.html`.
 | flag | effect |
 |---|---|
 | `--online` | check brand names on Wikidata (free, cached) |
-| `--llm` | ask the LLM about names the rules could not settle (spends tokens, slow on free plans) |
+| `--agent` | the M2 agent letters every brand candidate a–f with a quote (LLM; replaces `--llm`) |
+| `--llm` | older path: the LLM triages unconfirmed names and judges findings yes/no |
 | `--until YYYY-MM-DD` | only tenders published up to that date |
 | `--status` | what is in the knowledge base |
 | `--feedback` | apply the auditor's verdicts from `reports/kb/<group>/feedback.csv` |
 
 One tender, with every agent's reasoning: `python tenderlens.py --tender cb-425-92729935`
 
-Tests: `python tests/test_agents.py` (no data needed) · `python tests/synth_rig.py --run` (synthetic rigged tenders).
+Tests: `python tests/test_agents.py` and `python tests/test_m2_agent.py` (no data, no network) · `python tests/synth_rig.py --run` (synthetic rigged tenders) · `python tests/m2_eval.py [--agent --online]` (M2 against the 36 cases judged by hand, `tests/m2_labels.csv`).
 
 **Long runs** (`--llm` over a whole category, about an hour) are done **once, at the end of a category** — not after each fix. Fixes are checked offline on the affected tenders and on the synthetic set.
 
@@ -115,7 +116,7 @@ One line per case in `feedback.csv` (`reference,verdict,note,reviewer,date`), th
 | 2510 motor vehicles | 613 (193 with documents) | 0 | 9 | offline run; with the LLM: Bendix AD9 air dryer found in 2 tenders (genuine) |
 | 4110 lab equipment | 957 | 1 | 13 | offline run; **9 of the 11 brand findings checked by hand are false** |
 
-- **The brand check is the weak point.** Rules + Wikidata produce too many false findings, and each new category brings new kinds ("Net 30", "Hastelloy C-276", "TEM holders"). Planned change: rules only collect candidates, and the LLM classifies each into the a–f categories above, measured against the cases already checked by hand.
+- **The brand check is the weak point.** On the 36 cases judged by hand, the rules alone give 11 findings of which **10 are false**, and find 1 of the 4 real lock-ins. The M2 agent (`--agent`) is built to fix this: the rules only collect candidates, and the agent investigates each one and gives it a letter a–f with a quote. Its score on the same 36 cases is the next measurement.
 - **Peer comparison (level 2)** stays dormant: few product groups have 8 comparable tenders yet.
 - **Synthetic test (2510):** of 160 rigged copies, the brand is found in 64; 17 reach alert; 0 of 120 clean copies are flagged. Brands Wikidata knows are found 48/60; others 20/140.
 

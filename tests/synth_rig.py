@@ -56,6 +56,7 @@ import sys
 import time
 
 import m1_screener
+import m2_spec_auditor
 import m4_case_builder
 import spec_tools
 import tenderlens
@@ -259,7 +260,12 @@ def brand_outcome(l1, brand):
                              "OK_BLANKET_CLAUSE": "blanket_clause",
                              "OK_LLM_CLEARED": "llm",
                              "OK_MAKE_LIST": "make_list",
-                             "OK_EQUIV_PRODUCTS_CLAUSE": "equiv_products_clause"}.get(r["status"], r["status"])
+                             "OK_EQUIV_PRODUCTS_CLAUSE": "equiv_products_clause",
+                             "AGENT_A": "agent_a_not_a_brand",
+                             "AGENT_B": "agent_b_bidder",
+                             "AGENT_C": "agent_c_buyer_equipment",
+                             "AGENT_D": "agent_d_list_of_brands",
+                             "AGENT_E": "agent_e_equivalent_accepted"}.get(r["status"], r["status"])
     if hit(l1.get("unresolved", [])):
         return "brand_not_confirmed"
     return "not_picked_up"
@@ -311,6 +317,13 @@ def run(a):
         # Blank the solicitation number: otherwise M3 would find the
         # ORIGINAL tender's award for every copy.
         row["solicitationNumber-numeroSollicitation"] = ""
+        # A rigged copy stands for an AWARDED contract. Some bases were
+        # cancelled or are still open, and since 2026-10-22 such tenders are
+        # "not an audit case" - so the copy must not inherit that status.
+        if tenderlens.no_contract_reason(row):
+            row[m1_screener.C_STATUS] = "Expired"
+            if tenderlens.no_contract_reason(row):     # an RFI / RFSA base
+                row[m1_screener.C_NOTICE] = "Request for Proposal"
         notices[sref] = row
         if m["variant"] == "C" and graph is not None:
             graph["by_ref"][sref] = [{
@@ -321,16 +334,12 @@ def run(a):
         mine = stream.comparable(raw, amap)
         peers = [r for r in base if r["reference"] not in (ref, sref)] + mine
         case = tenderlens.run_one(sref, (notices, wstats, peers, graph),
-                                  a.llm, a.online)
-        # Same path as M2: rules offline, then online, then (with --llm) the
-        # LLM wherever the rules leave something open. Cached, so repeating
-        # what M2 just did costs nothing.
-        l1 = spec_tools.brands_without_equivalent(sref, offline=True)
-        if a.online:
-            l1 = spec_tools.brands_without_equivalent(sref, offline=False)
-        if a.llm and (l1.get("unresolved") or l1.get("findings")):
-            l1 = spec_tools.brands_without_equivalent(
-                sref, offline=not a.online, use_llm=True)
+                                  a.llm, a.online, a.agent)
+        # M2's own level-1 path again, to see what happened to each injected
+        # brand. LLM answers are cached, so repeating it costs nothing.
+        l1 = m2_spec_auditor.run_level1(
+            sref, depth="auto" if a.llm else "standard", online=a.online,
+            agent=a.agent)
         outs = [brand_outcome(l1, b) for b in m["brands"].split("|") if b]
         res = dict(m)
         res.update({"route": case["route"], "score": case["score"],
@@ -482,6 +491,9 @@ def main():
     ap.add_argument("--n", type=int, default=40)
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--online", action="store_true")
+    ap.add_argument("--agent", action="store_true",
+                    help="let the M2 agent letter brand candidates a-f "
+                         "(LLM, Windows; replaces the --llm judge)")
     ap.add_argument("--llm", action="store_true",
                     help="use the LLM wherever the rules leave names open "
                          "(Windows; spends tokens)")

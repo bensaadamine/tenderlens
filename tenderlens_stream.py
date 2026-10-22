@@ -220,8 +220,9 @@ def todo_list(notices, group, state, until=None):
     todo = []
     for ref in tenderlens.select(notices, group):
         ev = state.get(ref)
-        if ev and not (ev["status"] == "no_documents"
-                       and spec_tools.tender_documents(ref)):
+        if ev and not ((ev["status"] == "no_documents"
+                        and spec_tools.tender_documents(ref))
+                       or ev["status"] == "still_open"):
             continue
         _, date = notice_meta(notices[ref])
         if until and (not date or date > until):
@@ -256,10 +257,12 @@ def run(a):
         mine = comparable(raw, amap)
         peers = [r for r in base if r["reference"] != ref] + mine
         case = tenderlens.run_one(ref, (notices, wstats, peers, graph),
-                                  a.llm, a.online)
+                                  a.llm, a.online, a.agent)
         route = case["route"]
         if not docs:
             status = "no_documents"
+        elif case.get("no_contract") == "the tender is still open":
+            status = "still_open"        # read again in the next batch
         else:
             status = route
         pile = ("quarantine" if route in QUARANTINE_ROUTES
@@ -282,7 +285,8 @@ def run(a):
     meta = {"scope": f"UNSPSC-4 {a.group}, incremental batch {stamp}",
             "generated": time.strftime("%Y-%m-%d %H:%M"),
             "tenders": len(cases), "awards": graph is not None,
-            "llm": a.llm, "weights": m4_case_builder.WEIGHTS,
+            "llm": a.llm, "agent": a.agent,
+            "weights": m4_case_builder.WEIGHTS,
             "alert_at": m4_case_builder.ALERT,
             "watch_at": m4_case_builder.WATCH}
     prefix = os.path.join(kb.batches, f"{stamp}_queue")
@@ -385,6 +389,9 @@ def main():
     ap.add_argument("--until", help="only tenders published on or before "
                     "this date (YYYY-MM-DD) - to simulate an earlier batch")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--agent", action="store_true",
+                    help="let the M2 agent letter brand candidates a-f "
+                         "(LLM, Windows; replaces the --llm judge)")
     ap.add_argument("--llm", action="store_true")
     ap.add_argument("--online", action="store_true")
     ap.add_argument("--l2-level", type=int, choices=[6, 8], default=8)

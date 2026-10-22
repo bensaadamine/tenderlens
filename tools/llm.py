@@ -55,6 +55,11 @@ import urllib.request
 
 CACHE_PATH = "reports/llm_cache.json"
 USAGE_PATH = "reports/llm_usage.csv"
+# Every failed call, one row: when, which provider and model, what went wrong
+# and the server's own message. Added 2026-10-22: a 46-minute silent gap in
+# the first M2 agent run could not be explained because failures were never
+# written anywhere.
+ERRORS_PATH = "reports/llm_errors.csv"
 
 # Groq's free tier is ~6,000 tokens per MINUTE. Staying a little under it is
 # cheaper than discovering the ceiling: a 429 costs the Retry-After wait plus
@@ -80,6 +85,12 @@ _windows = {}         # provider -> [(unix_time, tokens)]
 _last_call = {}       # provider -> unix_time
 _down_until = {}      # provider -> unix_time; a provider that errored rests
 DOWN_FOR = 60         # seconds
+# Groq's gpt-oss sometimes answers a plain prompt with a native tool call
+# ("Tool choice is none, but model called a tool", HTTP 400). The call it
+# meant is in the error body; "recover" returns it as the answer so the
+# caller can read it. "fail" restores the old behaviour (provider failed).
+TOOL_SLIP = "recover"
+DAY_OUT = 6 * 3600    # seconds a provider is skipped after "quota per day"
 
 # Order matters: first with a key present wins, and the rest are fallbacks.
 # model is the cheap/fast one for triage; model_strong for judgement calls.
@@ -255,7 +266,43 @@ def _post(provider, model, system, user, max_tokens, temperature, timeout):
         data = json.load(r)
     # Every provider here speaks the OpenAI schema, so usage comes back the
     # same way - but not all of them send it, so the caller must cope with {}.
-    return (data["choices"][0]["message"]["content"], data.get("usage") or {})
+    choice = data["choices"][0]
+    msg = choice.get("message") or {}
+    answer = msg.get("content") or ""
+    if not answer.strip() and TOOL_SLIP == "recover":
+        answer = _slip_from_message(msg)
+    if not answer.strip():
+        # kept for the error log: why was the answer empty?
+        _last_empty.update(finish=choice.get("finish_reason"),
+                           keys=sorted(k for k, v in msg.items() if v))
+    return answer, data.get("usage") or {}
+
+
+_last_empty = {}
+
+
+def _slip_from_message(msg):
+    """An empty answer whose content went elsewhere (gpt-oss on Groq,
+    2026-10-22): a native tool call, or JSON left in the reasoning text."""
+    for call in msg.get("tool_calls") or []:
+        fn = call.get("function") or {}
+        try:
+            args = json.loads(fn.get("arguments") or "{}")
+        except ValueError:
+            args = {}
+        if fn.get("name"):
+            return json.dumps({"name": fn["name"], "arguments": args})
+    reasoning = msg.get("reasoning") or msg.get("reasoning_content") or ""
+    found = ""
+    for m in re.finditer(r"\{[^{}]*(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}[^{}]*)*\}",
+                         reasoning):
+        try:
+            obj = json.loads(m.group(0))
+        except ValueError:
+            continue
+        if isinstance(obj, dict) and "action" in obj:
+            found = m.group(0)          # the last one is the decision
+    return found
 
 
 def _estimate(text):
@@ -323,6 +370,52 @@ def _throttle(est, verbose=False):
 USAGE_COLS = ["ts", "tag", "provider", "model", "cached",
               "prompt_tokens", "completion_tokens", "total_tokens",
               "estimated"]
+
+
+def _http_body(exc):
+    """The error body of an HTTPError, read once. Never raises."""
+    try:
+        return exc.read(4000).decode("utf-8", "replace")
+    except Exception:
+        return ""
+
+
+def _tool_slip(body):
+    """The tool call a model emitted by mistake, as JSON text, else None."""
+    if TOOL_SLIP != "recover" or "tool_use_failed" not in body:
+        return None
+    try:
+        gen = json.loads(body)["error"].get("failed_generation") or ""
+        json.loads(gen)
+        return gen
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return None
+
+
+def _log_error(tag, provider, model, error, exc=None, detail=None):
+    """Append one failed call to reports/llm_errors.csv. Never raises."""
+    if detail is None:
+        detail = ""
+        try:
+            if isinstance(exc, urllib.error.HTTPError):
+                detail = _http_body(exc)
+            elif exc is not None:
+                detail = str(exc)
+        except Exception:
+            pass
+    row = [time.strftime("%Y-%m-%dT%H:%M:%S"), tag or "", provider, model,
+           error, " ".join(detail.split())[:300]]
+    try:
+        os.makedirs(os.path.dirname(ERRORS_PATH) or ".", exist_ok=True)
+        new = not os.path.exists(ERRORS_PATH)
+        with open(ERRORS_PATH, "a", encoding="utf-8", newline="") as f:
+            w = csv.writer(f)
+            if new:
+                w.writerow(["ts", "tag", "provider", "model", "error",
+                            "detail"])
+            w.writerow(row)
+    except OSError:
+        pass
 
 
 def _log_usage(tag, provider, model, usage, cached, est_total):
@@ -415,6 +508,9 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
             return cache[ck]["answer"]
     est = _estimate(system + user) + max_tokens // 4
     for p in _order(provs, est):
+        if _down_until.get(p["name"], 0) - time.time() > DOWN_FOR:
+            errors.append(f"{p['name']}: daily quota used")
+            continue
         fast, strg = models_for(p, verbose=verbose)
         model = (strg if strong else fast)
         if not model:
@@ -441,6 +537,13 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
                         print(f"    [{p['name']}] empty answer, retrying with "
                               f"max_tokens={max_tokens}")
                     continue
+                if not answer.strip():
+                    # Never cache or return an empty answer (it reads as
+                    # "no JSON" upstream); try the next provider instead.
+                    _log_error(tag, p["name"], model, "empty answer",
+                               detail=json.dumps(_last_empty))
+                    errors.append(f"{p['name']}: empty answer")
+                    break
                 cache[ck] = {"provider": p["name"], "model": model,
                              "answer": answer}
                 _save_cache(cache)
@@ -448,6 +551,24 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
                     print(f"    [{p['name']}/{model}]")
                 return answer
             except urllib.error.HTTPError as e:
+                body = _http_body(e)
+                _log_error(tag, p["name"], model, f"HTTP {e.code}", e, body)
+                slip = _tool_slip(body) if e.code == 400 else None
+                if slip:
+                    _log_usage(tag, p["name"], model, {}, False,
+                               _estimate(system + user + slip))
+                    cache[ck] = {"provider": p["name"], "model": model,
+                                 "answer": slip}
+                    _save_cache(cache)
+                    if verbose:
+                        print(f"    [{p['name']}] tool call recovered")
+                    return slip
+                if e.code == 429 and re.search(r"PerDay|per day", body, re.I):
+                    # a daily quota will not come back in a minute: drop the
+                    # provider for this run instead of retrying every call
+                    errors.append(f"{p['name']}: daily quota used")
+                    _down_until[p["name"]] = time.time() + DAY_OUT
+                    break
                 if e.code == 429 and attempt < retries:
                     # honour Retry-After when the server sends one
                     wait = e.headers.get("retry-after")
@@ -474,10 +595,19 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
                 _down_until[p["name"]] = time.time() + DOWN_FOR
                 break
             except Exception as e:
+                _log_error(tag, p["name"], model, type(e).__name__, e)
                 errors.append(f"{p['name']}: {type(e).__name__}")
                 _down_until[p["name"]] = time.time() + DOWN_FOR
                 break
-    raise RuntimeError("every provider failed -> " + "; ".join(errors))
+    msg = "every provider failed -> " + "; ".join(errors)
+    if any(e.endswith("empty answer") for e in errors):
+        raise EmptyAnswer(msg)
+    raise RuntimeError(msg)
+
+
+class EmptyAnswer(RuntimeError):
+    """A provider answered, but with nothing usable. The caller may try again
+    with a different prompt; it is not an outage."""
 
 
 RE_JSON = re.compile(r"\{.*\}|\[.*\]", re.S)

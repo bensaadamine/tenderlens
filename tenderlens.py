@@ -93,22 +93,57 @@ def load_shared(verbose=True):
     return notices, wstats, rows, graph
 
 
-def run_one(ref, shared, use_llm=False, online=False):
+# Tenders that never became a contract (user decision 2026-10-22): cancelled,
+# still open, or a request for information / supply-arrangement
+# qualification. "After the award only": there is nothing to audit, so M3 is
+# skipped and the case is closed; M1 and M2 still read it, so it can join the
+# knowledge base. NO_CONTRACT = "case" restores the earlier handling.
+NO_CONTRACT = "kb_only"
+NO_CONTRACT_TYPES = {"request for information", "request for supply arrangement"}
+
+
+def no_contract_reason(row):
+    """Why this tender cannot have a contract, or None."""
+    row = row or {}
+    status = (row.get(m1_screener.C_STATUS) or "").strip().lower()
+    ntype = (row.get(m1_screener.C_NOTICE) or "").strip().lower()
+    if status == "cancelled":
+        return "the tender was cancelled"
+    if status == "open":
+        return "the tender is still open"
+    if ntype in NO_CONTRACT_TYPES:
+        return f"it is a {ntype}, which does not lead to a contract"
+    return None
+
+
+def run_one(ref, shared, use_llm=False, online=False, agent=False):
     notices, wstats, rows, graph = shared
     m1 = m1_screener.screen(ref, notices, wstats)
+    why_none = (no_contract_reason(notices.get(ref))
+                if NO_CONTRACT == "kb_only" else None)
     if m1.get("documents"):
         scope = getattr(m2_spec_auditor.spec_tools, "LLM_SCOPE", "deep")
         depth = "full" if (use_llm and m1["route"].startswith("deep")) \
             else "auto" if (use_llm and scope == "unresolved") \
             else "standard"
         m2 = m2_spec_auditor.audit(ref, depth=depth, rows=rows,
-                                   online=online)
+                                   online=online, agent=agent)
     else:
         m2 = {"reference": ref, "readable": False, "findings": [],
               "trace": ["no documents held for this tender"]}
-    m3 = m3_investigator.investigate(ref, notices.get(ref), graph)
+    if why_none:
+        m3 = {"reference": ref, "available": False, "award": None,
+              "findings": [], "trace": [f"skipped - {why_none}"]}
+    else:
+        m3 = m3_investigator.investigate(ref, notices.get(ref), graph)
     case = m4_case_builder.build_case(m1, m2, m3)
     case["m1_route"] = m1.get("route")
+    if why_none:
+        case["route"] = "close"
+        case["no_contract"] = why_none
+        case["narrative"] = (f"Not an audit case: {why_none}, so there is no "
+                             f"contract to audit. Read only to enrich the "
+                             f"knowledge base.\n\n" + case["narrative"])
     return case
 
 
@@ -277,6 +312,9 @@ def main():
     ap.add_argument("--tender", help="run one tender and print the case")
     ap.add_argument("--refs", help="file with one reference per line")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--agent", action="store_true",
+                    help="let the M2 agent letter brand candidates a-f "
+                         "(LLM, Windows; replaces the --llm judge)")
     ap.add_argument("--llm", action="store_true",
                     help="let M2 use the LLM judge on tenders M1 routes deep "
                          "(spends tokens)")
@@ -309,7 +347,7 @@ def main():
         return
 
     if a.tender:
-        c = run_one(a.tender, shared, a.llm, a.online)
+        c = run_one(a.tender, shared, a.llm, a.online, a.agent)
         print(f"\n{c['reference']}  ->  {c['route'].upper()}  "
               f"(score {c['score']}, M1 {c['m1_route']})\n")
         print(c["narrative"])
@@ -344,7 +382,7 @@ def main():
     cases, t = [], time.time()
     for i, ref in enumerate(todo, 1):
         t1 = time.time()
-        cases.append(run_one(ref, shared, a.llm, a.online))
+        cases.append(run_one(ref, shared, a.llm, a.online, a.agent))
         dt = time.time() - t1
         # A silent minute looks exactly like a hang. Say which tender is
         # slow and why, as it happens.
@@ -356,7 +394,8 @@ def main():
     meta = {"scope": f"UNSPSC-4 {a.group}" if a.group else a.refs,
             "generated": time.strftime("%Y-%m-%d %H:%M"),
             "tenders": len(cases), "awards": shared[3] is not None,
-            "llm": a.llm, "weights": m4_case_builder.WEIGHTS,
+            "llm": a.llm, "agent": a.agent,
+            "weights": m4_case_builder.WEIGHTS,
             "alert_at": m4_case_builder.ALERT,
             "watch_at": m4_case_builder.WATCH}
     write_outputs(cases, meta)

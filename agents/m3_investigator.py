@@ -98,6 +98,21 @@ def norm_name(s):
     return re.sub(r"\s+", " ", s).strip()
 
 
+# Measured 2026-10-22: 18 of 2510's and 31 of 4110's unmatched tenders are
+# the same tender with its number written differently in the award file
+# ("W8476-246744/A" vs "/B", "23-58204" vs "23-58204 Version B"). A third
+# lookup ignores that suffix, and only accepts an award from the SAME buyer.
+# SOL_SUFFIX = False restores the earlier two lookups.
+SOL_SUFFIX = True
+RE_SOL_SUFFIX = re.compile(r"(?:VERSION[A-Z0-9]+|[/\-_][A-Z0-9]{1,3}|(?<=\d)[A-Z])$")
+
+
+def base_sol(s):
+    s = norm_sol(s)
+    b = RE_SOL_SUFFIX.sub("", s)
+    return b if len(b) >= 6 else s
+
+
 def norm_sol(s):
     return re.sub(r"\s+", "", (s or "")).upper()
 
@@ -185,6 +200,7 @@ def load_graph(path=AWARDS):
         cols = detect_columns(rd.fieldnames or [])
         by_sol = collections.defaultdict(list)
         by_ref = collections.defaultdict(list)
+        by_base = collections.defaultdict(list)
         # one count per (contract, supplier): an award notice re-published
         # with an amendment is not a second award
         seen = set()
@@ -214,6 +230,7 @@ def load_graph(path=AWARDS):
                    "sol": sol, "ref": ref}
             if sol:
                 by_sol[sol].append(rec)
+                by_base[base_sol(sol)].append(rec)
             if ref:
                 by_ref[ref].append(rec)
             key = (sol or ref, sup)
@@ -225,6 +242,7 @@ def load_graph(path=AWARDS):
             sb[sup][buy] += 1
             bgs[(buy, grp)].add(sup)
     return {"cols": cols, "rows": n, "by_sol": by_sol, "by_ref": by_ref,
+            "by_base": by_base,
             "bg": bg, "bsg": bsg, "sb": sb, "bgs": bgs, "names": names}
 
 
@@ -243,6 +261,12 @@ def investigate(reference, notice_row=None, graph=None):
     if not recs:
         recs = graph["by_ref"].get(reference, [])
         via = "reference number"
+    if not recs and SOL_SUFFIX and sol and graph.get("by_base"):
+        buyer = norm_name((notice_row or {}).get(
+            "contractingEntityName-nomEntitContractante-eng"))
+        recs = [r for r in graph["by_base"].get(base_sol(sol), [])
+                if buyer and r["buyer"] == buyer]
+        via = "solicitation number, ignoring its /A, /B or version suffix"
     if not recs:
         trace.append(f"no award notice found for this tender (tried "
                      f"solicitation {sol or '-'} and reference)")

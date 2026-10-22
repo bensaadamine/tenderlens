@@ -5,3 +5,6 @@
 
 requests>=2.31
 pdfminer.six>=20231228
+# the M2 agent's loop (agents/m2_agent.py); without it the same loop runs in
+# plain Python. Tested with 1.2.16 on Windows / Python 3.11.
+langgraph>=1.2

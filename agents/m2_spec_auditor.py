@@ -57,7 +57,17 @@ import json
 import sys
 
 import level2
+import m2_agent
 import spec_tools
+
+# Rule results the agent looks at again: the rules' own findings, the names
+# they could not settle, and the rule clearances listed here. Clearances
+# backed by the text ("or equivalent", the general equivalence clause) stay
+# with the rules. Buyer's equipment was in the list until 2026-10-22: the
+# agent turned 3 correct clearances (Sellick, Fat Truck x2: "a trailer for
+# transporting a Fat Truck") into false findings. Add "OK_BUYER_EQUIPMENT"
+# back to restore.
+AGENT_RECHECK = {"OK_MAKE_LIST"}
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -80,13 +90,15 @@ def _llm_available():
         return False
 
 
-def audit(reference, depth="standard", rows=None, online=False):
+def audit(reference, depth="standard", rows=None, online=False,
+          agent=False):
     """Audit ONE tender's specification.
 
     depth: "standard" (rules, offline) or "full" (adds LLM judgement and,
-    if `online`, live brand verification). Returns a dict with `readable`,
-    `level1`, `level2`, `findings` (normalised, each with a source) and
-    `trace`.
+    if `online`, live brand verification). agent: let the M2 agent letter
+    the brand candidates (agents/m2_agent.py) instead of the LLM judge.
+    Returns a dict with `readable`, `level1`, `level2`, `findings`
+    (normalised, each with a source) and `trace`.
     """
     trace = []
     docs = spec_tools.tender_documents(reference)
@@ -95,7 +107,18 @@ def audit(reference, depth="standard", rows=None, online=False):
         return {"reference": reference, "readable": False, "findings": [],
                 "level1": None, "level2": None, "trace": trace}
     trace.append(f"read {len(docs)} document(s)")
+    l1 = run_level1(reference, depth, online, agent, trace)
+    return _finish(reference, depth, rows, l1, trace)
 
+
+def run_level1(reference, depth="standard", online=False, agent=False,
+               trace=None):
+    """Level 1 for one tender: rules, then Wikidata (online), then either
+    the LLM judge (depth full/auto) or the M2 agent. Returns spec_tools'
+    full result (findings, ok, unresolved), plus "agent" when it ran."""
+    trace = [] if trace is None else trace
+    if agent:
+        depth = "standard"        # the agent replaces the judge, not both
     use_llm = depth == "full" and _llm_available()
     if depth == "full" and not use_llm:
         trace.append("depth=full requested but no LLM key is set - level 1 "
@@ -147,6 +170,62 @@ def audit(reference, depth="standard", rows=None, online=False):
         else:
             trace.append("--llm asked but no LLM key is set - left as is")
 
+    if agent:
+        if _llm_available():
+            l1 = _agent_pass(reference, l1, online, trace)
+        else:
+            trace.append("--agent asked but no LLM key is set - rules only")
+    return l1
+
+
+def _agent_pass(reference, l1, online, trace):
+    """Let the M2 agent letter what the rules found or could not settle."""
+    recheck = [o for o in l1.get("ok", []) if o.get("status") in AGENT_RECHECK]
+    rows = l1.get("findings", []) + l1.get("unresolved", []) + recheck
+    if not rows:
+        trace.append("agent: nothing for it to check")
+        return l1
+    cands = [{"name": r["brand"], "document": r["document"],
+              "line_no": r["line_no"], "evidence": r["evidence"]}
+             for r in rows]
+    out = m2_agent.classify_tender(reference, cands, online=online)
+    if out["steps"] == 0 and out["stop_reason"].startswith("model"):
+        # The model never answered: keep the rules' result rather than
+        # silently turning their findings into "unresolved".
+        trace.append(f"agent could not start ({out['stop_reason']}) - "
+                     f"rules' result kept")
+        return l1
+    findings, ok, unresolved = [], [o for o in l1.get("ok", [])
+                                    if o not in recheck], []
+    lettered = {v["id"]: v for v in out["verdicts"]}
+    for i, r in enumerate(rows, 1):
+        v = lettered.get(i)
+        if v is None:
+            unresolved.append(r)
+            continue
+        row = dict(r, document=v["document"], line_no=v["line"],
+                   page=v["page"], evidence=v["quote"], agent_letter=v["letter"],
+                   agent_reason=m2_agent.LETTERS[v["letter"]])
+        if v["letter"] == "f":
+            row["status"] = "BRAND_WITHOUT_EQUIVALENT"
+            row["llm_reason"] = ("checked by the M2 agent: required, no "
+                                 "equivalent accepted")
+            findings.append(row)
+        else:
+            row["status"] = f"AGENT_{v['letter'].upper()}"
+            ok.append(row)
+    trace.append(f"agent ({out['engine']}, {out['steps']} step(s), "
+                 f"{out['stop_reason']}): {len(rows)} candidate(s) -> "
+                 f"{len(findings)} finding(s), "
+                 f"{len(rows) - len(findings) - len(unresolved)} cleared, "
+                 f"{len(unresolved)} unresolved")
+    trace.extend("  agent " + t for t in out["trace"])
+    return dict(l1, findings=findings, ok=ok, unresolved=unresolved,
+                agent={k: out[k] for k in ("steps", "stop_reason", "engine")})
+
+
+def _finish(reference, depth, rows, l1, trace):
+    """Level 2, then every finding normalised with its source."""
     # ------------------------------------------------------------ level 2
     if rows is None:
         rows = level2.load_observations()
@@ -245,9 +324,11 @@ def main():
     ap.add_argument("--depth", choices=["standard", "full", "auto"],
                     default="standard")
     ap.add_argument("--online", action="store_true")
+    ap.add_argument("--agent", action="store_true",
+                    help="let the M2 agent letter the brand candidates")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
-    res = audit(a.tender, depth=a.depth, online=a.online)
+    res = audit(a.tender, depth=a.depth, online=a.online, agent=a.agent)
     if a.json:
         print(json.dumps(res, indent=2, default=str))
         return
