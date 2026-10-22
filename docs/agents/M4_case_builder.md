@@ -1,6 +1,6 @@
 # M4 — Case Builder
 
-**Code:** `agents/m4_case_builder.py` · **Owner:** _(to assign)_
+**Code:** `agents/m4_case_builder.py` 
 
 ## Role
 Takes what M1, M2 and M3 found about one tender, checks that every claim can be verified, scores it, decides **alert / watch / close**, and writes the case page the auditor reads.

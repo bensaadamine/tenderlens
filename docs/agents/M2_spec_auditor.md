@@ -1,6 +1,6 @@
 # M2 — Spec Auditor
 
-**Code:** `agents/m2_spec_auditor.py` · **Owner:** _(to assign)_
+**Code:** `agents/m2_spec_auditor.py` 
 
 ## Role
 Reads the **specification documents** of one tender and looks for requirements written so that only one product can win.

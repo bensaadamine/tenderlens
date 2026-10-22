@@ -1,6 +1,6 @@
 # M3 — Investigator
 
-**Code:** `agents/m3_investigator.py` · **Owner:** _(to assign)_
+**Code:** `agents/m3_investigator.py` 
 
 ## Role
 Reads the **award notices** (who won each contract) and answers, for one tender: who won it, and is that a pattern for this buyer?

@@ -1,6 +1,6 @@
 # M1 — Screener
 
-**Code:** `agents/m1_screener.py` · **Owner:** _(to assign)_
+**Code:** `agents/m1_screener.py` 
 
 ## Role
 Reads only the **tender notice** (one row of the CanadaBuys feed) — never a document — and lists what the buyer itself declared about competition. It is cheap and runs on every tender.
