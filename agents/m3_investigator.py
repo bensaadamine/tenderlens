@@ -113,6 +113,10 @@ def base_sol(s):
     return b if len(b) >= 6 else s
 
 
+def norm_postal(s):
+    return re.sub(r"[^A-Z0-9]", "", (s or "").upper())
+
+
 def norm_sol(s):
     return re.sub(r"\s+", "", (s or "")).upper()
 
@@ -176,6 +180,10 @@ def detect_columns(header):
         "date": pick(lambda s: "contractawarddate" in s,
                      lambda s: "awarddate" in s),
         "unspsc": pick(lambda s: s.strip('"﻿') == "unspsc"),
+        # for the M3 agent (2026-10-26): where a supplier is, and what it won
+        "postal": pick(lambda s: "supplier" in s and "postalcode" in s),
+        "city": pick(lambda s: "supplier" in s and "city" in s),
+        "title": pick(lambda s: s.startswith("title")),
     }
     missing = [k for k in ("supplier", "buyer") if not cols[k]]
     if not cols["sol"] and not cols["ref"]:
@@ -209,6 +217,10 @@ def load_graph(path=AWARDS):
         sb = collections.defaultdict(collections.Counter)  # supplier->buyers
         bgs = collections.defaultdict(set)  # (buyer, grp) -> suppliers
         names = {}
+        postal = collections.defaultdict(collections.Counter)  # sup -> codes
+        city = collections.defaultdict(collections.Counter)    # sup -> cities
+        at_postal = collections.defaultdict(set)   # code -> supplier names
+        by_sup = collections.defaultdict(list)     # sup -> its award records
         n = 0
         for r in rd:
             n += 1
@@ -227,7 +239,16 @@ def load_graph(path=AWARDS):
                    if cols["value"] else "",
                    "date": (r.get(cols["date"]) or "")[:10]
                    if cols["date"] else "",
-                   "sol": sol, "ref": ref}
+                   "sol": sol, "ref": ref,
+                   "title": (r.get(cols["title"]) or "").strip()
+                   if cols.get("title") else ""}
+            pc = norm_postal(r.get(cols["postal"])) if cols.get("postal") \
+                else ""
+            if pc:
+                postal[sup][pc] += 1
+                at_postal[pc].add(sup)
+            if cols.get("city") and (r.get(cols["city"]) or "").strip():
+                city[sup][r[cols["city"]].strip().title()] += 1
             if sol:
                 by_sol[sol].append(rec)
                 by_base[base_sol(sol)].append(rec)
@@ -237,17 +258,39 @@ def load_graph(path=AWARDS):
             if key in seen:
                 continue
             seen.add(key)
+            by_sup[sup].append(rec)
             bg[(buy, grp)] += 1
             bsg[(buy, sup, grp)] += 1
             sb[sup][buy] += 1
             bgs[(buy, grp)].add(sup)
     return {"cols": cols, "rows": n, "by_sol": by_sol, "by_ref": by_ref,
             "by_base": by_base,
-            "bg": bg, "bsg": bsg, "sb": sb, "bgs": bgs, "names": names}
+            "bg": bg, "bsg": bsg, "sb": sb, "bgs": bgs, "names": names,
+            "postal": postal, "city": city, "at_postal": at_postal,
+            "by_sup": by_sup}
 
 
-def investigate(reference, notice_row=None, graph=None):
-    """M3 for ONE tender. Every result is weight='context' (decision 4)."""
+class AgentUnavailable(RuntimeError):
+    """--agent was asked for, but no model could answer."""
+
+
+# When the agent was asked for but no model answers: "stop" raises
+# AgentUnavailable so the run stops and resumes later (as for M2); "keep"
+# counts the winner's spelling alone, as before 2026-10-26.
+AGENT_DOWN = "stop"
+
+
+def _merged(graph, sup, same):
+    """The winner plus the spellings the agent judged the same company."""
+    return [sup] + [n for n in same if n != sup]
+
+
+def investigate(reference, notice_row=None, graph=None, agent=False):
+    """M3 for ONE tender. Every result is weight='context' (decision 4).
+
+    agent=True: the M3 agent first decides which other spellings in the
+    award file are the same supplier (m3_agent.py); the counts below then
+    treat them as one. The counting itself stays here, in code."""
     trace = []
     if graph is None:
         trace.append("no award data (data/awards.csv) - run "
@@ -278,9 +321,20 @@ def investigate(reference, notice_row=None, graph=None):
     trace.append(f"award found via {via}: {a['supplier_name']} "
                  f"({len(recs)} award row(s))")
 
+    same = []
+    if agent:
+        # Only spellings that also won from this buyer in this category can
+        # change the share below - the others are not worth a model call.
+        # Measured 2026-10-26: 18 winners in 2510, 37 in 4110.
+        same = _agent_aliases(
+            a["supplier"], graph, trace,
+            only=lambda n: graph["bsg"].get((a["buyer"], n, grp), 0) > 0)
+    names = _merged(graph, a["supplier"], same)
+
     total = graph["bg"].get((a["buyer"], grp), 0)
-    mine = graph["bsg"].get((a["buyer"], a["supplier"], grp), 0)
-    suppliers = len(graph["bgs"].get((a["buyer"], grp), ()))
+    mine = sum(graph["bsg"].get((a["buyer"], n, grp), 0) for n in names)
+    suppliers = len({a["supplier"] if s in names else s
+                     for s in graph["bgs"].get((a["buyer"], grp), ())})
     share = mine / float(total) if total else 0.0
     trace.append(f"depth 1: buyer awarded {total} contract(s) in group "
                  f"{grp or '?'}, {mine} to this supplier ({share:.0%}), "
@@ -289,14 +343,24 @@ def investigate(reference, notice_row=None, graph=None):
     award = {"supplier": a["supplier_name"], "buyer": a["buyer_name"],
              "value": a["value"], "date": a["date"], "group": grp,
              "buyer_awards_in_group": total, "to_this_supplier": mine,
-             "share": round(share, 3), "distinct_suppliers": suppliers}
+             "share": round(share, 3), "distinct_suppliers": suppliers,
+             "other_spellings": [graph["names"].get(n, n) for n in same]}
     findings = []
 
     if total >= REPEAT_MIN and share >= REPEAT_SHARE:
         # Depth 2 - only now is it worth asking who ELSE this supplier
         # sells to. Same share at depth 1 can mean a market leader or a
         # dependency; the answer is in the supplier's other buyers.
-        buyers = graph["sb"].get(a["supplier"], {})
+        if agent:
+            # depth 2 reads the supplier's other buyers: now every spelling
+            # matters (decisions already made are reused, not asked again)
+            same = _agent_aliases(a["supplier"], graph, trace)
+            names = _merged(graph, a["supplier"], same)
+            award["other_spellings"] = [graph["names"].get(n, n)
+                                        for n in same]
+        buyers = collections.Counter()
+        for n in names:
+            buyers.update(graph["sb"].get(n, {}))
         tot_s = sum(buyers.values())
         dep = buyers.get(a["buyer"], 0) / float(tot_s) if tot_s else 0.0
         trace.append(f"depth 2: supplier has {tot_s} award(s) across "
@@ -306,6 +370,9 @@ def investigate(reference, notice_row=None, graph=None):
                       "supplier_dependency": round(dep, 3)})
         kind = ("dependent_supplier" if dep >= REPEAT_SHARE
                 else "recurring_supplier")
+        merged_note = (f"; counting {len(same)} other spelling(s) of the "
+                       f"supplier: " + "; ".join(award["other_spellings"])
+                       if same else "")
         findings.append({
             "level": 3, "kind": kind, "weight": "context",
             "confidence": "medium",
@@ -314,7 +381,8 @@ def investigate(reference, notice_row=None, graph=None):
                       + (f", which draws {dep:.0%} of its awards from this "
                          f"buyer" if kind == "dependent_supplier" else "")),
             "source": {"file": "award notices (CanadaBuys)",
-                       "where": f"{mine} of {total} awards, group {grp}",
+                       "where": f"{mine} of {total} awards, group {grp}"
+                                + merged_note,
                        "line": f"{a['supplier_name']} <- {a['buyer_name']}",
                        "context": None},
         })
@@ -323,6 +391,27 @@ def investigate(reference, notice_row=None, graph=None):
 
     return {"reference": reference, "available": True, "award": award,
             "findings": findings, "trace": trace}
+
+
+def _agent_aliases(sup, graph, trace, only=None):
+    """Spellings the M3 agent judged to be the same supplier."""
+    import m3_agent
+    try:
+        out = m3_agent.aliases_for(sup, graph, only=only)
+    except Exception as e:                 # no key, no provider
+        out = {"same": [], "stop_reason": f"model unavailable: {e}",
+               "steps": 0, "asked": [1], "trace": []}
+    if out["stop_reason"].startswith("model") and out.get("asked"):
+        if AGENT_DOWN == "stop":
+            raise AgentUnavailable(out["stop_reason"])
+        trace.append(f"M3 agent could not run ({out['stop_reason'][:120]}) "
+                     f"- winner's spelling counted alone")
+        return []
+    trace.append(f"M3 agent ({out.get('engine', 'none')}, {out['steps']} "
+                 f"step(s), {out['stop_reason']}): same supplier: "
+                 + ("; ".join(out["same"]) or "none"))
+    trace.extend("  M3 agent " + t for t in out.get("trace", []))
+    return out["same"]
 
 
 def main():

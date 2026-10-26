@@ -69,6 +69,17 @@ import spec_tools
 # back to restore.
 AGENT_RECHECK = {"OK_MAKE_LIST"}
 
+# When the agent was asked for but no model answers (quota used, providers
+# down): "stop" raises AgentUnavailable, so a run stops cleanly and the
+# tenders not yet done are picked up by the next run - a free daily quota
+# then spreads one category over several days. "keep" falls back to the
+# rules' result, as before 2026-10-23 (the eval and the synthetic test).
+AGENT_DOWN = "stop"
+
+
+class AgentUnavailable(RuntimeError):
+    """--agent was asked for, but no model could answer."""
+
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception:
@@ -173,6 +184,9 @@ def run_level1(reference, depth="standard", online=False, agent=False,
     if agent:
         if _llm_available():
             l1 = _agent_pass(reference, l1, online, trace)
+        elif AGENT_DOWN == "stop":
+            raise AgentUnavailable("no LLM key is set (GROQ_API_KEY, "
+                                   "GEMINI_API_KEY in .env)")
         else:
             trace.append("--agent asked but no LLM key is set - rules only")
     return l1
@@ -189,6 +203,8 @@ def _agent_pass(reference, l1, online, trace):
               "line_no": r["line_no"], "evidence": r["evidence"]}
              for r in rows]
     out = m2_agent.classify_tender(reference, cands, online=online)
+    if AGENT_DOWN == "stop" and out["stop_reason"].startswith("model"):
+        raise AgentUnavailable(f"{reference}: {out['stop_reason']}")
     if out["steps"] == 0 and out["stop_reason"].startswith("model"):
         # The model never answered: keep the rules' result rather than
         # silently turning their findings into "unresolved".

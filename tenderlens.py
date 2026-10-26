@@ -116,7 +116,14 @@ def no_contract_reason(row):
     return None
 
 
-def run_one(ref, shared, use_llm=False, online=False, agent=False):
+# Raised when --agent is on and no model answers; a run stops on them and
+# the next run resumes from that tender.
+AGENT_DOWN = (m2_spec_auditor.AgentUnavailable,
+              m3_investigator.AgentUnavailable)
+
+
+def run_one(ref, shared, use_llm=False, online=False, agent=False,
+            m3_agent=False):
     notices, wstats, rows, graph = shared
     m1 = m1_screener.screen(ref, notices, wstats)
     why_none = (no_contract_reason(notices.get(ref))
@@ -135,7 +142,8 @@ def run_one(ref, shared, use_llm=False, online=False, agent=False):
         m3 = {"reference": ref, "available": False, "award": None,
               "findings": [], "trace": [f"skipped - {why_none}"]}
     else:
-        m3 = m3_investigator.investigate(ref, notices.get(ref), graph)
+        m3 = m3_investigator.investigate(ref, notices.get(ref), graph,
+                                         agent=m3_agent)
     case = m4_case_builder.build_case(m1, m2, m3)
     case["m1_route"] = m1.get("route")
     if why_none:
@@ -315,6 +323,9 @@ def main():
     ap.add_argument("--agent", action="store_true",
                     help="let the M2 agent letter brand candidates a-f "
                          "(LLM, Windows; replaces the --llm judge)")
+    ap.add_argument("--m3-agent", action="store_true",
+                    help="let the M3 agent decide which other spellings of "
+                         "the winner are the same supplier (LLM, Windows)")
     ap.add_argument("--llm", action="store_true",
                     help="let M2 use the LLM judge on tenders M1 routes deep "
                          "(spends tokens)")
@@ -347,7 +358,7 @@ def main():
         return
 
     if a.tender:
-        c = run_one(a.tender, shared, a.llm, a.online, a.agent)
+        c = run_one(a.tender, shared, a.llm, a.online, a.agent, a.m3_agent)
         print(f"\n{c['reference']}  ->  {c['route'].upper()}  "
               f"(score {c['score']}, M1 {c['m1_route']})\n")
         print(c["narrative"])
@@ -382,7 +393,13 @@ def main():
     cases, t = [], time.time()
     for i, ref in enumerate(todo, 1):
         t1 = time.time()
-        cases.append(run_one(ref, shared, a.llm, a.online, a.agent))
+        try:
+            cases.append(run_one(ref, shared, a.llm, a.online, a.agent,
+                                 a.m3_agent))
+        except AGENT_DOWN as e:
+            print(f"\nstopped at {i}/{len(todo)}: the agents have no model "
+                  f"({e}). The queue below covers the tenders done so far.")
+            break
         dt = time.time() - t1
         # A silent minute looks exactly like a hang. Say which tender is
         # slow and why, as it happens.

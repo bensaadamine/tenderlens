@@ -67,6 +67,7 @@ import time
 import level2
 import m1_screener
 import m3_investigator
+import m2_spec_auditor
 import m4_case_builder
 import spec_tools
 import tenderlens
@@ -256,8 +257,17 @@ def run(a):
         docs, raw = extract_tender(ref, row, a.group, run_id)
         mine = comparable(raw, amap)
         peers = [r for r in base if r["reference"] != ref] + mine
-        case = tenderlens.run_one(ref, (notices, wstats, peers, graph),
-                                  a.llm, a.online, a.agent)
+        try:
+            case = tenderlens.run_one(ref, (notices, wstats, peers, graph),
+                                      a.llm, a.online, a.agent,
+                                      a.m3_agent)
+        except tenderlens.AGENT_DOWN as e:
+            # Nothing written for this tender: the next run starts here.
+            # Answers already given are cached, so nothing is paid twice.
+            print(f"\nstopped at {i}/{len(todo)}: the agents have no model "
+                  f"({e}).\n  Run the same command again later (daily quotas "
+                  f"reset); it continues from this tender.")
+            break
         route = case["route"]
         if not docs:
             status = "no_documents"
@@ -282,6 +292,8 @@ def run(a):
         if i % 25 == 0:
             print(f"  {i:4d}/{len(todo)}  base now {len({r['reference'] for r in base})}")
 
+    if not cases:
+        return
     meta = {"scope": f"UNSPSC-4 {a.group}, incremental batch {stamp}",
             "generated": time.strftime("%Y-%m-%d %H:%M"),
             "tenders": len(cases), "awards": graph is not None,
@@ -392,6 +404,9 @@ def main():
     ap.add_argument("--agent", action="store_true",
                     help="let the M2 agent letter brand candidates a-f "
                          "(LLM, Windows; replaces the --llm judge)")
+    ap.add_argument("--m3-agent", action="store_true",
+                    help="let the M3 agent decide which other spellings of "
+                         "the winner are the same supplier (LLM, Windows)")
     ap.add_argument("--llm", action="store_true")
     ap.add_argument("--online", action="store_true")
     ap.add_argument("--l2-level", type=int, choices=[6, 8], default=8)

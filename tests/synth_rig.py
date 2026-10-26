@@ -57,6 +57,8 @@ import time
 
 import m1_screener
 import m2_spec_auditor
+
+m2_spec_auditor.AGENT_DOWN = "keep"   # a copy without a model keeps the rules' result
 import m4_case_builder
 import spec_tools
 import tenderlens

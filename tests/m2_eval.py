@@ -41,6 +41,8 @@ import io
 import os
 
 import m2_spec_auditor
+
+m2_spec_auditor.AGENT_DOWN = "keep"   # tenders the agent missed are listed apart
 import spec_tools
 
 LABELS = os.path.join("tests", "m2_labels.csv")

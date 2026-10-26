@@ -366,6 +366,9 @@ def narrative_plain(route, claims, award, m2):
             if not any(c["kind"] in ("recurring_supplier",
                                      "dependent_supplier") for c in claims):
                 line += " No sign of a favoured supplier."
+        if award.get("other_spellings"):
+            line += (" Counted with its other spelling(s) in the award "
+                     "notices: " + "; ".join(award["other_spellings"]) + ".")
         out.append(line)
     out.append("\nThese are hypotheses with evidence attached, not findings "
                "of wrongdoing. A person decides.")
