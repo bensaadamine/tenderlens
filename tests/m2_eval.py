@@ -53,6 +53,7 @@ STOP_AFTER = 3      # tenders in a row where the agent could not run
 STATUS_LETTER = {
     "OK": "e", "OK_EQUIV_PRODUCTS_CLAUSE": "e", "OK_BLANKET_CLAUSE": "e",
     "OK_PDF_ORDER": "e", "OK_BUYER_EQUIPMENT": "c", "OK_MAKE_LIST": "d",
+    "OK_PLATFORM": "c",
     "OK_LLM_CLEARED": "cleared by the LLM judge",
 }
 

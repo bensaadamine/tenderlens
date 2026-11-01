@@ -640,6 +640,10 @@ def add_l1_args(ap):
                     help="clear a brand the text shows is the buyer's own "
                          "equipment (intended, existing, transporting, repair "
                          "of ...)")
+    ap.add_argument("--l1-platforms", choices=["on", "off"], default="on",
+                    help="an operating system or browser (Windows, Linux, "
+                         "Internet Explorer...) is the buyer's environment, "
+                         "never a finding")
     ap.add_argument("--l1-clear-unconfirmed", choices=["on", "off"],
                     default="on",
                     help="apply the text clearances to names not confirmed "
@@ -708,8 +712,9 @@ def apply_l1_args(a):
     EQUIV_CLAUSE = a.l1_equiv_clause == "on"
     LLM_SCOPE = a.llm_scope
     global DEFINED_TERMS, SKIP_URLS, BUYER_EQUIPMENT, LOWER_NOT_BRAND
-    global CLEAR_UNCONFIRMED
+    global CLEAR_UNCONFIRMED, PLATFORMS
     CLEAR_UNCONFIRMED = a.l1_clear_unconfirmed == "on"
+    PLATFORMS = a.l1_platforms == "on"
     LOWER_NOT_BRAND = a.l1_lower_label == "on"
     DEFINED_TERMS = a.l1_defined_terms == "on"
     SKIP_URLS = a.l1_urls == "on"
@@ -1288,6 +1293,21 @@ BUYER_EQUIPMENT = True
 # Cleared that way it is "ok" with brand_unconfirmed=True.
 #    --l1-clear-unconfirmed off
 CLEAR_UNCONFIRMED = True
+# An operating system or web browser names the computer the purchase must
+# run on - the buyer's environment, not a product it locks in ("software
+# must run on Windows 10", "Internet Explorer 11"). Measured 2026-11-01:
+# "Windows" made ~17 of the 35 4110 cases with the M2 agent, all false.
+#    --l1-platforms off
+PLATFORMS = True
+PLATFORM_NAMES = ("windows", "microsoft windows", "macos", "mac os", "os x",
+                  "linux", "ubuntu", "red hat", "rhel", "unix", "ios",
+                  "android", "chrome os", "chromeos", "internet explorer",
+                  "microsoft edge")
+
+
+def is_platform(name):
+    n = _norm(name).lower()
+    return any(n == p or n.startswith(p + " ") for p in PLATFORM_NAMES)
 _SMALL = ("for", "of", "and", "the", "de", "du", "des", "et", "la", "le")
 RE_DEFINED = re.compile(
     r"((?:[A-Z][\w'\u2019-]*\s+(?:(?:for|of|and|the|de|du|des|et|la|le)\s+)?){2,8})"
@@ -1354,6 +1374,8 @@ def _text_clearance(docs, name, hits, lines_of, window, window_before,
     if MAKE_LIST and all(_in_make_list(lines_of[h["document"]], h["line_no"])
                          for h in hits):
         return {"status": "OK_MAKE_LIST"}
+    if PLATFORMS and is_platform(name):
+        return {"status": "OK_PLATFORM"}
     return None
 
 
