@@ -5,6 +5,8 @@
     python tenderlens_stream.py --group 2510 --status
     python tenderlens_stream.py --group 2510 --feedback      # apply the auditor's verdicts
     python tenderlens_stream.py --group 2510 --export-labels # raw labels for prepare/05_attribute_map.py
+    python tenderlens_stream.py --group 2510 --queue         # queue of every tender's latest case
+    python tenderlens_stream.py --group 2510 --queue 20261101-103000   # one batch's queue again
 
 The batch run (tenderlens.py) is unchanged and still available.
 
@@ -31,7 +33,15 @@ STORAGE  reports/kb/<group>/  - append-only, so a crash loses at most the
     feedback.csv      filled in by the auditor: reference, verdict, note
                         verdict clean     -> back to the base
                         verdict confirmed -> stays out; a real test case
-    batches/<stamp>_queue.{html,csv,json}  ranked queue of each run
+    cases.jsonl       every case as built, one JSON line, tagged run_id and
+                      batch; written BEFORE the tender's register event, so
+                      a crash never leaves a tender processed without its
+                      case. The case that counts is the one whose run_id is
+                      the tender's in the register.
+    batches/<stamp>_queue.{html,csv,json}  ranked queue of each run,
+                      rebuilt from cases.jsonl by --queue STAMP
+    current_queue.{html,csv,json}  every tender's latest case, with its
+                      current pile (--queue)
 
   Base and quarantine are two piles decided by the register, not two files:
   moving a tender is one appended line, never a rewrite.
@@ -94,6 +104,12 @@ REG_COLS = ["at", "reference", "run_id", "pub_date", "event", "status",
             "pile", "score", "observations", "note"]
 FB_COLS = ["reference", "verdict", "note", "reviewer", "date"]
 QUARANTINE_ROUTES = {"alert", "watch"}
+# Audit finding 2026-11-01: cases were written only at the end of a batch,
+# while each tender was registered as processed as soon as it was done - a
+# crash left those tenders skipped on the next run with no case anywhere.
+# Each case now goes to cases.jsonl before its register event. False
+# restores the old behaviour (no case log).
+CASE_LOG = True
 
 
 # ------------------------------------------------------------------ storage
@@ -103,6 +119,7 @@ class KB:
         self.obs = os.path.join(self.dir, "observations.csv")
         self.reg = os.path.join(self.dir, "register.csv")
         self.fb = os.path.join(self.dir, "feedback.csv")
+        self.case_log = os.path.join(self.dir, "cases.jsonl")
         self.batches = os.path.join(self.dir, "batches")
         os.makedirs(self.batches, exist_ok=True)
         for path, cols in ((self.obs, OBS_COLS), (self.reg, REG_COLS),
@@ -130,6 +147,34 @@ class KB:
         with io.open(self.reg, "a", encoding="utf-8", newline="") as f:
             csv.DictWriter(f, fieldnames=REG_COLS,
                            extrasaction="ignore").writerow(ev)
+
+    def append_case(self, run_id, batch, case):
+        line = json.dumps({"run_id": run_id, "batch": batch, "case": case},
+                          ensure_ascii=False, default=str)
+        # A line cut by a crash has no newline; without this the next case
+        # would be glued onto it and lost with it.
+        cut = False
+        if os.path.exists(self.case_log) and os.path.getsize(self.case_log):
+            with io.open(self.case_log, "rb") as f:
+                f.seek(-1, os.SEEK_END)
+                cut = f.read(1) != b"\n"
+        with io.open(self.case_log, "a", encoding="utf-8") as f:
+            f.write(("\n" if cut else "") + line + "\n")
+
+    def cases(self):
+        """Every logged case, in order. A line cut by a crash is skipped."""
+        out, bad = [], 0
+        if not os.path.exists(self.case_log):
+            return out, bad
+        with io.open(self.case_log, encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                try:
+                    out.append(json.loads(line))
+                except ValueError:
+                    bad += 1
+        return out, bad
 
     def observations(self, state, pile):
         """Current-run rows of every tender now in `pile`, raw labels."""
@@ -283,6 +328,8 @@ def run(a):
         piles[pile] += 1
 
         kb.append_obs(raw)               # observations first,
+        if CASE_LOG:                     # then the case,
+            kb.append_case(run_id, stamp, case)
         kb.append_event(reference=ref, run_id=run_id,   # then the event
                         pub_date=notice_meta(row)[1], event="processed",
                         status=status, pile=pile, score=case["score"],
@@ -309,6 +356,44 @@ def run(a):
           f"{routes['close']} close")
     print(f"  -> base {piles['base']}, quarantine {piles['quarantine']}, "
           f"no documents {piles['none']}")
+    print(f"  queue: {prefix}.html")
+
+
+def queue(a):
+    """Write a queue from cases.jsonl: one batch (STAMP), or every
+    tender's latest case with its current pile ("current")."""
+    kb = KB(a.group, a.kb_root)
+    logged, bad = kb.cases()
+    if bad:
+        print(f"  {bad} unreadable line(s) in {kb.case_log} skipped "
+              f"(cut by a crash)")
+    if a.queue == "current":
+        state = kb.state()
+        pick = {}
+        for e in logged:                 # the case the register points to
+            ev = state.get(e["case"]["reference"])
+            if ev and ev["run_id"] == e["run_id"]:
+                pick[e["case"]["reference"]] = dict(
+                    e["case"], pile=ev["pile"], status=ev["status"])
+        cases = list(pick.values())
+        prefix = os.path.join(kb.dir, "current_queue")
+        scope = f"UNSPSC-4 {a.group}, every tender's latest case"
+    else:
+        cases = [e["case"] for e in logged if e["batch"] == a.queue]
+        prefix = os.path.join(kb.batches, f"{a.queue}_queue")
+        scope = f"UNSPSC-4 {a.group}, incremental batch {a.queue}"
+    if not cases:
+        print(f"no logged case for '{a.queue}' in {kb.case_log}")
+        return
+    meta = {"scope": scope, "generated": time.strftime("%Y-%m-%d %H:%M"),
+            "tenders": len(cases), "rebuilt_from": kb.case_log,
+            "weights": m4_case_builder.WEIGHTS,
+            "alert_at": m4_case_builder.ALERT,
+            "watch_at": m4_case_builder.WATCH}
+    tenderlens.write_outputs(cases, meta, prefix)
+    routes = collections.Counter(c["route"] for c in cases)
+    print(f"{len(cases)} case(s): {routes['alert']} alert, "
+          f"{routes['watch']} watch, {routes['close']} close")
     print(f"  queue: {prefix}.html")
 
 
@@ -422,6 +507,9 @@ def main():
     ap.add_argument("--status", action="store_true")
     ap.add_argument("--feedback", action="store_true")
     ap.add_argument("--export-labels", action="store_true")
+    ap.add_argument("--queue", nargs="?", const="current", metavar="STAMP",
+                    help="write a queue from cases.jsonl: every tender's "
+                         "latest case (default), or one batch by its stamp")
     spec_tools.add_l1_args(ap)
     a = ap.parse_args()
     spec_tools.apply_l1_args(a)
@@ -431,6 +519,8 @@ def main():
         feedback(a)
     elif a.export_labels:
         export_labels(a)
+    elif a.queue:
+        queue(a)
     else:
         run(a)
 

@@ -80,6 +80,14 @@ AWARDS_URL = ("https://canadabuys.canada.ca/opendata/pub/"
 C_SOL_TENDER = "solicitationNumber-numeroSollicitation"
 C_UNSPSC_TENDER = "unspsc"
 
+# Audit finding 2026-11-01: the first matching award row was taken as THE
+# award, so the winner depended on the order of the CSV (two rows swapped =
+# another winner). Now the newest award is taken (ties: supplier name), and
+# every distinct supplier of the tender is listed in award["winners"] - a
+# standing offer or a split award has several. "first" restores the old
+# rule: the first row, and only its supplier.
+AWARD_PICK = "latest"
+
 REPEAT_SHARE = 0.5   # this buyer gave at least half its awards in the
 REPEAT_MIN = 3       # category to one supplier, over at least 3 awards
 
@@ -280,6 +288,22 @@ class AgentUnavailable(RuntimeError):
 AGENT_DOWN = "stop"
 
 
+def pick_award(recs):
+    """(the award row taken as the tender's award, one row per distinct
+    winner in the same order). Independent of the file's row order."""
+    if AWARD_PICK == "first":
+        return recs[0], [recs[0]]
+    order = sorted(recs, key=lambda r: (r.get("supplier") or "",
+                                        r.get("supplier_name") or ""))
+    order.sort(key=lambda r: r.get("date") or "", reverse=True)
+    winners, seen = [], set()
+    for r in order:
+        if r["supplier"] not in seen:
+            seen.add(r["supplier"])
+            winners.append(r)
+    return order[0], winners
+
+
 def _merged(graph, sup, same):
     """The winner plus the spellings the agent judged the same company."""
     return [sup] + [n for n in same if n != sup]
@@ -321,10 +345,13 @@ def investigate(reference, notice_row=None, graph=None, agent=False,
         return {"reference": reference, "available": True, "award": None,
                 "findings": [], "trace": trace}
 
-    a = recs[0]
+    a, winners = pick_award(recs)
     grp = a["group"] or first_unspsc4((notice_row or {}).get(C_UNSPSC_TENDER))
     trace.append(f"award found via {via}: {a['supplier_name']} "
-                 f"({len(recs)} award row(s))")
+                 f"({len(recs)} award row(s)"
+                 + (f", {len(winners)} distinct suppliers: "
+                    + "; ".join(w["supplier_name"] for w in winners)
+                    if len(winners) > 1 else "") + ")")
 
     same = list(spellings) if spellings is not None else []
     if agent and spellings is None:
@@ -350,7 +377,9 @@ def investigate(reference, notice_row=None, graph=None, agent=False,
              "buyer_awards_in_group": total, "to_this_supplier": mine,
              "share": round(share, 3), "distinct_suppliers": suppliers,
              "other_spellings": [graph["names"].get(n, n) for n in same],
-             "supplier_key": a["supplier"], "spelling_keys": list(same)}
+             "supplier_key": a["supplier"], "spelling_keys": list(same),
+             "winners": [w["supplier_name"] for w in winners],
+             "match": via}
     findings = []
 
     if total >= REPEAT_MIN and share >= REPEAT_SHARE:
@@ -391,7 +420,8 @@ def investigate(reference, notice_row=None, graph=None, agent=False,
                        "where": f"{mine} of {total} awards, group {grp}"
                                 + merged_note,
                        "line": f"{a['supplier_name']} <- {a['buyer_name']}",
-                       "context": None},
+                       "context": None, "checked": True,
+                       "checked_how": "built from the award records"},
         })
     else:
         trace.append("depth 2 skipped - no recurring winner at depth 1")

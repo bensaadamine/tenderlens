@@ -349,7 +349,9 @@ def _recheck(state, hooks, brands):
                 f["source"] = dict(f["source"], file=v.get("document"),
                                    where=f"page {v.get('page')}, line "
                                          f"{v.get('line')}",
-                                   line=v.get("quote"))
+                                   line=v.get("quote"), checked=True,
+                                   checked_how="quote found in the document "
+                                               "by the M2 agent")
                 res, text = "kept", (f"'{b}' was re-read by the spec agent: "
                                      f"required, no equivalent accepted "
                                      f"(\u201c{v.get('quote')}\u201d, "

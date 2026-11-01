@@ -41,7 +41,8 @@ What stays in code: all scoring and routing (`build_case`, unchanged); M2's and 
 - **Alert:** 5 points **from document findings alone** — two brands, or a brand that won.
 - **Watch:** 2 points, and at least one claim that is neither declared by the buyer nor context.
 - **Close:** everything else. The score is kept for ranking.
-- A claim without a source a person can open is shown as unverified and scores 0.
+- A claim scores only if its source is **attached** (an origin and the words) **and checked** — the words found in the document by M2 (or by the M2 agent's quote test), or copied by code from the notice field (M1) or the award records (M3). Otherwise it is shown as unverified and scores 0 (`VERIFY = "attached"` restores the old rule). Each claim carries `source_attached` and `verified`.
+- Brand = winner is checked against every supplier the award notices name for the tender, not only the newest.
 
 Points are an ordering, not a probability — there is no ground truth yet to fit them.
 

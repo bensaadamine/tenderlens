@@ -39,7 +39,7 @@ def check(name, cond):
     print(("ok   " if cond else "FAIL ") + name)
 
 
-def awards_file(path):
+def awards_file(path, rows=None):
     h = ["referenceNumber-numeroReference",
          "solicitationNumber-numeroSollicitation",
          "supplierLegalName-nomLegalFournisseur-eng",
@@ -49,7 +49,7 @@ def awards_file(path):
          "totalContractValue-valeurTotaleContrat",
          "contractAwardDate-dateAttributionContrat", "unspsc"]
     dnd = "Department of National Defence"
-    rows = [
+    rows = rows or [
         ("A1", "W8476-001", "PALFINGER INC.", "x", dnd, "x", "250000",
          "2025-03-01", "25101900"),
         ("A2", "W8476-002", "Palfinger Inc", "x", dnd, "x", "180000",
@@ -104,11 +104,38 @@ def main():
     check("no award file -> M3 unavailable, pipeline continues",
           m3.investigate("cb-x", {}, None)["available"] is False)
 
+    # Audit finding 2026-11-01: the winner depended on the file's row order
+    split = [("S1", "W-SPLIT", "Alpha Trucks Ltd", "x", "DND", "x", "1",
+              "2025-01-10", "25101900"),
+             ("S2", "W-SPLIT", "Bravo Trucks Ltd", "x", "DND", "x", "1",
+              "2025-03-05", "25101900")]
+    picks = []
+    for order in (split, split[::-1]):
+        p2 = os.path.join(tempfile.mkdtemp(), "awards.csv")
+        awards_file(p2, order)
+        a = m3.investigate("cb-s", {"solicitationNumber-numeroSollicitation":
+                                    "W-SPLIT"}, m3.load_graph(p2))["award"]
+        picks.append((a["supplier"], a["winners"]))
+    check("the winner no longer depends on the file's row order",
+          picks[0] == picks[1] and picks[0][0] == "Bravo Trucks Ltd")
+    check("every supplier of a split award is listed, newest first",
+          picks[0][1] == ["Bravo Trucks Ltd", "Alpha Trucks Ltd"])
+    m3.AWARD_PICK = "first"
+    p3 = os.path.join(tempfile.mkdtemp(), "awards.csv")
+    awards_file(p3, split)
+    a = m3.investigate("cb-s", {"solicitationNumber-numeroSollicitation":
+                                "W-SPLIT"}, m3.load_graph(p3))["award"]
+    m3.AWARD_PICK = "latest"
+    check("AWARD_PICK = 'first' restores the first row",
+          a["supplier"] == "Alpha Trucks Ltd"
+          and a["winners"] == ["Alpha Trucks Ltd"])
+
     print("\nM4 case builder")
     m1 = {"reference": "cb-x", "title": "Crane truck", "signals": [],
           "route": "close"}
     src = {"file": "rfp.pdf", "where": "page 3, line 40",
-           "line": "The crane must be Palfinger model PK11001;"}
+           "line": "The crane must be Palfinger model PK11001;",
+           "checked": True}
     l1 = {"level": 1, "kind": "brand_without_equivalent",
           "confidence": "medium", "claim": "Names 'Palfinger'",
           "brand": "Palfinger", "source": src}
@@ -132,7 +159,8 @@ def main():
           c2["score"] == 0 and c2["route"] == "close")
 
     l2 = {"level": 2, "kind": "extreme_threshold", "confidence": "low",
-          "claim": "x", "source": {"file": "f", "where": "s", "line": "q"}}
+          "claim": "x", "source": {"file": "f", "where": "s", "line": "q",
+                                   "checked": True}}
     c3 = m4.build_case(m1, {"readable": True, "findings": [l2, dict(l2)]},
                        None)
     check("level 2 alone cannot make a case (measured unreliable)",
@@ -143,6 +171,44 @@ def main():
     c4 = m4.build_case(m1, {"readable": True, "findings": [nosrc]}, None)
     check("a claim with no quoted line is unverified and scores nothing",
           c4["score"] == 0 and c4["claims"][0]["verified"] is False)
+
+    unchecked = dict(l1, source=dict(src, checked=False))
+    c6 = m4.build_case(m1, {"readable": True, "findings": [unchecked]}, None)
+    check("a quote not found in its document is unverified, scores nothing",
+          c6["score"] == 0 and c6["claims"][0]["source_attached"]
+          and not c6["claims"][0]["verified"]
+          and "not found" in c6["claims"][0]["not_scored_because"])
+    m4.VERIFY = "attached"
+    c7 = m4.build_case(m1, {"readable": True, "findings": [unchecked]}, None)
+    m4.VERIFY = "checked"
+    check("VERIFY = 'attached' restores the old rule", c7["score"] == 3)
+
+    alpha = dict(l1, brand="Alpha")
+    split_m3 = {"award": {"supplier": "Bravo Trucks Ltd",
+                          "winners": ["Bravo Trucks Ltd", "Alpha Trucks Ltd"]},
+                "findings": []}
+    c8 = m4.build_case(m1, {"readable": True, "findings": [alpha]}, split_m3)
+    check("a brand matching one of several winners -> brand = winner",
+          any(x["kind"] == "brand_matches_winner"
+              and "one of the 2 suppliers" in x["claim"]
+              for x in c8["claims"]) and c8["route"] == "alert")
+
+    import m2_spec_auditor as m2a
+    docs = [{"document": "rfp.pdf",
+             "text": "ANNEX A\nThe crane must be\nPalfinger model PK11001;\n"},
+            {"document": "amd.pdf", "text": "Question 1: other text"}]
+    check("M2 checks a quote against its document, across line breaks",
+          m2a.quote_in_documents(docs, "rfp.pdf",
+                                 "The crane must be Palfinger model PK11001;"))
+    check("words not in the tender are not checked",
+          not m2a.quote_in_documents(docs, "rfp.pdf",
+                                     "The crane must be a Liebherr"))
+    check("a quote cut with '...' needs every piece, in order",
+          m2a.quote_in_documents(docs, "rfp.pdf", "The crane ... PK11001")
+          and not m2a.quote_in_documents(docs, "rfp.pdf",
+                                         "PK11001 ... The crane"))
+    check("a document named another way: the tender's other texts are read",
+          m2a.quote_in_documents(docs, "RFP (1).pdf", "Palfinger model"))
 
     many = [dict(l1, brand=f"B{i}") for i in range(5)]
     c5 = m4.build_case(m1, {"readable": True, "findings": many}, None)

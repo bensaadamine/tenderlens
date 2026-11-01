@@ -37,7 +37,7 @@ def finding(brand, line, text, letter=None):
     return {"level": 1, "kind": "brand_without_equivalent", "brand": brand,
             "confidence": "medium", "claim": f"Names '{brand}'",
             "source": {"file": DOC, "where": f"page 1, line {line}",
-                       "line": text, "context": None},
+                       "line": text, "context": None, "checked": True},
             "line_no": line, "agent_letter": letter}
 
 

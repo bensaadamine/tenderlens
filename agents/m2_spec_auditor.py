@@ -53,6 +53,7 @@ if __name__ == "__main__":
 
 
 import argparse
+import re
 import json
 import sys
 
@@ -119,7 +120,7 @@ def audit(reference, depth="standard", rows=None, online=False,
                 "level1": None, "level2": None, "trace": trace}
     trace.append(f"read {len(docs)} document(s)")
     l1 = run_level1(reference, depth, online, agent, trace)
-    return _finish(reference, depth, rows, l1, trace)
+    return _finish(reference, depth, rows, l1, trace, docs)
 
 
 def run_level1(reference, depth="standard", online=False, agent=False,
@@ -240,7 +241,49 @@ def _agent_pass(reference, l1, online, trace):
                 agent={k: out[k] for k in ("steps", "stop_reason", "engine")})
 
 
-def _finish(reference, depth, rows, l1, trace):
+def _norm(s):
+    return re.sub(r"[^a-z0-9]+", " ", (s or "").lower()).strip()
+
+
+def quote_in_documents(docs, file, line):
+    """Are these words really in the named document? (else in any of the
+    tender's documents, when the name is written another way). A line cut
+    with '...' counts if every piece is there, in order."""
+    parts = [_norm(p) for p in re.split(r"\.\.\.+|\u2026", str(line or ""))]
+    parts = [p for p in parts if p]
+    if not parts or sum(len(p) for p in parts) < 4:
+        return False
+    named = [d for d in docs if d["document"] == file]
+    for d in named or docs:
+        text, at = d.setdefault("_norm", _norm(d["text"])), 0
+        for p in parts:
+            at = text.find(p, at)
+            if at < 0:
+                break
+            at += len(p)
+        else:
+            return True
+    return False
+
+
+def _check_sources(findings, docs, trace):
+    """Mark each finding's source checked or not (M4 scores only checked
+    ones - audit finding 2026-11-01)."""
+    bad = 0
+    for f in findings:
+        s = f["source"]
+        s["checked"] = bool(s.get("line")) and quote_in_documents(
+            docs, s.get("file"), s.get("line"))
+        s["checked_how"] = ("words found in the tender's text by M2"
+                            if s["checked"] else "words NOT found in the "
+                            "tender's text")
+        bad += bool(s.get("line")) and not s["checked"]
+    if bad:
+        trace.append(f"{bad} finding(s) quote words not found in the "
+                     f"documents - they will not score")
+
+
+def _finish(reference, depth, rows, l1, trace, docs=None):
     """Level 2, then every finding normalised with its source."""
     # ------------------------------------------------------------ level 2
     if rows is None:
@@ -304,6 +347,9 @@ def _finish(reference, depth, rows, l1, trace):
                        "line": None, "context": None},
         })
 
+    if docs is None:
+        docs = spec_tools.tender_documents(reference)
+    _check_sources(findings, docs, trace)
     return {"reference": reference, "readable": True, "depth": depth,
             "level1": _slim_l1(l1), "level2": _slim_l2(l2),
             "findings": findings, "trace": trace}

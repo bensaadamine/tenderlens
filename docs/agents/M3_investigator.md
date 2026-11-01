@@ -17,6 +17,7 @@ An in-memory graph built once from the award file: buyer + category → awards, 
 
 ## Steps
 1. **Depth 1, always:** find the award; count this buyer's awards in the category and the winner's share.
+   When several award rows match, the **newest** is the award (ties: supplier name) — never the file's row order; every distinct supplier is listed in `award.winners` (`AWARD_PICK = "first"` restores the first row).
 2. **Depth 2, only if** the winner got **≥ 50 % of ≥ 3** awards: look at the supplier's other buyers.
    - wins everywhere → market leader (`recurring_supplier`)
    - lives off this buyer → relationship (`dependent_supplier`)
@@ -33,7 +34,7 @@ The award file writes one company several ways ("Agilent Technologies" / "Agilen
 
 ## Output
 `investigate(reference, notice_row, graph)` returns:
-- `award` — supplier, buyer, buyer's awards in the category, winner's count and share, number of suppliers
+- `award` — supplier, buyer, buyer's awards in the category, winner's count and share, number of suppliers; `winners` (all suppliers of the tender), `match` (how the award was found)
 - `findings` — `recurring_supplier` / `dependent_supplier`, always labelled **context**
 - `trace`
 

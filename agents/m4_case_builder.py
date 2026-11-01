@@ -154,17 +154,30 @@ def plain_text(c, award=None):
                 f"equivalent product.")
     return c.get("claim", "")
 WATCH = 2
+# Audit finding 2026-11-01: "verified" meant only that a source was attached
+# (an origin and some words); nothing here checked that the words are really
+# in it. Each source now says whether they were checked (source["checked"]):
+# M2 against the document text, M1 and M3 by the code that copied them from
+# the notice field / award record, the M2 and M4 agents by their quote test.
+# Only checked claims score. "attached" restores the old rule.
+VERIFY = "checked"
 
 LEVEL2_KINDS = {"narrow_band", "extreme_threshold", "within_document_bands"}
 CONTEXT_KINDS = {"recurring_supplier", "dependent_supplier"}
 
 
-def _verified(src):
+def _attached(src):
     """A source a human can open: an origin AND the words it says."""
     if not src:
         return False
     origin = src.get("file") or src.get("where")
     return bool(origin) and bool(src.get("line"))
+
+
+def _verified(src):
+    """Attached, and its words checked against what it names."""
+    return _attached(src) and (VERIFY == "attached"
+                               or bool(src.get("checked")))
 
 
 def _tokens(s):
@@ -200,7 +213,8 @@ def build_case(m1, m2, m3, followups=None):
             "claim": s["why"],
             "source": {"file": "tender notice (CanadaBuys feed)",
                        "where": s["signal"], "line": s["evidence"],
-                       "context": None},
+                       "context": None, "checked": True,
+                       "checked_how": "copied from the notice field by M1"},
         })
 
     # ---- M2: documents
@@ -219,15 +233,20 @@ def build_case(m1, m2, m3, followups=None):
     award = (m3 or {}).get("award") or {}
     winner = award.get("supplier")
     if winner:
-        names = [winner] + (list(award.get("other_spellings") or [])
-                            if BRAND_VS_SPELLINGS else [])
+        # (name, how it is tied to the contract); the winner first
+        others = [w for w in (award.get("winners") or []) if w != winner]
+        names = [(winner, "")]
+        if BRAND_VS_SPELLINGS:
+            names += [(n, f" (also written {n} in the award notices)")
+                      for n in award.get("other_spellings") or []]
+        names += [(n, f"; {n} is one of the {len(others) + 1} suppliers "
+                      f"it was awarded to") for n in others]
         for f in (m2 or {}).get("findings", []):
-            hit = next((n for n in names
-                        if _brand_matches(f.get("brand"), n)), None)
+            hit = next((h for h in names
+                        if _brand_matches(f.get("brand"), h[0])), None)
             if f.get("kind") == "brand_without_equivalent" and hit and \
                     _verified(f.get("source")):
-                via = ("" if hit == winner else
-                       f" (also written {hit} in the award notices)")
+                via = hit[1]
                 claims.append({
                     "agent": "M4", "kind": "brand_matches_winner", "level": 1,
                     "confidence": "high",
@@ -238,10 +257,14 @@ def build_case(m1, m2, m3, followups=None):
                                "where": f["source"].get("where"),
                                "line": f["source"].get("line"),
                                "context": f"award: {winner} "
-                                          f"{award.get('date', '')}"},
+                                          f"{award.get('date', '')}",
+                               "checked": f["source"].get("checked"),
+                               "checked_how": f["source"].get(
+                                   "checked_how")},
                 })
 
     for c in claims:
+        c["source_attached"] = _attached(c.get("source"))
         c["verified"] = _verified(c.get("source"))
 
     # ---- score
@@ -255,7 +278,8 @@ def build_case(m1, m2, m3, followups=None):
         w = WEIGHTS.get(k, 0)
         why = None
         if not c["verified"]:
-            w, why = 0, "no checkable source"
+            w, why = 0, ("its words were not found in the source"
+                         if c["source_attached"] else "no checkable source")
         elif k in CONTEXT_KINDS and not has_doc_evidence:
             w, why = 0, "context only - no document finding to attach to " \
                         "(decision 4)"
@@ -373,7 +397,12 @@ def narrative_plain(route, claims, award, m2, followups=None):
         tot, mine = award.get("buyer_awards_in_group"), \
             award.get("to_this_supplier")
         sup = award["supplier"].rstrip(". ")
+        others = [w for w in award.get("winners") or [] if w != award["supplier"]]
         line = f"- Awarded to {sup}."
+        if others:
+            line += (f" The award notices name {len(others)} other "
+                     f"supplier(s) for this tender: " + "; ".join(others)
+                     + ".")
         if tot:
             line += (f" This buyer gave {tot} contract(s) in this category to "
                      f"{award.get('distinct_suppliers')} supplier(s); "
