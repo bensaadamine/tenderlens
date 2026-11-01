@@ -260,7 +260,7 @@ def run(a):
         try:
             case = tenderlens.run_one(ref, (notices, wstats, peers, graph),
                                       a.llm, a.online, a.agent,
-                                      a.m3_agent)
+                                      a.m3_agent, a.m4_agent)
         except tenderlens.AGENT_DOWN as e:
             # Nothing written for this tender: the next run starts here.
             # Answers already given are cached, so nothing is paid twice.
@@ -297,7 +297,7 @@ def run(a):
     meta = {"scope": f"UNSPSC-4 {a.group}, incremental batch {stamp}",
             "generated": time.strftime("%Y-%m-%d %H:%M"),
             "tenders": len(cases), "awards": graph is not None,
-            "llm": a.llm, "agent": a.agent,
+            "llm": a.llm, "agent": a.agent, "m4_agent": a.m4_agent,
             "weights": m4_case_builder.WEIGHTS,
             "alert_at": m4_case_builder.ALERT,
             "watch_at": m4_case_builder.WATCH}
@@ -407,6 +407,13 @@ def main():
     ap.add_argument("--m3-agent", action="store_true",
                     help="let the M3 agent decide which other spellings of "
                          "the winner are the same supplier (LLM, Windows)")
+    ap.add_argument("--m4-agent", nargs="?", const="model",
+                    choices=["model", "fixed"],
+                    help="let M4 re-check cases with a brand finding before "
+                         "ranking them: the M2 agent re-reads the finding, "
+                         "the M3 agent checks the winner's spellings (LLM, "
+                         "Windows). 'fixed' runs every follow-up without "
+                         "the model choosing")
     ap.add_argument("--llm", action="store_true")
     ap.add_argument("--online", action="store_true")
     ap.add_argument("--l2-level", type=int, choices=[6, 8], default=8)

@@ -98,6 +98,12 @@ DECLARED_ALONE = "close"
 # declared signals into WATCH on its own. CONTEXT_ALONE = "watch" restores.
 CONTEXT_ONLY = {"no_trade_agreement"}
 CONTEXT_ALONE = "close"
+# Brand vs winner (2026-11-01, M4 agent): the brand is also checked against
+# the winner's other spellings that M3 accepted as the same company - a
+# winner written "BENDIX CVS" whose award notices also say "BENDIX
+# COMMERCIAL VEHICLE SYSTEMS". Same whole-word test on each name. False
+# restores the check against the winner's own name only.
+BRAND_VS_SPELLINGS = True
 # Wording of the case page. "plain" (2026-10-19): one sentence per reason,
 # each marked declared / found in the documents / context; no internal codes.
 # "v1" restores the earlier text.
@@ -177,7 +183,9 @@ def _brand_matches(brand, supplier):
     return bool(bt) and bt[0] in _tokens(supplier)
 
 
-def build_case(m1, m2, m3):
+def build_case(m1, m2, m3, followups=None):
+    """followups: what the M4 agent checked again (m4_agent.py); shown on
+    the case page, never scored."""
     ref = (m1 or {}).get("reference") or (m2 or {}).get("reference")
     claims = []
 
@@ -211,16 +219,21 @@ def build_case(m1, m2, m3):
     award = (m3 or {}).get("award") or {}
     winner = award.get("supplier")
     if winner:
+        names = [winner] + (list(award.get("other_spellings") or [])
+                            if BRAND_VS_SPELLINGS else [])
         for f in (m2 or {}).get("findings", []):
-            if f.get("kind") == "brand_without_equivalent" and \
-                    _brand_matches(f.get("brand"), winner) and \
+            hit = next((n for n in names
+                        if _brand_matches(f.get("brand"), n)), None)
+            if f.get("kind") == "brand_without_equivalent" and hit and \
                     _verified(f.get("source")):
+                via = ("" if hit == winner else
+                       f" (also written {hit} in the award notices)")
                 claims.append({
                     "agent": "M4", "kind": "brand_matches_winner", "level": 1,
                     "confidence": "high",
                     "claim": f"The specification names '{f['brand']}' "
                              f"without accepting an equivalent, and the "
-                             f"contract was awarded to {winner}.",
+                             f"contract was awarded to {winner}{via}.",
                     "source": {"file": f["source"].get("file"),
                                "where": f["source"].get("where"),
                                "line": f["source"].get("line"),
@@ -303,7 +316,9 @@ def build_case(m1, m2, m3):
         "claims": claims,
         "narrative": (narrative(route, claims, award)
                       if NARRATIVE == "v1"
-                      else narrative_plain(route, claims, award, m2)),
+                      else narrative_plain(route, claims, award, m2,
+                                           followups)),
+        "followups": list(followups or []),
         "readable": bool((m2 or {}).get("readable")),
         "award": award or None,
         "trace": {"M1": f"route={(m1 or {}).get('route')}",
@@ -312,7 +327,7 @@ def build_case(m1, m2, m3):
     }
 
 
-def narrative_plain(route, claims, award, m2):
+def narrative_plain(route, claims, award, m2, followups=None):
     """The case page text: why it is listed, what we could not check, the
     supplier's history. Built only from scored, verified claims."""
     for c in claims:
@@ -370,6 +385,9 @@ def narrative_plain(route, claims, award, m2):
             line += (" Counted with its other spelling(s) in the award "
                      "notices: " + "; ".join(award["other_spellings"]) + ".")
         out.append(line)
+    if followups:
+        out.append("\nChecked again before ranking")
+        out += [f"- {x['text']}" for x in followups]
     out.append("\nThese are hypotheses with evidence attached, not findings "
                "of wrongdoing. A person decides.")
     return "\n".join(out)

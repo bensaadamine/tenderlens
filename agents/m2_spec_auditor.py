@@ -265,6 +265,10 @@ def _finish(reference, depth, rows, l1, trace):
             "brand": f["brand"],
             "detail": f.get("llm_reason") or "",
             "source": src,
+            # for the M4 agent, which can hand the finding back to the M2
+            # agent: where it is, and whether that agent already lettered it
+            "line_no": f.get("line_no"),
+            "agent_letter": f.get("agent_letter"),
         })
 
     for f in (l2.get("findings") or []):

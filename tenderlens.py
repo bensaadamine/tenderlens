@@ -62,6 +62,7 @@ import level2
 import m1_screener
 import m2_spec_auditor
 import m3_investigator
+import m4_agent
 import m4_case_builder
 
 try:
@@ -119,11 +120,15 @@ def no_contract_reason(row):
 # Raised when --agent is on and no model answers; a run stops on them and
 # the next run resumes from that tender.
 AGENT_DOWN = (m2_spec_auditor.AgentUnavailable,
-              m3_investigator.AgentUnavailable)
+              m3_investigator.AgentUnavailable,
+              m4_agent.AgentUnavailable)
 
 
 def run_one(ref, shared, use_llm=False, online=False, agent=False,
-            m3_agent=False):
+            m3_agent=False, m4_mode=None):
+    """The four agents on one tender. m4_mode: None (M4 rules only),
+    "model" or "fixed" (the M4 agent re-checks cases with a brand finding,
+    agents/m4_agent.py)."""
     notices, wstats, rows, graph = shared
     m1 = m1_screener.screen(ref, notices, wstats)
     why_none = (no_contract_reason(notices.get(ref))
@@ -144,7 +149,12 @@ def run_one(ref, shared, use_llm=False, online=False, agent=False,
     else:
         m3 = m3_investigator.investigate(ref, notices.get(ref), graph,
                                          agent=m3_agent)
-    case = m4_case_builder.build_case(m1, m2, m3)
+    if m4_mode and not why_none:
+        hooks = m4_agent.default_hooks(ref, notices.get(ref), graph, m3,
+                                       online)
+        case = m4_agent.coordinate(ref, m1, m2, m3, hooks, mode=m4_mode)
+    else:
+        case = m4_case_builder.build_case(m1, m2, m3)
     case["m1_route"] = m1.get("route")
     if why_none:
         case["route"] = "close"
@@ -326,6 +336,13 @@ def main():
     ap.add_argument("--m3-agent", action="store_true",
                     help="let the M3 agent decide which other spellings of "
                          "the winner are the same supplier (LLM, Windows)")
+    ap.add_argument("--m4-agent", nargs="?", const="model",
+                    choices=["model", "fixed"],
+                    help="let M4 re-check cases with a brand finding before "
+                         "ranking them: the M2 agent re-reads the finding, "
+                         "the M3 agent checks the winner's spellings (LLM, "
+                         "Windows). 'fixed' runs every follow-up without "
+                         "the model choosing")
     ap.add_argument("--llm", action="store_true",
                     help="let M2 use the LLM judge on tenders M1 routes deep "
                          "(spends tokens)")
@@ -358,7 +375,8 @@ def main():
         return
 
     if a.tender:
-        c = run_one(a.tender, shared, a.llm, a.online, a.agent, a.m3_agent)
+        c = run_one(a.tender, shared, a.llm, a.online, a.agent, a.m3_agent,
+                    a.m4_agent)
         print(f"\n{c['reference']}  ->  {c['route'].upper()}  "
               f"(score {c['score']}, M1 {c['m1_route']})\n")
         print(c["narrative"])
@@ -370,7 +388,9 @@ def main():
             if x.get("not_scored_because"):
                 print(f"      not scored: {x['not_scored_because']}")
         print()
-        for k in ("M1", "M2", "M3"):
+        for k in ("M1", "M2", "M3", "M4"):
+            if k not in c["trace"]:
+                continue
             v = c["trace"][k]
             for line in ([v] if isinstance(v, str) else v):
                 print(f"  {k}: {line}")
@@ -395,7 +415,7 @@ def main():
         t1 = time.time()
         try:
             cases.append(run_one(ref, shared, a.llm, a.online, a.agent,
-                                 a.m3_agent))
+                                 a.m3_agent, a.m4_agent))
         except AGENT_DOWN as e:
             print(f"\nstopped at {i}/{len(todo)}: the agents have no model "
                   f"({e}). The queue below covers the tenders done so far.")
@@ -411,7 +431,7 @@ def main():
     meta = {"scope": f"UNSPSC-4 {a.group}" if a.group else a.refs,
             "generated": time.strftime("%Y-%m-%d %H:%M"),
             "tenders": len(cases), "awards": shared[3] is not None,
-            "llm": a.llm, "agent": a.agent,
+            "llm": a.llm, "agent": a.agent, "m4_agent": a.m4_agent,
             "weights": m4_case_builder.WEIGHTS,
             "alert_at": m4_case_builder.ALERT,
             "watch_at": m4_case_builder.WATCH}

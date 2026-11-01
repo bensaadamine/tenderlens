@@ -1,0 +1,200 @@
+{
+ "n_notices": 30420,
+ "n_cols": 67,
+ "category": {
+  "SRV": 13163,
+  "GD": 12131,
+  "CNST": 4034,
+  "SRVTGD": 682,
+  "GD, SRV": 251,
+  "GD, SRVTGD": 86,
+  "CNST, SRV": 18,
+  "SRV, SRVTGD": 11
+ },
+ "notice_type": {
+  "Request for Proposal": 17929,
+  "RFP against Supply Arrangement": 3193,
+  "Request for Standing Offer": 2621,
+  "Advance Contract Award Notice": 1697,
+  "vide": 1611,
+  "Invitation to Qualify": 1575,
+  "Request for Information": 1089,
+  "Request for Supply Arrangement": 411,
+  "Not Applicable": 233,
+  "Directed Contract": 61
+ },
+ "method": {
+  "Competitive - Open bidding": 21452,
+  "Competitive - Selective tendering": 5677,
+  "Competitive - Traditional": 1488,
+  "Advance contract award notice": 1434,
+  "Competitive - Limited tendering": 253,
+  "Non-competitive": 111,
+  "vide": 5
+ },
+ "status": {
+  "Expired": 27557,
+  "Cancelled": 2004,
+  "Open": 859
+ },
+ "pub_min": "2022-08-08",
+ "pub_max": "2026-10-03",
+ "missing": {
+  "Titre": 0.0,
+  "Date publication": 0.0,
+  "Date cl\u00f4ture": 0.0,
+  "UNSPSC": 18.6,
+  "Cat\u00e9gorie": 0.0,
+  "M\u00e9thode": 0.0,
+  "Raison appel limit\u00e9": 98.7,
+  "Accords commerciaux": 0.0,
+  "Acheteur": 0.0,
+  "Pi\u00e8ces jointes": 49.7,
+  "Description": 1.5,
+  "D\u00e9but contrat pr\u00e9vu": 45.9
+ },
+ "ltr_literal_none": 0.0,
+ "ltr_empty": 98.7,
+ "monthly_mean": 596,
+ "window_valid": 30420,
+ "window_neg": 251,
+ "window_gt365": 333,
+ "window_median": 25.6,
+ "window_q": {
+  "0.05": 11.6,
+  "0.25": 16.6,
+  "0.5": 25.6,
+  "0.75": 38.8,
+  "0.95": 63.7
+ },
+ "window_by_method": {
+  "Competitive - Open bidding": 28.6,
+  "Competitive - Selective tendering": 20.6,
+  "Competitive - Traditional": 21.6,
+  "Advance contract award notice": 15.6
+ },
+ "unspsc_missing": 18.6,
+ "selected_counts": {
+  "4110": 957,
+  "5610": 839,
+  "2510": 613,
+  "2511": 532,
+  "4323": 526,
+  "4111": 511,
+  "2410": 405,
+  "2520": 387,
+  "2517": 281,
+  "2513": 252,
+  "4617": 214,
+  "4014": 179,
+  "3213": 170,
+  "4322": 151,
+  "2411": 145,
+  "3912": 139,
+  "2518": 106,
+  "3116": 100,
+  "4015": 91,
+  "4610": 64
+ },
+ "with_cb_attachment": 14261,
+ "n_2510": 613,
+ "n_2510_u8": 55,
+ "generic_2510": 13.5,
+ "n_awards": 14907,
+ "n_suppliers": 8023,
+ "award_value_missing": 19.0,
+ "award_value_median": 107067.5,
+ "award_value_neg_or_zero": 2334,
+ "award_q": {
+  "0.25": 66943.28,
+  "0.5": 163264.5,
+  "0.75": 439559.64,
+  "0.99": 12341849.59639998
+ },
+ "award_outliers_log_iqr": 295,
+ "top10_supplier_share": 6.1,
+ "census_rows": 4872,
+ "census_tenders": 162,
+ "census_labels": 2225,
+ "comparators": {
+  "GE": 40.4,
+  "NONE": 33.5,
+  "RANGE": 13.2,
+  "LE": 12.9,
+  "EQ": 0.1
+ },
+ "dimensions": {
+  "length": 3045,
+  "mass": 989,
+  "speed": 180,
+  "volume": 149,
+  "voltage": 144,
+  "temperature": 95,
+  "power": 90,
+  "pressure": 54,
+  "heat": 48,
+  "current": 47
+ },
+ "obs_per_tender_median": 22.0,
+ "obs_per_tender_max": 195,
+ "labels_single_tender_pct": 67.9,
+ "mapped_cols": [
+  "reference",
+  "unspsc8",
+  "pub_date",
+  "label",
+  "raw_label",
+  "label_src",
+  "comparator",
+  "comp_src",
+  "value",
+  "value_text",
+  "unit",
+  "unit_resolved",
+  "dimension",
+  "base_value",
+  "base_unit",
+  "value_lo",
+  "value_hi",
+  "base_lo",
+  "base_hi",
+  "band_width",
+  "restated",
+  "also_stated_as",
+  "soft_unit",
+  "part_number_line",
+  "scope",
+  "file",
+  "line_no",
+  "section",
+  "source_line",
+  "context"
+ ],
+ "mapped_rows": 4050,
+ "res_2510": {
+  "status": {
+   "no_documents": 413,
+   "close": 193,
+   "still_open": 6,
+   "watch": 1
+  },
+  "pile": {
+   "none": 411,
+   "base": 199,
+   "quarantine": 3
+  }
+ },
+ "res_4110": {
+  "status": {
+   "no_documents": 561,
+   "close": 384,
+   "watch": 11,
+   "alert": 1
+  },
+  "pile": {
+   "none": 559,
+   "base": 384,
+   "quarantine": 14
+  }
+ }
+}

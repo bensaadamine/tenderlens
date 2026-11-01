@@ -285,12 +285,17 @@ def _merged(graph, sup, same):
     return [sup] + [n for n in same if n != sup]
 
 
-def investigate(reference, notice_row=None, graph=None, agent=False):
+def investigate(reference, notice_row=None, graph=None, agent=False,
+                spellings=None):
     """M3 for ONE tender. Every result is weight='context' (decision 4).
 
     agent=True: the M3 agent first decides which other spellings in the
     award file are the same supplier (m3_agent.py); the counts below then
-    treat them as one. The counting itself stays here, in code."""
+    treat them as one. The counting itself stays here, in code.
+
+    spellings: normalised names already judged the same supplier (the M4
+    agent asks the M3 agent for ALL of them, not only those that won from
+    this buyer); used instead of asking the agent here."""
     trace = []
     if graph is None:
         trace.append("no award data (data/awards.csv) - run "
@@ -321,8 +326,8 @@ def investigate(reference, notice_row=None, graph=None, agent=False):
     trace.append(f"award found via {via}: {a['supplier_name']} "
                  f"({len(recs)} award row(s))")
 
-    same = []
-    if agent:
+    same = list(spellings) if spellings is not None else []
+    if agent and spellings is None:
         # Only spellings that also won from this buyer in this category can
         # change the share below - the others are not worth a model call.
         # Measured 2026-10-26: 18 winners in 2510, 37 in 4110.
@@ -344,20 +349,22 @@ def investigate(reference, notice_row=None, graph=None, agent=False):
              "value": a["value"], "date": a["date"], "group": grp,
              "buyer_awards_in_group": total, "to_this_supplier": mine,
              "share": round(share, 3), "distinct_suppliers": suppliers,
-             "other_spellings": [graph["names"].get(n, n) for n in same]}
+             "other_spellings": [graph["names"].get(n, n) for n in same],
+             "supplier_key": a["supplier"], "spelling_keys": list(same)}
     findings = []
 
     if total >= REPEAT_MIN and share >= REPEAT_SHARE:
         # Depth 2 - only now is it worth asking who ELSE this supplier
         # sells to. Same share at depth 1 can mean a market leader or a
         # dependency; the answer is in the supplier's other buyers.
-        if agent:
+        if agent and spellings is None:
             # depth 2 reads the supplier's other buyers: now every spelling
             # matters (decisions already made are reused, not asked again)
             same = _agent_aliases(a["supplier"], graph, trace)
             names = _merged(graph, a["supplier"], same)
             award["other_spellings"] = [graph["names"].get(n, n)
                                         for n in same]
+            award["spelling_keys"] = list(same)
         buyers = collections.Counter()
         for n in names:
             buyers.update(graph["sb"].get(n, {}))
@@ -390,7 +397,8 @@ def investigate(reference, notice_row=None, graph=None, agent=False):
         trace.append("depth 2 skipped - no recurring winner at depth 1")
 
     return {"reference": reference, "available": True, "award": award,
-            "findings": findings, "trace": trace}
+            "findings": findings, "trace": trace,
+            "agent": bool(agent or spellings is not None)}
 
 
 def _agent_aliases(sup, graph, trace, only=None):
