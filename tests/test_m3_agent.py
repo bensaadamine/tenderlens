@@ -113,6 +113,12 @@ def main():
           any("MADE UP NAME" in t and "not a name the tools showed" in t
               for t in out["trace"]))
     check("different recorded", "TOWER DENTAL CLINIC" in out["different"])
+    check("a name copied with its description is read as the name",
+          m3_agent.clean_name("Fisher Scientifique - Ottawa (K2E7L6); "
+                              "6 award(s)") == "FISHER SCIENTIFIQUE"
+          and m3_agent.clean_name("IDEXX - Toronto, Ottawa (M5W0E9, "
+                                  "K1G6A8)") == "IDEXX"
+          and m3_agent.clean_name("SAINT-LAURENT - SUD") == "SAINT-LAURENT - SUD")
 
     ask2 = scripted()
     out2 = m3_agent.aliases_for(W, g, ask=ask2, path=aliases)

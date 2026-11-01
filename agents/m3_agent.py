@@ -81,6 +81,18 @@ def core(name):
     return " ".join(w for w in name.split() if w not in GENERIC)
 
 
+# What describe() adds after a name: " - Ottawa (K2E7L6); 6 award(s)".
+# Measured 2026-11-01: the model copied whole description lines into
+# "decide" and every one was refused, 6 steps running.
+RE_DESCRIPTION = re.compile(
+    r"\s+-\s+[^()]*\([^()]*\)(?:;\s*\d+\s+AWARD\(S\))?\s*$", re.I)
+
+
+def clean_name(text):
+    """A name as the model wrote it, without the description we added."""
+    return RE_DESCRIPTION.sub("", str(text or "").strip().upper()).strip()
+
+
 def first_word(name):
     words = [w for w in core(name).split() if len(w) >= 4 and not w.isdigit()]
     return words[0] if words else ""
@@ -255,8 +267,9 @@ def _as_action(reply):
     return action, args
 
 
-def make_nodes(index, ask, shown):
-    """The graph's two nodes. `shown` = names the tools have shown."""
+def make_nodes(index, ask, shown, accepted=()):
+    """The graph's two nodes. `shown` = names the tools have shown;
+    `accepted` = spellings already stored as the same company."""
 
     def one_reply(state, final=False):
         try:
@@ -291,7 +304,7 @@ def make_nodes(index, ask, shown):
         open_names = list(state["open_names"])
         reasons = dict(state["reasons"])
         done = False
-        name = str(args.get("name") or "").strip().upper()
+        name = clean_name(args.get("name"))
         if action == "variants":
             found = index.variants(name)
             shown.update(found)
@@ -305,15 +318,17 @@ def make_nodes(index, ask, shown):
             for verdict, names in (("same", args.get("same")),
                                    ("different", args.get("different"))):
                 for n in names if isinstance(names, list) else []:
-                    n = str(n).strip().upper()
+                    n = clean_name(n)
                     if n not in shown:
                         notes.append(f"'{n}': refused - not a name the "
-                                     f"tools showed; copy it exactly")
+                                     f"tools showed; copy the name only, "
+                                     f"without ' - city (codes)'")
                         continue
                     if n in same or n in different:
                         continue
                     if verdict == "same":
-                        why = allowed_same(index, state["winner"], n, same)
+                        why = allowed_same(index, state["winner"], n,
+                                           list(accepted) + same)
                         if why:
                             notes.append(f"'{n}': refused as same - {why}")
                             continue
@@ -402,7 +417,7 @@ def aliases_for(winner, graph, ask=None, use_graph=True, path=None,
     state = AgentState(winner=winner, open_names=todo, same=[],
                        different=[], reasons={}, history=[], steps=0,
                        done=False, stop_reason="")
-    decide, act = make_nodes(index, ask, shown)
+    decide, act = make_nodes(index, ask, shown, accepted=same)
     engine = "langgraph" if (use_graph and StateGraph) else "loop"
     if engine == "langgraph":
         state = build_graph(decide, act).invoke(
