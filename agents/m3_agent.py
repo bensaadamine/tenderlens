@@ -147,17 +147,48 @@ class AwardIndex:
         return "\n".join(lines) + (f"\n... {more} more" if more > 0 else "")
 
 
+# 2026-11-01 (audit of the M3 agent): a postal code shared with an ACCEPTED
+# spelling used to be enough, so merges could chain - A shares a code with
+# B, B with C, so C became A without sharing anything with it. Now a merge
+# must share a postal code with the winner itself (or have the same name
+# once generic words are dropped). True restores the chain rule.
+CHAIN = False
+# 2026-11-01: a decision was stored per winner, so a spelling merged into
+# FISHER SCIENTIFIC was asked again from scratch the day it won a tender
+# itself. Decisions now apply to the whole group of spellings judged the
+# same company. False restores per-winner decisions.
+GROUPS = True
+
+
 def allowed_same(index, winner, name, accepted):
     """Code's rule for "same". Returns None if allowed, else why not."""
     if RE_JV.search(name) and not RE_JV.search(winner):
         return "a joint venture is not the same company as a partner"
     if core(name) == core(winner):
         return None
-    group = [winner] + list(accepted)
+    group = [winner] + (list(accepted) if CHAIN else [])
     if any(index.codes(name) & index.codes(n) for n in group):
         return None
-    return ("no shared postal code with the winner or its accepted "
-            "spellings, and the names differ beyond generic words")
+    return ("no shared postal code with the winner"
+            + (" or its accepted spellings" if CHAIN else "")
+            + ", and the names differ beyond generic words")
+
+
+def group_of(winner, stored):
+    """Every spelling judged the same company as `winner`, through any
+    stored "same" decision (whichever spelling was the winner then)."""
+    links = {}
+    for (w, n), r in stored.items():
+        if r["verdict"] == "same":
+            links.setdefault(w, set()).add(n)
+            links.setdefault(n, set()).add(w)
+    group, todo = {winner}, [winner]
+    while todo:
+        for n in links.get(todo.pop(), ()):
+            if n not in group:
+                group.add(n)
+                todo.append(n)
+    return group
 
 
 # ----------------------------------------------------------- stored answers
@@ -220,6 +251,25 @@ You have finished looking. Decide now from what is shown.
 Reply with ONE JSON object and nothing else:
 {"same": ["..."], "different": ["..."], "reason": "<one sentence>"}
 """
+
+
+def _tools():
+    """Native tool schemas (llm.tool, 2026-11-01); same tools as the prompt."""
+    import llm
+    t = llm.tool
+    names = {"type": "array", "items": {"type": "string"}}
+    return [
+        t("variants", "Other spellings near a name: same postal code, or "
+                      "the same first word.",
+          {"name": {"type": "string"}}, ["name"]),
+        t("awards", "What a name won: date, buyer, category, title.",
+          {"name": {"type": "string"}}, ["name"]),
+        t("decide", "Same company as the winner or not, names exactly as "
+                    "shown, with a one-sentence reason.",
+          {"same": names, "different": names,
+           "reason": {"type": "string"}}, ["reason"]),
+        t("finish", "Stop; undecided names stay apart."),
+    ]
 
 
 class AgentState(TypedDict):
@@ -397,7 +447,20 @@ def aliases_for(winner, graph, ask=None, use_graph=True, path=None,
     index = graph["_m3_index"]
     stored = load_aliases(path)
     cands = [n for n in index.variants(winner) if only is None or only(n)]
-    known = {n: stored[(winner, n)] for n in cands if (winner, n) in stored}
+    if GROUPS:
+        members = group_of(winner, stored)
+        known = {}
+        for n in cands:
+            if n in members:
+                known[n] = {"verdict": "same"}
+            else:
+                row = next((stored[(m, n)] for m in members
+                            if (m, n) in stored), None)
+                if row:
+                    known[n] = row
+    else:
+        known = {n: stored[(winner, n)] for n in cands
+                 if (winner, n) in stored}
     same = [n for n, r in known.items() if r["verdict"] == "same"]
     different = [n for n, r in known.items() if r["verdict"] == "different"]
     todo = [n for n in cands if n not in known]
@@ -412,7 +475,8 @@ def aliases_for(winner, graph, ask=None, use_graph=True, path=None,
     if ask is None:
         import llm
         ask = lambda system, user: llm.ask_json(
-            system, user, strong=True, max_tokens=2000, tag="m3_agent")
+            system, user, strong=True, max_tokens=2000, tag="m3_agent",
+            tools=None if system == FINAL_SYSTEM else _tools())
     shown = set(cands)
     state = AgentState(winner=winner, open_names=todo, same=[],
                        different=[], reasons={}, history=[], steps=0,

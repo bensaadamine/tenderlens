@@ -17,7 +17,11 @@ and tools, and decides itself what to read next:
              d  one of several brands listed as alternatives / compatibility
              e  the tender accepts an equivalent for it
              f  the brand is REQUIRED and no equivalent is accepted
-    TOOLS  search, read, equivalents, wikidata, classify, finish
+    TOOLS  search, read, equivalents, facts, wikidata, classify, finish
+           (facts: what the local model extracted outside the requirements
+           section - buyer's answers, equipment the buyer owns; tools/facts.py)
+           Called through the provider's native tool calling (llm.tool
+           schemas, 2026-11-01); a plain JSON reply still works.
     LOOP   decide -> act -> decide ... until every candidate has a letter,
            the model says finish, or MAX_STEPS is reached.
 
@@ -53,6 +57,7 @@ import json
 import re
 from typing import TypedDict
 
+import facts as _facts
 import spec_tools
 
 try:
@@ -281,6 +286,64 @@ def render(state):
     return "\n".join(out)
 
 
+# With the facts tool (2026-11-01): one more check, one more tool. The prompt
+# without it is kept as it was, so TENDERLENS_FACTS=off gives back the old
+# prompt (and its cache).
+SYSTEM_NO_FACTS = SYSTEM
+SYSTEM = SYSTEM.replace(
+    "look at the equivalence\nsentences of the tender, search other mentions.",
+    "look at the equivalence\nsentences of the tender, search other mentions, "
+    "ask for the facts about the\nname (buyer's answers to bidders, equipment "
+    "the buyer already owns).").replace(
+    "equivalents  {}                              every sentence accepting an "
+    "equivalent\n",
+    "equivalents  {}                              every sentence accepting an "
+    "equivalent\nfacts        {\"name\": \"...\"}                 buyer's "
+    "answers and equipment the buyer\n                                       "
+    "      owns, found outside the requirements\n")
+assert SYSTEM != SYSTEM_NO_FACTS
+
+
+def system_prompt():
+    return SYSTEM if _facts.FACTS == "on" else SYSTEM_NO_FACTS
+
+
+def _tools():
+    import llm
+    t = llm.tool
+    out = [
+        t("search", "Lines of the tender containing a text.",
+          {"text": {"type": "string"}}, ["text"]),
+        t("read", "The lines around one line of one document.",
+          {"document": {"type": "string"}, "line": {"type": "integer"}},
+          ["document", "line"]),
+        t("equivalents", "Every sentence of the tender accepting an "
+                         "equivalent product."),
+        t("facts", "Facts found outside the requirements section about a "
+                   "name: the buyer's answers to bidders, equipment the "
+                   "buyer already owns, equivalents accepted.",
+          {"name": {"type": "string"}}, ["name"]),
+        t("wikidata", "Is this name a company on Wikidata.",
+          {"name": {"type": "string"}}, ["name"]),
+        t("classify", "Give candidates their letter a-f, each with a quote "
+                      "copied exactly from the tender and its document and "
+                      "line. Several at once is fine.",
+          {"verdicts": {"type": "array", "items": {
+              "type": "object",
+              "properties": {"id": {"type": "integer"},
+                             "letter": {"type": "string",
+                                        "enum": list("abcdef")},
+                             "quote": {"type": "string"},
+                             "document": {"type": "string"},
+                             "line": {"type": "integer"}},
+              "required": ["id", "letter", "quote", "document", "line"]}}},
+          ["verdicts"]),
+        t("finish", "Stop; candidates without a letter stay unresolved."),
+    ]
+    return out if _facts.FACTS == "on" else [x for x in out
+                                              if x["name"] != "facts"]
+
+
 # The last call has no tool menu at all. Measured 2026-10-22: with the menu,
 # gpt-oss kept searching even when told the step was its last.
 FINAL_SYSTEM = SYSTEM.split("Check before you answer:")[0] + """You have finished investigating. Decide now from the lines already shown.
@@ -296,13 +359,15 @@ Reply with ONE JSON object and nothing else:
 
 
 # ----------------------------------------------------------- decide and act
-def make_nodes(text, ask, online=False):
-    """The graph's two nodes, bound to one tender's text and one model."""
+def make_nodes(text, ask, online=False, facts_fn=None):
+    """The graph's two nodes, bound to one tender's text and one model.
+    facts_fn(name) -> text for the facts tool (tests pass a fake)."""
 
     def one_reply(state, final=False):
         """One model call -> (action, args, thought). Raises if no model."""
         try:
-            reply = ask(FINAL_SYSTEM if final else SYSTEM, render(state))
+            reply = ask(FINAL_SYSTEM if final else system_prompt(),
+                        render(state))
         except ValueError:            # not JSON: a wasted step, told in act
             reply = {}
         except RuntimeError as e:     # an empty answer is a wasted step too;
@@ -346,7 +411,8 @@ def make_nodes(text, ask, online=False):
         done = False
         same = [p["step"] for p in state["history"][:-1]
                 if p["action"] == action and p["args"] == args
-                and action in ("search", "read", "equivalents", "wikidata")]
+                and action in ("search", "read", "equivalents", "wikidata",
+                               "facts")]
         if same:
             obs = (f"already done at step {same[0]} - same result as there. "
                    f"Do not repeat: classify with what you know.")
@@ -357,6 +423,8 @@ def make_nodes(text, ask, online=False):
                             args.get("line"))
         elif action == "equivalents":
             obs = text.equivalents()
+        elif action == "facts" and facts_fn and _facts.FACTS == "on":
+            obs = facts_fn(str(args.get("name") or ""))
         elif action == "wikidata":
             name = str(args.get("name") or "")
             v = spec_tools.verify_brand(name, offline=not online)
@@ -373,7 +441,9 @@ def make_nodes(text, ask, online=False):
                    "'action' - reply with JSON only")
         else:
             obs = (f"error: unknown action '{action}'. Use one of: search, "
-                   f"read, equivalents, wikidata, classify, finish")
+                   f"read, equivalents, "
+                   + ("facts, " if _facts.FACTS == "on" else "")
+                   + "wikidata, classify, finish")
         h["observation"] = obs
         stop = done or not open_ids or state["steps"] >= MAX_STEPS
         reason = ("finished by the model" if done else
@@ -455,7 +525,7 @@ def run_loop(state, decide, act):
 
 
 def classify_tender(reference, candidates, ask=None, online=False,
-                    text_dir=None, use_graph=True):
+                    text_dir=None, use_graph=True, facts_fn=None):
     """Letter every candidate of one tender.
 
     candidates: [{"name", "document", "line_no", "evidence"}] from the rules.
@@ -465,8 +535,13 @@ def classify_tender(reference, candidates, ask=None, online=False,
     """
     if ask is None:
         import llm
+        # native tools on investigating steps; the final call has none
         ask = lambda system, user: llm.ask_json(
-            system, user, strong=True, max_tokens=3000, tag="m2_agent")
+            system, user, strong=True, max_tokens=3000, tag="m2_agent",
+            tools=None if system == FINAL_SYSTEM else _tools())
+    if facts_fn is None:
+        names = [c["name"] for c in candidates]
+        facts_fn = lambda name: _facts.facts_for(reference, names, name)
     cands = [dict(c, id=i + 1) for i, c in enumerate(candidates)]
     if not cands:
         return {"verdicts": [], "unresolved": [], "steps": 0,
@@ -475,7 +550,7 @@ def classify_tender(reference, candidates, ask=None, online=False,
                        open_ids=[c["id"] for c in cands], verdicts={},
                        history=[], steps=0, done=False, stop_reason="")
     text = TenderText(reference, text_dir)
-    decide, act = make_nodes(text, ask, online)
+    decide, act = make_nodes(text, ask, online, facts_fn)
     if use_graph and StateGraph is not None:
         state = build_graph(decide, act).invoke(
             state, {"recursion_limit": 4 * MAX_STEPS + 4})
@@ -488,7 +563,7 @@ def classify_tender(reference, candidates, ask=None, online=False,
         v["page"] = text.page_of(v["document"], v["line"])
     trace = [f"step {h['step']}: {h['action']} "
              f"{json.dumps(h['args'], ensure_ascii=False)[:120]} -> "
-             f"{h['observation'].splitlines()[0][:120] if h['observation'] else ''}"
+             f"{h['observation'].replace(chr(10), ' | ')[:400]}"
              for h in state["history"]]
     return {"verdicts": verdicts,
             "unresolved": [by_id[i] for i in state["open_ids"]],

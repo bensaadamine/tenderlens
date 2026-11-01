@@ -14,7 +14,7 @@ Find, with a quoted line, a departure from the trade-agreement rule: *a specific
 - The run flags `--online`, `--agent` (or the older `--llm`).
 
 ## How it works
-1. **Rules find candidates** (`tools/spec_tools.py`): brand-like names next to a model code, outside bidders' questions. Names Wikidata knows are not companies are dropped. A name is cleared for good only when the text accepts an equivalent ("or equivalent", or the standard "Equivalent Products … form, fit, function" clause).
+1. **Rules find candidates** (`tools/spec_tools.py`): brand-like names next to a model code, **in the requirements section only** (whole document when no section is found; `--l1-scope all` restores everywhere), outside bidders' questions. Measured on the 76 labelled cases: 0 of 12 lock-ins lost, 10 of 46 junk names removed; synthetic set unchanged (64/160, 17 alerts, 0/120 wrong); on 4110 offline only the two "Net 30" false findings went away. Names Wikidata knows are not companies are dropped. A name is cleared for good only when the text accepts an equivalent ("or equivalent", or the standard "Equivalent Products … form, fit, function" clause).
 2. **The agent judges the rest** (`--agent`, `agents/m2_agent.py`). Goal: give every remaining candidate the auditor's letter, with a quote:
 
    | | |
@@ -35,9 +35,12 @@ Find, with a quoted line, a departure from the trade-agreement rule: *a specific
 | `search` | every line containing a text, bidders' questions marked |
 | `read` | the lines around a line |
 | `equivalents` | every sentence of the tender accepting an equivalent |
+| `facts` | short quoted facts found **outside the requirements section** by the local model (`tools/facts.py`): the buyer's answers to bidders, equipment the buyer already owns, equivalents accepted. Extracted once per tender when first asked, quotes checked by code, stored in `reports/facts/`. No local model configured → the tool says so. `TENDERLENS_FACTS=off` removes it. |
 | `wikidata` | whether a name is a company (cached) |
 | `classify` | letters + quotes for one or several candidates |
 | `finish` | stop; unlettered candidates stay unresolved |
+
+**How the model calls them:** native tool calling, one schema per tool (`llm.tool`); a plain JSON reply still works. `TENDERLENS_NATIVE_TOOLS=off` restores the prompt-only calls.
 
 **Kept in code, never left to the model:** every verdict must quote text really in the named document (the line recorded is where the quote is); an "f" quote must contain the brand; a refused verdict is explained back to the model; a candidate without a valid letter is **unresolved** — neither a finding nor a clearance.
 

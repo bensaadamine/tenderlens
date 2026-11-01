@@ -1,0 +1,139 @@
+"""
+Does the M4 agent earn its cost? Runs the labelled tenders (tests/m2_labels.csv
+and tests/m2_holdout.csv) three ways and compares the routes:
+
+    off     M4 rules only
+    fixed   every M4 follow-up, in a fixed order, no model choosing
+    model   the M4 agent chooses the follow-ups
+
+M2 runs on rules only, so M4's follow-ups (re-reading a finding, the
+winner's spellings) are what changes a case. A tender counts as "should be
+flagged" when one of its names is labelled f (brand required, no
+equivalent); "flagged" means watch or alert. If `model` gives the same
+routes as `fixed`, keep `fixed`: the model's choices add cost, not value.
+
+    python tests/m4_eval.py --online                 # all three (Windows)
+    python tests/m4_eval.py --modes off              # offline baseline
+
+Writes reports/m4_eval/<stamp>/cases.csv and summary.txt; never overwrites.
+"""
+
+# --- repo layout: find the agents/, tools/, prepare/ folders and run from
+# the repository root, whatever folder the script sits in (2026-10-22).
+import os as _os
+import sys as _sys
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+for _d in ("agents", "tools", "prepare", "tests", ""):
+    _p = _os.path.join(_ROOT, _d)
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+if __name__ == "__main__":
+    _os.chdir(_ROOT)
+# ---
+
+import argparse
+import collections
+import csv
+import io
+import os
+import time
+
+import m2_eval
+import tenderlens
+
+OUT_DIR = os.path.join("reports", "m4_eval")
+MODES = ("off", "fixed", "model")
+
+
+def _tokens(since):
+    """Tokens logged by the agents since `since` (an ISO timestamp)."""
+    n = 0
+    if not os.path.exists("reports/llm_usage.csv"):
+        return 0
+    with io.open("reports/llm_usage.csv", encoding="utf-8",
+                 errors="replace") as f:
+        for r in csv.DictReader(line.replace("\0", "") for line in f):
+            if (r.get("ts") or "") >= since and \
+                    (r.get("tag") or "").endswith("_agent"):
+                try:
+                    n += int(float(r.get("total_tokens") or 0))
+                except ValueError:
+                    pass
+    return n
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
+    ap.add_argument("--modes", nargs="+", choices=MODES, default=list(MODES))
+    ap.add_argument("--online", action="store_true")
+    ap.add_argument("--limit", type=int, default=0)
+    a = ap.parse_args()
+
+    labels = m2_eval.load_labels("all")
+    want = collections.defaultdict(set)
+    for lab in labels:
+        want[lab["reference"]].add(lab["letter"])
+    refs = sorted(want)[:a.limit or None]
+    shared = tenderlens.load_shared(verbose=False)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    out_dir = os.path.join(OUT_DIR, stamp)
+    os.makedirs(out_dir, exist_ok=True)
+
+    rows, tokens = [], {}
+    for mode in a.modes:
+        t0 = time.strftime("%Y-%m-%dT%H:%M:%S")
+        for ref in refs:
+            try:
+                c = tenderlens.run_one(ref, shared, online=a.online,
+                                       m4_mode=None if mode == "off"
+                                       else mode)
+                route = c["route"]
+                steps = (c.get("m4_agent") or {}).get("steps", 0)
+                checks = "; ".join(f["text"][:80]
+                                   for f in c.get("followups", []))
+            except tenderlens.AGENT_DOWN as e:
+                route, steps, checks = "agent did not run", 0, str(e)[:120]
+            rows.append({"mode": mode, "reference": ref,
+                         "labelled_lock_in": "f" in want[ref],
+                         "route": route, "m4_steps": steps,
+                         "followups": checks})
+            print(f"  {mode:5} {ref:28} {route:6} (lock-in labelled: "
+                  f"{'f' in want[ref]})")
+        tokens[mode] = _tokens(t0)
+
+    with io.open(os.path.join(out_dir, "cases.csv"), "w", encoding="utf-8",
+                 newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+
+    lines = [f"M4 eval - {stamp} - {len(refs)} labelled tender(s), code "
+             f"{m2_eval._commit()}", ""]
+    by = {m: {r["reference"]: r for r in rows if r["mode"] == m}
+          for m in a.modes}
+    for m in a.modes:
+        rs = list(by[m].values())
+        ran = [r for r in rs if r["route"] != "agent did not run"]
+        flag = [r for r in ran if r["route"] in ("watch", "alert")]
+        hit = sum(r["labelled_lock_in"] for r in flag)
+        should = sum(r["labelled_lock_in"] for r in ran)
+        lines.append(f"{m:6} flagged {len(flag)}/{len(ran)}; of tenders with "
+                     f"a labelled lock-in {hit}/{should} flagged; flagged "
+                     f"without one {len(flag) - hit}; agent tokens "
+                     f"{tokens.get(m, 0):,}; agent did not run on "
+                     f"{len(rs) - len(ran)}")
+    if "fixed" in by and "model" in by:
+        diff = [ref for ref in refs
+                if by["fixed"][ref]["route"] != by["model"][ref]["route"]]
+        lines += ["", f"model vs fixed: {len(refs) - len(diff)}/{len(refs)} "
+                      f"same route" + (f"; differ on {', '.join(diff)}"
+                                       if diff else "")]
+    text = "\n".join(lines)
+    with io.open(os.path.join(out_dir, "summary.txt"), "w",
+                 encoding="utf-8") as f:
+        f.write(text + "\n")
+    print("\n" + text + f"\n\n-> {out_dir}")
+
+
+if __name__ == "__main__":
+    main()

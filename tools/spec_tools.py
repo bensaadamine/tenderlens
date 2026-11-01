@@ -543,6 +543,77 @@ RE_UNIT_AFTER_NUM = re.compile(
 _census = None
 
 
+# Decided 2026-11-01 (user, measured): candidate brand names are looked for
+# only in the REQUIREMENTS SECTION of a document - the section scope_mask
+# finds, the one level 2 already uses. On the 76 hand-labelled cases this lost
+# 0 of 12 real lock-ins and removed 10 of 46 junk names (addresses,
+# regulations, cross-references). A document with no recognisable section is
+# read whole, as before. Judging still reads the whole tender ("or
+# equivalent", the Equivalent Products clause, the agent's tools).
+# --l1-scope all restores looking for names everywhere.
+CANDIDATE_SCOPE = "section"
+
+
+def _load_census():
+    global _census
+    if _census is None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "census_l1", os.path.join(_ROOT, "prepare", "04_census.py"))
+        _census = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_census)
+    return _census
+
+
+def requirement_mask(lines):
+    """(one bool per line: inside the requirements section, "section"), or
+    (all True, "whole") when no section is found."""
+    try:
+        mask, mode = _load_census().scope_mask(lines)
+        if mode == "section":
+            return list(mask), mode
+    except Exception:
+        pass
+    return [True] * len(lines), "whole"
+
+
+def requirement_view(text):
+    """The document with everything outside its requirements section blanked
+    - same length, so offsets and line numbers still point into the
+    original."""
+    lines = text.split("\n")
+    mask, mode = requirement_mask(lines)
+    if mode != "section":
+        return text
+    return "\n".join(l if k else " " * len(l) for l, k in zip(lines, mask))
+
+
+def _norm_quote(s):
+    return re.sub(r"[^a-z0-9]+", " ", (s or "").lower()).strip()
+
+
+def quote_in_documents(docs, file, line):
+    """Are these words really in the named document? (else in any of the
+    tender's documents, when the name is written another way). A line cut
+    with '...' counts if every piece is there, in order."""
+    parts = [_norm_quote(p)
+             for p in re.split(r"\.\.\.+|\u2026", str(line or ""))]
+    parts = [p for p in parts if p]
+    if not parts or sum(len(p) for p in parts) < 4:
+        return False
+    named = [d for d in docs if d["document"] == file]
+    for d in named or docs:
+        text, at = d.setdefault("_norm", _norm_quote(d["text"])), 0
+        for p in parts:
+            at = text.find(p, at)
+            if at < 0:
+                break
+            at += len(p)
+        else:
+            return True
+    return False
+
+
 def is_amendment(doc):
     """By file name, or by the cover page ("Amendment No. ... 002")."""
     if RE_AMEND_NAME.search(doc.get("document", "")):
@@ -555,21 +626,11 @@ def amendment_view(text):
     """The amendment with everything but buyer changes, answers and restated
     requirement sections blanked - same length, so every character offset and
     line number still points into the original."""
-    global _census
     lines = text.split("\n")
     keep = [False] * len(lines)
-    try:
-        if _census is None:
-            import importlib.util
-            spec = importlib.util.spec_from_file_location(
-                "census_l1", os.path.join(_ROOT, "prepare", "04_census.py"))
-            _census = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(_census)
-        mask, mode = _census.scope_mask(lines)
-        if mode == "section":
-            keep = list(mask)
-    except Exception:
-        pass
+    mask, mode = requirement_mask(lines)
+    if mode == "section":
+        keep = list(mask)
     # A kept block is one paragraph: it ends at the first blank line after
     # it has some text past the marker line, at a bidder's question, or
     # after AMEND_BLOCK lines.
@@ -690,6 +751,11 @@ def add_l1_args(ap):
     ap.add_argument("--l1-standards", choices=["on", "off"], default="on",
                     help="skip a name written after a standards body and a "
                          "slash, e.g. ANSI/SAIA (default on)")
+    ap.add_argument("--l1-scope", choices=["section", "all"],
+                    default="section",
+                    help="where brand names are looked for: the requirements "
+                         "section (default; whole document if none found) or "
+                         "everywhere (old rule)")
     ap.add_argument("--l1-make-list", choices=["on", "off"], default="on",
                     help="clear a brand that only appears in a list of 3+ "
                          "different makes, e.g. vehicles a part must fit "
@@ -712,7 +778,8 @@ def apply_l1_args(a):
     EQUIV_CLAUSE = a.l1_equiv_clause == "on"
     LLM_SCOPE = a.llm_scope
     global DEFINED_TERMS, SKIP_URLS, BUYER_EQUIPMENT, LOWER_NOT_BRAND
-    global CLEAR_UNCONFIRMED, PLATFORMS
+    global CLEAR_UNCONFIRMED, PLATFORMS, CANDIDATE_SCOPE
+    CANDIDATE_SCOPE = getattr(a, "l1_scope", "section")
     CLEAR_UNCONFIRMED = a.l1_clear_unconfirmed == "on"
     PLATFORMS = a.l1_platforms == "on"
     LOWER_NOT_BRAND = a.l1_lower_label == "on"
@@ -1408,8 +1475,12 @@ def brands_without_equivalent(reference, text_dir=None, window=200,
         blanket = blanket or clause
         equiv_clause = equiv_clause or bool(
             EQUIV_CLAUSE and RE_EQUIV_CLAUSE.search(text))
-        view = (amendment_view(text)
-                if AMEND_RULE == "strict" and is_amendment(d) else text)
+        if AMEND_RULE == "strict" and is_amendment(d):
+            view = amendment_view(text)
+        elif CANDIDATE_SCOPE == "section":
+            view = requirement_view(text)
+        else:
+            view = text
         for c in _candidates(view):
             key = c["name"].lower()
             b = per_brand.setdefault(key, {"name": c["name"], "hits": []})

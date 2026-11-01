@@ -277,6 +277,39 @@ def todo_list(notices, group, state, until=None):
     return [ref for _, ref in sorted(todo)]
 
 
+def reprocess_list(kb, notices, group, state, which):
+    """Tenders to run again (audit finding 2026-11-01: a tender processed
+    before its award notice existed, or under older rules or without the
+    agents, was never looked at again). which: tender references, or
+    "quarantine" / "all". A tender the auditor has judged keeps the
+    auditor's verdict and is not re-run."""
+    judged = set()
+    with io.open(kb.reg, encoding="utf-8", newline="") as f:
+        for r in csv.DictReader(f):
+            if r["event"] == "feedback":
+                judged.add(r["reference"])
+    if "all" in which:
+        refs = [r for r in state if r in notices]
+    elif "quarantine" in which:
+        refs = [r for r, ev in state.items() if ev["pile"] == "quarantine"]
+    else:
+        refs = list(which)
+    out, skipped, unknown = [], [], []
+    for ref in refs:
+        if ref not in notices or tenderlens.select({ref: notices[ref]},
+                                                   group) != [ref]:
+            unknown.append(ref)
+        elif ref in judged:
+            skipped.append(ref)
+        else:
+            out.append((notice_meta(notices[ref])[1] or "9999", ref))
+    if skipped:
+        print(f"  not re-run - judged by the auditor: {', '.join(skipped)}")
+    if unknown:
+        print(f"  not in category {group}: {', '.join(unknown)}")
+    return [ref for _, ref in sorted(out)]
+
+
 def run(a):
     kb = KB(a.group, a.kb_root)
     level2.LEVEL[0] = a.l2_level
@@ -284,6 +317,10 @@ def run(a):
     notices, wstats, _, graph = tenderlens.load_shared()
     state = kb.state()
     todo = todo_list(notices, a.group, state, a.until)
+    if a.reprocess:
+        again = reprocess_list(kb, notices, a.group, state, a.reprocess)
+        todo += [r for r in again if r not in todo]
+        print(f"  re-run: {len(again)} tender(s)")
     if a.limit:
         todo = todo[:a.limit]
     base = base_rows(kb, state, amap)
@@ -295,6 +332,21 @@ def run(a):
         return
 
     stamp = time.strftime("%Y%m%d-%H%M%S")
+    # The batch's settings, written before any tender: every case and event
+    # carries the stamp, so what produced it can always be told (audit
+    # finding 2026-11-01).
+    with io.open(os.path.join(kb.batches, f"{stamp}_settings.json"), "w",
+                 encoding="utf-8") as f:
+        json.dump({"stamp": stamp, "argv": sys.argv[1:],
+                   "settings": {k: v for k, v in vars(a).items()
+                                if isinstance(v, (str, int, float, bool,
+                                                  list, type(None)))},
+                   "reprocessed": list(a.reprocess or []),
+                   "native_tools": os.environ.get("TENDERLENS_NATIVE_TOOLS",
+                                                  "on"),
+                   "facts": os.environ.get("TENDERLENS_FACTS", "on"),
+                   "local_model": os.environ.get("TENDERLENS_LOCAL_MODEL")},
+                  f, indent=1)
     cases, piles = [], collections.Counter()
     for i, ref in enumerate(todo, 1):
         run_id = f"{stamp}-{i:04d}"
@@ -334,8 +386,9 @@ def run(a):
                         pub_date=notice_meta(row)[1], event="processed",
                         status=status, pile=pile, score=case["score"],
                         observations=len(raw))
-        if pile == "base":
-            base = [r for r in base if r["reference"] != ref] + mine
+        # a re-run tender may leave the base: drop its old rows either way
+        base = [r for r in base if r["reference"] != ref] + (
+            mine if pile == "base" else [])
         if i % 25 == 0:
             print(f"  {i:4d}/{len(todo)}  base now {len({r['reference'] for r in base})}")
 
@@ -507,6 +560,10 @@ def main():
     ap.add_argument("--status", action="store_true")
     ap.add_argument("--feedback", action="store_true")
     ap.add_argument("--export-labels", action="store_true")
+    ap.add_argument("--reprocess", nargs="+", metavar="REF",
+                    help="run these tenders again with today's code and "
+                         "settings: references, 'quarantine' or 'all'. "
+                         "Tenders the auditor judged are kept as judged")
     ap.add_argument("--queue", nargs="?", const="current", metavar="STAMP",
                     help="write a queue from cases.jsonl: every tender's "
                          "latest case (default), or one batch by its stamp")

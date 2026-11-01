@@ -79,7 +79,7 @@ _recent = []          # (unix_time, tokens) within the last 60s - legacy name
 #   others   unknown                            -> 5,500 tokens/min
 SPREAD = os.environ.get("TENDERLENS_LLM_SPREAD", "share")
 BUDGETS = {"groq": 5500, "mistral": 400000, "cerebras": 5500,
-           "gemini": 5500}
+           "gemini": 5500, "ollama": 10 ** 9}
 MIN_GAP = {"mistral": 1.1}     # seconds between two calls
 _windows = {}         # provider -> [(unix_time, tokens)]
 _last_call = {}       # provider -> unix_time
@@ -91,6 +91,23 @@ DOWN_FOR = 60         # seconds
 # caller can read it. "fail" restores the old behaviour (provider failed).
 TOOL_SLIP = "recover"
 DAY_OUT = 6 * 3600    # seconds a provider is skipped after "quota per day"
+# Native tool calling (2026-11-01). The agents used to describe their tools in
+# the prompt and parse a JSON reply; measured in the 4110 traces, about half
+# the steps were lost on tools that don't exist ("open_file", "run") or wrong
+# argument names. With tools= the request now carries a schema per tool and
+# the model's tool call comes back as {"thought", "action", "args"} - the
+# shape the agents already read, so a JSON reply still works as a fallback.
+# A provider that rejects tools is asked again without them. "off" restores
+# the prompt-only behaviour (and the old cache keys).
+NATIVE_TOOLS = os.environ.get("TENDERLENS_NATIVE_TOOLS", "on")
+_no_tools = set()     # providers that rejected a tools request this run
+# Local model (decision 34, 2026-11-01): Ollama on the user's machine, free,
+# no daily limit. Enabled by naming the model in TENDERLENS_LOCAL_MODEL (e.g.
+# gemma4:e4b); OLLAMA_HOST if not on localhost:11434. Used only by callers
+# that ask for it (provider="ollama": fact extraction) until the eval shows
+# it is close enough to the cloud judge; TENDERLENS_LOCAL_SHARE=1 also lets
+# it take ordinary calls.
+LOCAL_TIMEOUT = 600   # seconds: a small GPU can be slow on a long prompt
 
 # Order matters: first with a key present wins, and the rest are fallbacks.
 # model is the cheap/fast one for triage; model_strong for judgement calls.
@@ -115,7 +132,37 @@ PROVIDERS = [
         "env": "GEMINI_API_KEY",
         "base": "https://generativelanguage.googleapis.com/v1beta/openai",
     },
+    {
+        "name": "ollama",
+        "env": "TENDERLENS_LOCAL_MODEL",   # the model name enables it
+        "base": None,                      # from OLLAMA_HOST, read at call time
+        "local": True,
+    },
 ]
+
+
+def _base(provider):
+    if provider.get("local"):
+        host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+        if not host.startswith("http"):
+            host = "http://" + host
+        return host.rstrip("/") + "/v1"
+    return provider["base"]
+
+
+def _auth(provider):
+    # Ollama ignores the key; the others need theirs.
+    return "Bearer " + ("ollama" if provider.get("local")
+                        else os.environ[provider["env"]])
+
+
+def tool(name, description, properties=None, required=None):
+    """One tool for ask(tools=...): a name, what it does, its arguments as
+    JSON-schema properties."""
+    return {"name": name, "description": description,
+            "parameters": {"type": "object",
+                           "properties": properties or {},
+                           "required": list(required or [])}}
 
 # Model IDs are not stable. Groq retires them, and Cerebras once went from a
 # dozen models to two without notice. So nothing is hardcoded: the catalogue is
@@ -202,16 +249,23 @@ def _key(model, system, user):
 
 
 # -------------------------------------------------------------- the one call
-def available():
-    """Providers that have a key set, in fallback order."""
-    return [p for p in PROVIDERS if os.environ.get(p["env"])]
+def available(provider=None):
+    """Providers that have a key set, in fallback order. provider: only
+    that one. The local model joins the shared pool only when
+    TENDERLENS_LOCAL_SHARE=1."""
+    provs = [p for p in PROVIDERS if os.environ.get(p["env"])]
+    if provider:
+        return [p for p in provs if p["name"] == provider]
+    if os.environ.get("TENDERLENS_LOCAL_SHARE") != "1":
+        provs = [p for p in provs if not p.get("local")]
+    return provs
 
 
 def list_models(provider, timeout=30):
     """Ask the provider what it actually serves today."""
     req = urllib.request.Request(
-        provider["base"] + "/models",
-        headers={"Authorization": "Bearer " + os.environ[provider["env"]],
+        _base(provider) + "/models",
+        headers={"Authorization": _auth(provider),
                  "User-Agent": "TenderLens/0.1"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         data = json.load(r)
@@ -229,6 +283,9 @@ def _choose(ids, prefer):
 
 def models_for(provider, refresh=False, verbose=False):
     """(fast, strong) model IDs for this provider, discovered and cached."""
+    if provider.get("local"):           # the user picked the model
+        m = os.environ.get(provider["env"])
+        return m, m
     cache = _load_cache(MODELS_CACHE)
     name = provider["name"]
     if not refresh and name in cache:
@@ -249,17 +306,22 @@ def models_for(provider, refresh=False, verbose=False):
     return fast, strong
 
 
-def _post(provider, model, system, user, max_tokens, temperature, timeout):
-    body = json.dumps({
+def _post(provider, model, system, user, max_tokens, temperature, timeout,
+          tools=None):
+    req_body = {
         "model": model,
         "messages": [{"role": "system", "content": system},
                      {"role": "user", "content": user}],
         "max_tokens": max_tokens,
         "temperature": temperature,
-    }).encode("utf-8")
+    }
+    if tools:
+        req_body["tools"] = [{"type": "function", "function": t}
+                             for t in tools]
+    body = json.dumps(req_body).encode("utf-8")
     req = urllib.request.Request(
-        provider["base"] + "/chat/completions", data=body,
-        headers={"Authorization": "Bearer " + os.environ[provider["env"]],
+        _base(provider) + "/chat/completions", data=body,
+        headers={"Authorization": _auth(provider),
                  "Content-Type": "application/json",
                  "User-Agent": "TenderLens/0.1"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -268,6 +330,8 @@ def _post(provider, model, system, user, max_tokens, temperature, timeout):
     # same way - but not all of them send it, so the caller must cope with {}.
     choice = data["choices"][0]
     msg = choice.get("message") or {}
+    if tools and msg.get("tool_calls"):
+        return tool_answer(msg), data.get("usage") or {}
     answer = msg.get("content") or ""
     if not answer.strip() and TOOL_SLIP == "recover":
         answer = _slip_from_message(msg)
@@ -279,6 +343,23 @@ def _post(provider, model, system, user, max_tokens, temperature, timeout):
 
 
 _last_empty = {}
+
+
+def tool_answer(msg):
+    """A native tool call as the JSON the agents read:
+    {"thought", "action", "args"}. One action per step: the first call."""
+    call = (msg.get("tool_calls") or [{}])[0]
+    fn = call.get("function") or {}
+    args = fn.get("arguments") or {}
+    if isinstance(args, str):
+        try:
+            args = json.loads(args or "{}")
+        except ValueError:
+            args = {}
+    return json.dumps({"thought": (msg.get("content") or "")[:300],
+                       "action": fn.get("name") or "",
+                       "args": args if isinstance(args, dict) else {}},
+                      ensure_ascii=False)
 
 
 def _slip_from_message(msg):
@@ -479,16 +560,28 @@ def usage_summary(path=USAGE_PATH):
 
 
 def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
-        timeout=60, retries=2, verbose=False, tag=""):
+        timeout=60, retries=2, verbose=False, tag="", tools=None,
+        provider=None):
     """Ask the first working provider. Returns the raw text answer.
+
+    tools: [llm.tool(...)] for native tool calling; a tool call comes back
+    as JSON text {"thought", "action", "args"}. provider: only this one
+    (e.g. "ollama" for the local model).
 
     Raises NoProvider if no key is set, or RuntimeError if every provider
     failed - the caller decides what to do, because a silent empty answer
     would look like "no findings".
     """
-    provs = available()
+    provs = available(provider)
     if not provs:
-        raise NoProvider("set GROQ_API_KEY (free at console.groq.com)")
+        raise NoProvider(f"provider '{provider}' not configured" if provider
+                         else "set GROQ_API_KEY (free at console.groq.com)")
+    if NATIVE_TOOLS != "on":
+        tools = None
+    # the tool list is part of the question: same prompt, other tools,
+    # other answer
+    sys_key = system if not tools else (
+        system + "\x01" + json.dumps(tools, sort_keys=True))
 
     cache = _load_cache()
     errors = []
@@ -499,7 +592,7 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
         model = (strg if strong else fast)
         if not model:
             continue
-        ck = _key(model, system, user)
+        ck = _key(model, sys_key, user)
         # An empty cached answer is a truncated reasoning model, not a result.
         # Caching one poisoned the cache: the next run returned "" instantly
         # and never retried. Ignore them, and they get overwritten below.
@@ -516,7 +609,9 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
         if not model:
             errors.append(f"{p['name']}: no usable model")
             continue
-        ck = _key(model, system, user)
+        ck = _key(model, sys_key, user)
+        use_tools = tools if p["name"] not in _no_tools else None
+        wait_for = max(timeout, LOCAL_TIMEOUT) if p.get("local") else timeout
         for attempt in range(retries + 1):
             try:
                 if SPREAD == "share":
@@ -524,7 +619,7 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
                 else:
                     _throttle(est, verbose)
                 answer, usage = _post(p, model, system, user, max_tokens,
-                                      temperature, timeout)
+                                      temperature, wait_for, use_tools)
                 _log_usage(tag, p["name"], model, usage, False,
                            _estimate(system + user + answer))
                 # Reasoning models (gpt-oss, magistral, o-series) spend the
@@ -554,6 +649,16 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
                 body = _http_body(e)
                 _log_error(tag, p["name"], model, f"HTTP {e.code}", e, body)
                 slip = _tool_slip(body) if e.code == 400 else None
+                if (e.code == 400 and use_tools and not slip
+                        and re.search(r"tool|function", body, re.I)):
+                    # this provider/model does not take tools: ask again
+                    # with the prompt alone (the JSON fallback)
+                    _no_tools.add(p["name"])
+                    use_tools = None
+                    if verbose:
+                        print(f"    [{p['name']}] no native tools, "
+                              f"retrying with JSON")
+                    continue
                 if slip:
                     _log_usage(tag, p["name"], model, {}, False,
                                _estimate(system + user + slip))
@@ -589,7 +694,7 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
                     fast, strg = models_for(p, refresh=True, verbose=verbose)
                     new = (strg if strong else fast)
                     if new and new != model:
-                        model, ck = new, _key(new, system, user)
+                        model, ck = new, _key(new, sys_key, user)
                         continue
                 errors.append(f"{p['name']}: HTTP {e.code}")
                 _down_until[p["name"]] = time.time() + DOWN_FOR

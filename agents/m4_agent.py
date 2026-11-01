@@ -228,6 +228,24 @@ Reply with ONE JSON object and nothing else:
 """
 
 
+def _tools():
+    """Native tool schemas (llm.tool); same tools as the prompt."""
+    import llm
+    t = llm.tool
+    return [
+        t("recheck", "The spec agent re-reads these brand findings in the "
+                     "whole tender.",
+          {"brands": {"type": "array", "items": {"type": "string"}}},
+          ["brands"]),
+        t("spellings", "The award agent checks the winner's other spellings "
+                       "in the award notices."),
+        t("winner_awards", "Titles of the winner's other awards containing "
+                           "the text. Shown to the auditor, never scored.",
+          {"text": {"type": "string"}}, ["text"]),
+        t("finish", "Stop."),
+    ]
+
+
 def render(state, hooks):
     case = state["case"]
     out = [f"Tender {state['reference']}. Steps left: "
@@ -524,7 +542,8 @@ def coordinate(reference, m1, m2, m3, hooks, mode="model", ask=None,
         if ask is None:
             import llm
             ask = lambda system, user: llm.ask_json(
-                system, user, strong=True, max_tokens=1500, tag="m4_agent")
+                system, user, strong=True, max_tokens=1500, tag="m4_agent",
+                tools=_tools())
         choose = model_chooser(ask, hooks)
     decide, act = make_nodes(m1, hooks, choose)
     engine = "langgraph" if (use_graph and StateGraph) else "loop"

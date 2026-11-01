@@ -69,6 +69,12 @@ import spec_tools
 # transporting a Fat Truck") into false findings. Add "OK_BUYER_EQUIPMENT"
 # back to restore.
 AGENT_RECHECK = {"OK_MAKE_LIST"}
+# For the exam only (tests/m2_eval.py): a test (reference, name) -> bool
+# choosing which candidates the agent sees; the others keep the rules'
+# result. A tender can hold 50 open names of which one is labelled, and the
+# free quota (about 2-3 calls a minute) makes judging all of them take
+# hours. None = every candidate (normal runs).
+AGENT_ONLY = None
 
 # When the agent was asked for but no model answers (quota used, providers
 # down): "stop" raises AgentUnavailable, so a run stops cleanly and the
@@ -197,6 +203,10 @@ def _agent_pass(reference, l1, online, trace):
     """Let the M2 agent letter what the rules found or could not settle."""
     recheck = [o for o in l1.get("ok", []) if o.get("status") in AGENT_RECHECK]
     rows = l1.get("findings", []) + l1.get("unresolved", []) + recheck
+    held = []                       # left to the rules (AGENT_ONLY)
+    if AGENT_ONLY is not None:
+        held = [r for r in rows if not AGENT_ONLY(reference, r["brand"])]
+        rows = [r for r in rows if r not in held]
     if not rows:
         trace.append("agent: nothing for it to check")
         return l1
@@ -237,33 +247,15 @@ def _agent_pass(reference, l1, online, trace):
                  f"{len(rows) - len(findings) - len(unresolved)} cleared, "
                  f"{len(unresolved)} unresolved")
     trace.extend("  agent " + t for t in out["trace"])
+    for r in held:                  # as the rules left them
+        (findings if r in l1.get("findings", []) else
+         ok if r in recheck else unresolved).append(r)
     return dict(l1, findings=findings, ok=ok, unresolved=unresolved,
                 agent={k: out[k] for k in ("steps", "stop_reason", "engine")})
 
 
-def _norm(s):
-    return re.sub(r"[^a-z0-9]+", " ", (s or "").lower()).strip()
-
-
-def quote_in_documents(docs, file, line):
-    """Are these words really in the named document? (else in any of the
-    tender's documents, when the name is written another way). A line cut
-    with '...' counts if every piece is there, in order."""
-    parts = [_norm(p) for p in re.split(r"\.\.\.+|\u2026", str(line or ""))]
-    parts = [p for p in parts if p]
-    if not parts or sum(len(p) for p in parts) < 4:
-        return False
-    named = [d for d in docs if d["document"] == file]
-    for d in named or docs:
-        text, at = d.setdefault("_norm", _norm(d["text"])), 0
-        for p in parts:
-            at = text.find(p, at)
-            if at < 0:
-                break
-            at += len(p)
-        else:
-            return True
-    return False
+# moved to spec_tools (shared with the facts extractor); kept here by name
+quote_in_documents = spec_tools.quote_in_documents
 
 
 def _check_sources(findings, docs, trace):
