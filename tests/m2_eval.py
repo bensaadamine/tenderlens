@@ -33,18 +33,10 @@ would measure the rules again (it did, on 2026-10-22). Such tenders are
 listed apart; after STOP_AFTER of them in a row the run stops.
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import argparse
 import collections
@@ -60,7 +52,8 @@ import time
 import m2_spec_auditor
 
 m2_spec_auditor.AGENT_DOWN = "keep"   # tenders the agent missed are listed apart
-import spec_tools
+import brands
+import documents
 
 LABELS = os.path.join("tests", "m2_labels.csv")
 HOLDOUT = os.path.join("tests", "m2_holdout.csv")
@@ -204,7 +197,7 @@ def run_dir(mode, partial):
 
 # ------------------------------------------------------------------ sample
 def _tenders_with_text(group):
-    d = os.path.join(spec_tools.TEXT_DIR, group)
+    d = os.path.join(documents.TEXT_DIR, group)
     if not os.path.isdir(d):
         return []
     return sorted({fn.split("__")[0] for fn in os.listdir(d) if "__" in fn})
@@ -283,7 +276,7 @@ def sample(a):
         key = (r["reference"], r["name"].lower())
         if (not r["name"] or key in seen or key in have
                 or r["reference"] in tuned_refs
-                or spec_tools.is_platform(r["name"])):  # tuned on: Windows...
+                or brands.is_platform(r["name"])):  # tuned on: Windows...
             continue
         # one brand written several ways in one tender ("FormLabs Form",
         # "Formlabs") is one case, not three
@@ -340,9 +333,9 @@ def main():
     ap.add_argument("--sample", action="store_true",
                     help="build tests/m2_holdout.csv for the auditor to "
                          "label, and stop")
-    spec_tools.add_l1_args(ap)
+    brands.add_l1_args(ap)
     a = ap.parse_args()
-    spec_tools.apply_l1_args(a)
+    brands.apply_l1_args(a)
     if a.sample:
         sample(a)
         return

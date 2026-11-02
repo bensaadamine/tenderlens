@@ -23,7 +23,7 @@ something ("existing", "currently in use", "procured by"...). Capped, so a
 long tender costs the same as a short one.
 
 What stays in CODE: every fact's quote must be found in the document it
-names (spec_tools.quote_in_documents); others are dropped. Facts are stored
+names (documents.quote_in_documents); others are dropped. Facts are stored
 in reports/facts/<reference>.json and reused. No local model configured ->
 nothing is extracted and the tool says so; nothing is stored.
 
@@ -36,7 +36,7 @@ import json
 import os
 import re
 
-import spec_tools
+import documents
 
 FACTS_DIR = os.path.join("reports", "facts")
 VERSION = 1
@@ -84,7 +84,7 @@ def passages(docs, names):
     found = []                       # (priority, doc, i)
     for d in docs:
         lines = d["text"].split("\n")
-        mask, mode = spec_tools.requirement_mask(lines)
+        mask, mode = documents.requirement_mask(lines)
         for i, line in enumerate(lines):
             if mode == "section" and mask[i]:
                 continue             # the requirements: the agent reads them
@@ -120,7 +120,7 @@ def passages(docs, names):
 def extract(reference, names, ask=None, docs=None):
     """Ask the local model; keep the facts whose quote is in the document.
     Returns {"status", "facts", "model"}; raises nothing."""
-    docs = docs if docs is not None else spec_tools.tender_documents(reference)
+    docs = docs if docs is not None else documents.tender_documents(reference)
     ps = passages(docs, names)
     if not ps:
         return {"status": "nothing outside the requirements to read",
@@ -147,7 +147,7 @@ def extract(reference, names, ask=None, docs=None):
         if not isinstance(f, dict) or f.get("kind") not in KINDS:
             continue
         quote = str(f.get("quote") or "").strip()
-        if spec_tools.quote_in_documents(docs, f.get("document"), quote):
+        if documents.quote_in_documents(docs, f.get("document"), quote):
             facts.append({"name": str(f.get("name") or "*").strip() or "*",
                           "kind": f["kind"], "quote": quote,
                           "document": f.get("document"),

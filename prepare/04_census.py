@@ -42,18 +42,10 @@ Writes:
     reports/census_<grp>.txt          the summary printed below
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import argparse
@@ -546,20 +538,17 @@ def classify(window_text):
     return "NONE"
 
 
-def extract(txt, scoped=True):
+def extract(txt):
     """Every (label, comparator, value, unit) candidate in one document.
 
-    With `scoped`, candidates are emitted only from lines inside a
-    requirement section (decision 21c). The ±2 window still reads the full
-    body, because the header a bare value cell needs can sit one line above
-    the section's first line.
+    Candidates are emitted only from lines inside a requirement section
+    (decision 21c). The ±2 window still reads the full body, because the
+    header a bare value cell needs can sit one line above the section's
+    first line.
     """
     lines = [l.strip() for l in txt.splitlines()]
     body = [l for l in lines if l and not RE_PAGENUM.match(l)]
-    if scoped:
-        mask, mode = scope_mask(body)
-    else:
-        mask, mode = [True] * len(body), "all"
+    mask, mode = scope_mask(body)
     out = _harvest(body, mask, mode)
 
     # A "requirement section" holding no numeric requirement at all was not
@@ -568,7 +557,7 @@ def extract(txt, scoped=True):
     # enrichment step, so when it empties a document it has failed, and
     # failing must cost nothing. Five tenders vanished outright before this
     # existed, one of them with 110 observations.
-    if scoped and not out and mode == "section":
+    if not out and mode == "section":
         out = _harvest(body, [True] * len(body), "whole_empty")
     return out
 
@@ -946,29 +935,6 @@ def main():
                          "it fixed - adapting it per finding is decision 13.")
     ap.add_argument("--top", type=int, default=40,
                     help="labels to print in the summary")
-    ap.add_argument("--no-convert", dest="convert", action="store_false",
-                    help="skip unit conversion. The default converts to one "
-                         "base per dimension (mm, kg, L, degC, km/h) and "
-                         "folds metric/imperial restatements of the same "
-                         "requirement. Ambiguous units are left unconverted "
-                         "rather than guessed - decision 15.")
-    ap.add_argument("--no-dedup", dest="dedup", action="store_false",
-                    help="keep every restatement of a requirement. The "
-                         "default folds them (decision 22): the same value "
-                         "repeated in an amendment is not a second "
-                         "observation, and leaving them in lets two "
-                         "catalogue RFSOs decide a third of every median.")
-    ap.add_argument("--no-collapse-bands", dest="collapse_bands",
-                    action="store_false",
-                    help="keep a two-sided band as two rows, one per bound. "
-                         "The default collapses it to one observation "
-                         "carrying value_lo, value_hi and band_width.")
-    ap.add_argument("--scope", choices=["section", "all"], default="section",
-                    help="'section' extracts only inside the requirement "
-                         "sections of each document, falling back to the "
-                         "whole document when none is found (decision 21c). "
-                         "'all' is the pre-2026-10-14 behaviour, kept so the "
-                         "baseline stays reproducible.")
     ap.add_argument("--map", nargs="?", const="reports/attribute_map.json",
                     default="",
                     help="apply an attribute map built by prepare/05_attribute_map.py "
@@ -1005,7 +971,7 @@ def main():
         except Exception as e:
             print(f"  unreadable {fn}: {e}")
             continue
-        got = extract(txt, scoped=(args.scope == "section"))
+        got = extract(txt)
         for r in got:
             r["reference"] = ref
             r["file"] = fn
@@ -1017,18 +983,17 @@ def main():
     if not rows:
         sys.exit("no candidates extracted - check the text cache")
 
-    if args.collapse_bands:
-        rows, _nb = collapse_bands(rows)
-        print(f"  {_nb:,} two-sided bands collapsed to one observation each")
-
-    if args.convert:
-        _nc = convert_units(rows)
-        print(f"  {_nc:,}/{len(rows):,} converted to a base unit "
-              f"({len(rows)-_nc:,} left unconverted - ambiguous unit, "
-              f"decision 15)")
-        rows, _nf = fold_restatements(rows)
-        print(f"  {_nf:,} metric/imperial restatements of one requirement "
-              f"folded")
+    # A two-sided band is one observation (value_lo, value_hi, band_width).
+    rows, _nb = collapse_bands(rows)
+    print(f"  {_nb:,} two-sided bands collapsed to one observation each")
+    # One base unit per dimension; ambiguous units left as they are (15).
+    _nc = convert_units(rows)
+    print(f"  {_nc:,}/{len(rows):,} converted to a base unit "
+          f"({len(rows)-_nc:,} left unconverted - ambiguous unit, "
+          f"decision 15)")
+    rows, _nf = fold_restatements(rows)
+    print(f"  {_nf:,} metric/imperial restatements of one requirement "
+          f"folded")
 
     refs = {r["reference"] for r in rows}
     print(f"\n{len(rows):,} candidates from {len(refs):,} tenders")
@@ -1069,11 +1034,12 @@ def main():
             sys.exit("the map dropped every row - check it by hand")
 
     _cut = {"unspsc8": 8, "unspsc6": 6, "unspsc4": 4}[args.family]
-    if args.dedup:
-        _before = len(rows)
-        rows = dedup(rows, _cut)
-        print(f"dedup: {_before:,} -> {len(rows):,} observations "
-              f"({_before - len(rows):,} restatements folded)")
+    # The same value restated in an amendment is not a second observation
+    # (decision 22).
+    _before = len(rows)
+    rows = dedup(rows, _cut)
+    print(f"dedup: {_before:,} -> {len(rows):,} observations "
+          f"({_before - len(rows):,} restatements folded)")
 
     # ------------------------------------------------------------- per-row
     _sfx = "_mapped" if args.map else ""
@@ -1154,7 +1120,7 @@ def main():
 
     say("=" * 74)
     say(f"VOCABULARY CENSUS - {args.group}   "
-        f"(peers grouped at {args.family}, scope={args.scope}"
+        f"(peers grouped at {args.family}"
         + (", attribute map APPLIED)" if args.map else ", RAW labels)"))
     say("=" * 74)
 
@@ -1231,13 +1197,12 @@ def main():
     say(f"  label taken from above ...... {src['above']:6,} "
         f"{100.0*src['above']/len(rows):5.1f}%   <- inferred, check these")
     scp = Counter(r["scope"] for r in rows)
-    if args.scope == "section":
-        say(f"\n  from a requirement section  {scp['section']:6,} "
-            f"{100.0*scp['section']/len(rows):5.1f}%")
-        say(f"  from a document with none .. {scp['whole']:6,} "
-            f"{100.0*scp['whole']/len(rows):5.1f}%   <- unscoped fallback")
-        say(f"  section found but empty .... {scp['whole_empty']:6,} "
-            f"{100.0*scp['whole_empty']/len(rows):5.1f}%   <- scoping failed")
+    say(f"\n  from a requirement section  {scp['section']:6,} "
+        f"{100.0*scp['section']/len(rows):5.1f}%")
+    say(f"  from a document with none .. {scp['whole']:6,} "
+        f"{100.0*scp['whole']/len(rows):5.1f}%   <- unscoped fallback")
+    say(f"  section found but empty .... {scp['whole_empty']:6,} "
+        f"{100.0*scp['whole_empty']/len(rows):5.1f}%   <- scoping failed")
     soft = sum(r["soft_unit"] for r in rows)
     part = sum(r["part_number_line"] for r in rows)
     unk = sum(1 for r in rows if r["dimension"] == "?")

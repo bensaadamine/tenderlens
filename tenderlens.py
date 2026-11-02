@@ -1,18 +1,13 @@
 """
-TENDERLENS - the orchestrator.
+TENDERLENS - the four agents on one tender, and the audit queue.
 
-Runs the four agents over a set of tenders, one tender at a time, and writes
-the ranked audit queue:
+run_one(ref) is the chain for ONE tender; tenderlens_stream.py calls it for
+every new tender against the knowledge base (the normal way to run the
+system), and write_outputs() writes the ranked queue (HTML, CSV, JSON).
 
-    python tenderlens.py --group 2510            # whole category
-    python tenderlens.py --tender cb-258-72766150   # one tender, full trace
-    python tenderlens.py --deep-refs reports/m1_deep_refs.txt --group 2510
-        -> the tenders M1 wants read; feed to prepare/02_fetch_docs.py --refs
+From the command line, one tender with every agent's reasoning:
 
-Writes:
-    reports/audit_queue.json    every case, every claim, every trace
-    reports/audit_queue.csv     one row per tender - for precision@50 later
-    reports/audit_queue.html    the dashboard; open it in a browser
+    python tenderlens.py --tender cb-258-72766150 [--online --agent ...]
 
 ---------------------------------------------------------------- the chain
 
@@ -21,31 +16,18 @@ Writes:
     M3 investigate     ->  award, buyer->supplier  (award notices)
     M4 build_case      ->  alert / watch / close   (fuses, verifies, scores)
 
-THE ONE ORCHESTRATION DECISION, flagged for review: M1 controls HOW DEEP M2
-goes, not WHETHER a readable tender is read. M1 sees only the notice, and a
-specification rigged inside an OPEN competition - the case levels 1 and 2
-exist for - looks perfectly ordinary on the notice. Letting M1 close it
-would make the system blind to its own target. So every tender with
-documents gets M2 at standard depth (rules, offline, free), and M1's "deep"
-route buys the expensive extras: the LLM judge, when --llm is given.
+THE ONE ORCHESTRATION DECISION: M1 never decides WHETHER a readable tender
+is read. M1 sees only the notice, and a specification rigged inside an OPEN
+competition - the case level 1 exists for - looks perfectly ordinary on the
+notice. Letting M1 close it would make the system blind to its own target.
+So every tender with documents gets M2.
 
 The agent works per tender (CLAUDE.md); batching belongs to the tools, so
 the shared data - notices, observations, awards - is loaded once here and
 handed to each agent.
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.abspath(__file__))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import repo  # noqa: F401  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import argparse
@@ -58,6 +40,7 @@ import os
 import sys
 import time
 
+import brands
 import level2
 import m1_screener
 import m2_spec_auditor
@@ -70,9 +53,6 @@ try:
 except Exception:
     pass
 
-OUT_JSON = "reports/audit_queue.json"
-OUT_CSV = "reports/audit_queue.csv"
-OUT_HTML = "reports/audit_queue.html"
 ROUTE_ORDER = {"alert": 0, "watch": 1, "close": 2}
 
 
@@ -98,8 +78,7 @@ def load_shared(verbose=True):
 # still open, or a request for information / supply-arrangement
 # qualification. "After the award only": there is nothing to audit, so M3 is
 # skipped and the case is closed; M1 and M2 still read it, so it can join the
-# knowledge base. NO_CONTRACT = "case" restores the earlier handling.
-NO_CONTRACT = "kb_only"
+# knowledge base.
 NO_CONTRACT_TYPES = {"request for information", "request for supply arrangement"}
 
 
@@ -124,22 +103,17 @@ AGENT_DOWN = (m2_spec_auditor.AgentUnavailable,
               m4_agent.AgentUnavailable)
 
 
-def run_one(ref, shared, use_llm=False, online=False, agent=False,
-            m3_agent=False, m4_mode=None):
+def run_one(ref, shared, online=False, agent=False, m3_agent=False,
+            m4_mode=None):
     """The four agents on one tender. m4_mode: None (M4 rules only),
     "model" or "fixed" (the M4 agent re-checks cases with a brand finding,
     agents/m4_agent.py)."""
     notices, wstats, rows, graph = shared
     m1 = m1_screener.screen(ref, notices, wstats)
-    why_none = (no_contract_reason(notices.get(ref))
-                if NO_CONTRACT == "kb_only" else None)
+    why_none = no_contract_reason(notices.get(ref))
     if m1.get("documents"):
-        scope = getattr(m2_spec_auditor.spec_tools, "LLM_SCOPE", "deep")
-        depth = "full" if (use_llm and m1["route"].startswith("deep")) \
-            else "auto" if (use_llm and scope == "unresolved") \
-            else "standard"
-        m2 = m2_spec_auditor.audit(ref, depth=depth, rows=rows,
-                                   online=online, agent=agent)
+        m2 = m2_spec_auditor.audit(ref, rows=rows, online=online,
+                                   agent=agent)
     else:
         m2 = {"reference": ref, "readable": False, "findings": [],
               "trace": ["no documents held for this tender"]}
@@ -177,12 +151,10 @@ def select(notices, group=None, refs=None):
     return sorted(out)
 
 
-def write_outputs(cases, meta, prefix=None):
-    """Write the ranked queue. `prefix` (no extension) defaults to
-    reports/audit_queue; the incremental run writes one per batch."""
-    out_json, out_csv, out_html = (
-        (OUT_JSON, OUT_CSV, OUT_HTML) if prefix is None
-        else (prefix + ".json", prefix + ".csv", prefix + ".html"))
+def write_outputs(cases, meta, prefix):
+    """Write the ranked queue to <prefix>.json / .csv / .html."""
+    out_json, out_csv, out_html = (prefix + ".json", prefix + ".csv",
+                                   prefix + ".html")
     os.makedirs(os.path.dirname(out_json) or ".", exist_ok=True)
     cases.sort(key=lambda c: (ROUTE_ORDER[c["route"]], -c["score"],
                               c["reference"]))
@@ -325,121 +297,48 @@ def render_html(cases, meta):
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--group", help="UNSPSC-4 group, e.g. 2510")
-    ap.add_argument("--tender", help="run one tender and print the case")
-    ap.add_argument("--refs", help="file with one reference per line")
-    ap.add_argument("--limit", type=int, default=0)
+    ap = argparse.ArgumentParser(description="One tender, with every agent's "
+                                 "reasoning. Whole categories: "
+                                 "tenderlens_stream.py.")
+    ap.add_argument("--tender", required=True, help="reference number")
+    ap.add_argument("--online", action="store_true",
+                    help="let M2 verify unknown brands online (Wikidata)")
     ap.add_argument("--agent", action="store_true",
                     help="let the M2 agent letter brand candidates a-f "
-                         "(LLM, Windows; replaces the --llm judge)")
+                         "(LLM, Windows)")
     ap.add_argument("--m3-agent", action="store_true",
                     help="let the M3 agent decide which other spellings of "
                          "the winner are the same supplier (LLM, Windows)")
     ap.add_argument("--m4-agent", nargs="?", const="model",
                     choices=["model", "fixed"],
-                    help="let M4 re-check cases with a brand finding before "
-                         "ranking them: the M2 agent re-reads the finding, "
-                         "the M3 agent checks the winner's spellings (LLM, "
-                         "Windows). 'fixed' runs every follow-up without "
-                         "the model choosing")
-    ap.add_argument("--llm", action="store_true",
-                    help="let M2 use the LLM judge on tenders M1 routes deep "
-                         "(spends tokens)")
-    ap.add_argument("--online", action="store_true",
-                    help="let M2 verify unknown brands online (Wikidata)")
-    ap.add_argument("--deep-refs", metavar="FILE",
-                    help="write the references M1 routes deep, for "
-                         "prepare/02_fetch_docs.py --refs, and stop")
+                    help="let M4 re-check a case with a brand finding before "
+                         "ranking it (LLM, Windows); 'fixed' runs every "
+                         "follow-up without the model choosing")
     ap.add_argument("--l2-level", type=int, choices=[6, 8], default=8,
                     help="UNSPSC digits for level-2 peer groups (default 8; "
                          "6 restores the old grouping)")
-    m2_spec_auditor.spec_tools.add_l1_args(ap)
+    brands.add_l1_args(ap)
     a = ap.parse_args()
     level2.LEVEL[0] = a.l2_level
-    m2_spec_auditor.spec_tools.apply_l1_args(a)
+    brands.apply_l1_args(a)
 
-    shared = load_shared()
-    notices = shared[0]
-
-    if a.deep_refs:
-        refs = select(notices, a.group)
-        deep = []
-        for r in refs:
-            res = m1_screener.screen(r, notices, shared[1])
-            if res["route"].startswith("deep"):
-                deep.append(r)
-        with io.open(a.deep_refs, "w", encoding="utf-8") as f:
-            f.write("\n".join(deep) + "\n")
-        print(f"{len(deep)} M1-deep reference(s) -> {a.deep_refs}")
-        return
-
-    if a.tender:
-        c = run_one(a.tender, shared, a.llm, a.online, a.agent, a.m3_agent,
-                    a.m4_agent)
-        print(f"\n{c['reference']}  ->  {c['route'].upper()}  "
-              f"(score {c['score']}, M1 {c['m1_route']})\n")
-        print(c["narrative"])
-        print()
-        for x in c["claims"]:
-            mark = "+" if x["verified"] else "?"
-            print(f" {mark} [{x.get('agent')} {x['kind']} {x.get('points',0)}pt] "
-                  f"{x['claim'][:110]}")
-            if x.get("not_scored_because"):
-                print(f"      not scored: {x['not_scored_because']}")
-        print()
-        for k in ("M1", "M2", "M3", "M4"):
-            if k not in c["trace"]:
-                continue
-            v = c["trace"][k]
-            for line in ([v] if isinstance(v, str) else v):
-                print(f"  {k}: {line}")
-        return
-
-    refs = None
-    if a.refs:
-        with io.open(a.refs, encoding="utf-8") as f:
-            refs = [l.strip() for l in f if l.strip()]
-    if not a.group and not refs:
-        ap.error("--group, --refs or --tender")
-    todo = select(notices, a.group, refs)
-    if a.limit:
-        todo = todo[:a.limit]
-    print(f"running the chain on {len(todo):,} tender(s)")
-    if a.online:
-        print("  --online: brand names not yet in reports/brand_cache.json "
-              "are looked up on Wikidata, one at a time. The first run is "
-              "slow (minutes); every later run reuses the cache.")
-    cases, t = [], time.time()
-    for i, ref in enumerate(todo, 1):
-        t1 = time.time()
-        try:
-            cases.append(run_one(ref, shared, a.llm, a.online, a.agent,
-                                 a.m3_agent, a.m4_agent))
-        except AGENT_DOWN as e:
-            print(f"\nstopped at {i}/{len(todo)}: the agents have no model "
-                  f"({e}). The queue below covers the tenders done so far.")
-            break
-        dt = time.time() - t1
-        # A silent minute looks exactly like a hang. Say which tender is
-        # slow and why, as it happens.
-        if dt > 5:
-            print(f"  {i:5d}/{len(todo)}  {ref}  {dt:.0f}s"
-                  + ("  (Wikidata lookups)" if a.online else ""))
-        elif i % 50 == 0:
-            print(f"  {i:5d}/{len(todo)}  ({time.time()-t:.0f}s)")
-    meta = {"scope": f"UNSPSC-4 {a.group}" if a.group else a.refs,
-            "generated": time.strftime("%Y-%m-%d %H:%M"),
-            "tenders": len(cases), "awards": shared[3] is not None,
-            "llm": a.llm, "agent": a.agent, "m4_agent": a.m4_agent,
-            "weights": m4_case_builder.WEIGHTS,
-            "alert_at": m4_case_builder.ALERT,
-            "watch_at": m4_case_builder.WATCH}
-    write_outputs(cases, meta)
-    cnt = collections.Counter(c["route"] for c in cases)
-    print(f"\nalert {cnt['alert']} | watch {cnt['watch']} | "
-          f"close {cnt['close']}   ({time.time()-t:.0f}s)")
-    print(f"  {OUT_HTML}\n  {OUT_CSV}\n  {OUT_JSON}")
+    c = run_one(a.tender, load_shared(), online=a.online, agent=a.agent,
+                m3_agent=a.m3_agent, m4_mode=a.m4_agent)
+    print(f"\n{c['reference']}  ->  {c['route'].upper()}  "
+          f"(score {c['score']}, M1 {c['m1_route']})\n")
+    print(c["narrative"])
+    print()
+    for x in c["claims"]:
+        mark = "+" if x["verified"] else "?"
+        print(f" {mark} [{x.get('agent')} {x['kind']} {x.get('points', 0)}pt] "
+              f"{x['claim'][:110]}")
+        if x.get("not_scored_because"):
+            print(f"      not scored: {x['not_scored_because']}")
+    print()
+    for k in ("M1", "M2", "M3", "M4"):
+        v = c["trace"].get(k)
+        for line in ([v] if isinstance(v, str) else v or []):
+            print(f"  {k}: {line}")
 
 
 if __name__ == "__main__":

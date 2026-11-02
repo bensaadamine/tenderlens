@@ -1,6 +1,6 @@
 # M2 — Spec Auditor
 
-**Code:** `agents/m2_spec_auditor.py` (the auditor) · `agents/m2_agent.py` (its agent) · 
+**Code:** `agents/m2_spec_auditor.py` (the auditor) · `agents/m2_agent.py` (its agent) · `tools/brands.py` (brand rules) · `tools/documents.py` (the tender's text) · `tools/wikidata.py` · `tools/facts.py`
 
 ## Role
 Reads the **specification documents** of one tender and looks for requirements written so that only one product can win.
@@ -11,10 +11,10 @@ Find, with a quoted line, a departure from the trade-agreement rule: *a specific
 ## Input
 - `reports/text/<group>/<reference>__<document>.txt` — text extracted by `prepare/03_inspect_specs.py`.
 - The knowledge base of past tenders (for level 2).
-- The run flags `--online`, `--agent` (or the older `--llm`).
+- The run flags `--online`, `--agent`.
 
 ## How it works
-1. **Rules find candidates** (`tools/spec_tools.py`): brand-like names next to a model code, **in the requirements section only** (whole document when no section is found; `--l1-scope all` restores everywhere), outside bidders' questions. Measured on the 76 labelled cases: 0 of 12 lock-ins lost, 10 of 46 junk names removed; synthetic set unchanged (64/160, 17 alerts, 0/120 wrong); on 4110 offline only the two "Net 30" false findings went away. Names Wikidata knows are not companies are dropped. A name is cleared for good only when the text accepts an equivalent ("or equivalent", or the standard "Equivalent Products … form, fit, function" clause).
+1. **Rules find candidates** (`tools/brands.py`): brand-like names next to a model code, **in the requirements section only** (whole document when no section is found; `--l1-scope all` restores everywhere), outside bidders' questions. Measured on the 76 labelled cases: 0 of 12 lock-ins lost, 10 of 46 junk names removed; synthetic set unchanged (64/160, 17 alerts, 0/120 wrong); on 4110 offline only the two "Net 30" false findings went away. Names Wikidata knows are not companies are dropped. A name is cleared for good only when the text accepts an equivalent ("or equivalent", or the standard "Equivalent Products … form, fit, function" clause).
 2. **The agent judges the rest** (`--agent`, `agents/m2_agent.py`). Goal: give every remaining candidate the auditor's letter, with a quote:
 
    | | |
@@ -55,18 +55,18 @@ Find, with a quoted line, a departure from the trade-agreement rule: *a specific
 ## Run it alone
 ```bash
 python agents/m2_spec_auditor.py --tender cb-425-92729935 --online --agent
-python tools/spec_tools.py --tender cb-425-92729935 --offline      # rules only
+python tools/brands.py --tender cb-425-92729935 --offline          # rules only
 ```
 
 ## How it is checked
 - `python tests/test_m2_agent.py` — the agent's rules with a scripted fake model (no network).
-- `python tests/m2_eval.py [--agent --online]` — the 36 cases judged by hand (`tests/m2_labels.csv`). Rules alone: **10 of 11 findings false, 1 of 4 real lock-ins found**.
+- `python tests/m2_eval.py [--agent --online] [--split holdout]` — the labelled names: 36 tuning (`tests/m2_labels.csv`) + 40 held-out (`tests/m2_holdout.csv`). Held-out: rules find 1 of 8 lock-ins; with the agent 6 of 7, precision 6 of 10.
 - `python tests/synth_rig.py --run [--agent]` — synthetic rigged tenders.
 
 ## Rules it must keep
 - Every finding quotes its line; no quote, no finding.
 - An unconfirmed name is neither a finding nor a clearance.
-- Every change to detection gets a flag that restores the old behaviour (`--l1-...` flags in `spec_tools.add_l1_args`; `--agent` off = rules only).
+- A new detection rule gets a switch restoring the old behaviour until it is measured (today: `--l1-scope all`); settled switches are removed, their history is in git.
 
 ## Open work
 - Run `tests/m2_eval.py --agent --online` on Windows and tune the agent's instructions on its mistakes — not the rules.

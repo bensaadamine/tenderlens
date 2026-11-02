@@ -31,18 +31,10 @@ no model number, and a "Make and model:" field - so they measure blind
 spots. The score is an upper bound until someone writes injections blind.
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import argparse
 import collections
@@ -60,9 +52,9 @@ import m2_spec_auditor
 
 m2_spec_auditor.AGENT_DOWN = "keep"   # a copy without a model keeps the rules' result
 import m4_case_builder
-import spec_tools
+import brands
+import documents
 import tenderlens
-import importlib.util
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -70,15 +62,8 @@ except Exception:
     pass
 
 
-def _load(name, path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
-
-
-census = _load("census", _os.path.join(_ROOT, "prepare", "04_census.py"))
-stream = _load("stream", _os.path.join(_ROOT, "tenderlens_stream.py"))
+census = repo.census()
+import tenderlens_stream as stream  # noqa: E402
 
 GROUP = "2510"
 SYN_TEXT = "reports/text_synth"
@@ -138,8 +123,8 @@ def phrase(style, b, equiv=False):
 # ----------------------------------------------------------------- build
 def allows_equivalents(docs):
     """The tender already accepts an equivalent for every brand it names."""
-    return any(spec_tools.RE_EQUIV_CLAUSE.search(d["text"])
-               or spec_tools.RE_DOC_CLAUSE.search(d["text"]) for d in docs)
+    return any(brands.RE_EQUIV_CLAUSE.search(d["text"])
+               or brands.RE_DOC_CLAUSE.search(d["text"]) for d in docs)
 
 
 def pick_bases(n, seed, bases="no-clause"):
@@ -151,7 +136,7 @@ def pick_bases(n, seed, bases="no-clause"):
     random.Random(seed).shuffle(pool)
     out = []
     for ref in pool:
-        docs = spec_tools.tender_documents(ref)
+        docs = documents.tender_documents(ref)
         if not docs:
             continue
         # A brand added to a tender that already accepts equivalents for
@@ -188,7 +173,7 @@ def build(n, seed, bases="no-clause"):
         style = STYLES[k % len(STYLES)]
         b1 = BRANDS[k % len(BRANDS)]
         b2 = BRANDS[(k + 3) % len(BRANDS)]
-        blanket = any(spec_tools.RE_DOC_CLAUSE.search(d["text"]) for d in docs)
+        blanket = any(brands.RE_DOC_CLAUSE.search(d["text"]) for d in docs)
         for v in VARIANTS:
             sref = f"synth-{v}-{ref}"
             inject, extra = [], None
@@ -260,7 +245,6 @@ def brand_outcome(l1, brand):
     if r:
         return "cleared_" + {"OK": "or_equivalent_nearby",
                              "OK_BLANKET_CLAUSE": "blanket_clause",
-                             "OK_LLM_CLEARED": "llm",
                              "OK_MAKE_LIST": "make_list",
                              "OK_EQUIV_PRODUCTS_CLAUSE": "equiv_products_clause",
                              "AGENT_A": "agent_a_not_a_brand",
@@ -280,7 +264,7 @@ def run(a):
         man = list(csv.DictReader(f))
 
     # Point every agent at the synthetic folder.
-    spec_tools.TEXT_DIR = SYN_TEXT
+    documents.TEXT_DIR = SYN_TEXT
     m1_screener.TEXT_DIR = SYN_TEXT
 
     notices, wstats, _, graph = tenderlens.load_shared()
@@ -298,7 +282,7 @@ def run(a):
     # expected outcome does not move with the rule being tested.
     allows = {}
     for ref in {m["base"] for m in man}:
-        docs = spec_tools.tender_documents(ref, "reports/text")
+        docs = documents.tender_documents(ref, "reports/text")
         allows[ref] = allows_equivalents(docs)
 
     if a.variants:
@@ -336,12 +320,11 @@ def run(a):
         mine = stream.comparable(raw, amap)
         peers = [r for r in base if r["reference"] not in (ref, sref)] + mine
         case = tenderlens.run_one(sref, (notices, wstats, peers, graph),
-                                  a.llm, a.online, a.agent)
+                                  online=a.online, agent=a.agent)
         # M2's own level-1 path again, to see what happened to each injected
         # brand. LLM answers are cached, so repeating it costs nothing.
-        l1 = m2_spec_auditor.run_level1(
-            sref, depth="auto" if a.llm else "standard", online=a.online,
-            agent=a.agent)
+        l1 = m2_spec_auditor.run_level1(sref, online=a.online,
+                                        agent=a.agent)
         outs = [brand_outcome(l1, b) for b in m["brands"].split("|") if b]
         res = dict(m)
         res.update({"route": case["route"], "score": case["score"],
@@ -366,7 +349,7 @@ def run(a):
     meta = {"scope": "synthetic rigged tenders, 2510",
             "generated": time.strftime("%Y-%m-%d %H:%M"),
             "tenders": len(cases), "awards": graph is not None,
-            "llm": a.llm, "weights": m4_case_builder.WEIGHTS,
+            "agent": a.agent, "weights": m4_case_builder.WEIGHTS,
             "alert_at": m4_case_builder.ALERT, "watch_at": m4_case_builder.WATCH}
     tenderlens.write_outputs(cases, meta, os.path.join(OUT, "queue"))
     report(results, state, a.online)
@@ -495,21 +478,18 @@ def main():
     ap.add_argument("--online", action="store_true")
     ap.add_argument("--agent", action="store_true",
                     help="let the M2 agent letter brand candidates a-f "
-                         "(LLM, Windows; replaces the --llm judge)")
-    ap.add_argument("--llm", action="store_true",
-                    help="use the LLM wherever the rules leave names open "
-                         "(Windows; spends tokens)")
+                         "(LLM, Windows)")
     ap.add_argument("--variants", default="",
                     help="run only these copy types, e.g. A,D,F - to limit "
-                         "tokens with --llm")
+                         "tokens with --agent")
     ap.add_argument("--bases", choices=["no-clause", "any"],
                     default="no-clause",
                     help="--build: pick only base tenders that do NOT already "
                          "accept equivalents for every brand (default); "
                          "'any' = the earlier selection")
-    spec_tools.add_l1_args(ap)
+    brands.add_l1_args(ap)
     a = ap.parse_args()
-    spec_tools.apply_l1_args(a)
+    brands.apply_l1_args(a)
     if a.build or not a.run:
         build(a.n, a.seed, a.bases)
     if a.run or not a.build:

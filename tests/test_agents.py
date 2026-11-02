@@ -8,18 +8,10 @@ Each check is one sentence of the design stated as a test. If one fails, the
 module's docstring is lying about what it does.
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import csv
@@ -193,7 +185,7 @@ def main():
               and "one of the 2 suppliers" in x["claim"]
               for x in c8["claims"]) and c8["route"] == "alert")
 
-    import m2_spec_auditor as m2a
+    import documents as m2a
     docs = [{"document": "rfp.pdf",
              "text": "ANNEX A\nThe crane must be\nPalfinger model PK11001;\n"},
             {"document": "amd.pdf", "text": "Question 1: other text"}]

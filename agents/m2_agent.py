@@ -1,7 +1,7 @@
 """
 M2 AGENT - classifies the brand-like names the rules found in ONE tender.
 
-The rules (tools/spec_tools.py) are good at FINDING names next to a model
+The rules (tools/brands.py) are good at FINDING names next to a model
 code, and bad at JUDGING them: on 4110, 9 of 11 rule findings were false
 ("Net 30", "Hastelloy C-276", microscope holders the buyer already owns).
 Judging needs context - the paragraph, the Q&A, the general clauses - and
@@ -33,37 +33,28 @@ Only "f" becomes a finding. What stays in CODE, never left to the model:
   * a candidate left without a valid letter is "unresolved": neither a
     finding nor a clearance.
 
-The loop is a LangGraph graph (decide -> act -> back). If langgraph is not
-installed, the same two functions run in a plain loop - same result.
+The loop (decide -> act -> back) is agents/agent_loop.py, shared by the
+three agents.
 
     from m2_agent import classify_tender
     out = classify_tender(ref, candidates)        # candidates from the rules
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import json
 import re
 from typing import TypedDict
 
 import facts as _facts
-import spec_tools
+import brands
+import documents
+import wikidata
 
-try:
-    from langgraph.graph import END, StateGraph
-except ImportError:          # same loop, run by hand (see run_loop)
-    StateGraph = None
+import agent_loop
 
 LETTERS = {
     "a": "not a brand",
@@ -90,16 +81,16 @@ class TenderText:
         self.docs = {}
         self.bidder = {}
         self.pages = {}
-        for d in spec_tools.tender_documents(reference, text_dir):
+        for d in documents.tender_documents(reference, text_dir):
             lines = d["text"].splitlines()
             self.docs[d["document"]] = lines
-            # page of each line, the way spec_tools counts it (form feeds)
+            # page of each line, the way brands.py counts it (form feeds)
             page, pages = 1, []
             for raw in d["text"].splitlines(keepends=True):
                 pages.append(page)
                 page += raw.count("\f")
             self.pages[d["document"]] = pages
-            self.bidder[d["document"]] = spec_tools.question_mask(lines)
+            self.bidder[d["document"]] = documents.question_mask(lines)
 
     def page_of(self, document, line):
         pages = self.pages.get(document) or []
@@ -139,8 +130,8 @@ class TenderText:
                          for i in range(lo, hi + 1))
 
     def equivalents(self):
-        pats = (spec_tools.RE_OR_EQUIV, spec_tools.RE_DOC_CLAUSE,
-                spec_tools.RE_EQUIV_CLAUSE, spec_tools.RE_EQUIV_TO)
+        pats = (brands.RE_OR_EQUIV, brands.RE_DOC_CLAUSE,
+                brands.RE_EQUIV_CLAUSE, brands.RE_EQUIV_TO)
         hits = []
         for doc, lines in self.docs.items():
             for i, line in enumerate(lines):
@@ -365,27 +356,12 @@ def make_nodes(text, ask, online=False, facts_fn=None):
 
     def one_reply(state, final=False):
         """One model call -> (action, args, thought). Raises if no model."""
-        try:
-            reply = ask(FINAL_SYSTEM if final else system_prompt(),
-                        render(state))
-        except ValueError:            # not JSON: a wasted step, told in act
-            reply = {}
-        except RuntimeError as e:     # an empty answer is a wasted step too;
-            if type(e).__name__ != "EmptyAnswer":   # anything else: outage
-                raise
-            reply = {}
-        if not isinstance(reply, dict):
-            reply = {}
+        reply = agent_loop.ask_model(
+            ask, FINAL_SYSTEM if final else system_prompt(), render(state))
         if "action" not in reply and "verdicts" in reply:  # the final call
             reply = {"action": "classify",
                      "args": {"verdicts": reply["verdicts"]}}
-        if "action" not in reply and "name" in reply:   # a native tool call
-            reply = {"action": reply.get("name"),
-                     "args": reply.get("arguments") or {}}
-        # gpt-oss prefixes the tools it was trained on: "repo_browser.search"
-        action = str(reply.get("action", "")).strip().lower().split(".")[-1]
-        args = reply.get("args") if isinstance(reply.get("args"), dict) else {}
-        return action, args, str(reply.get("thought", ""))[:300]
+        return agent_loop.parse_action(reply)
 
     def decide(state):
         try:
@@ -427,7 +403,7 @@ def make_nodes(text, ask, online=False, facts_fn=None):
             obs = facts_fn(str(args.get("name") or ""))
         elif action == "wikidata":
             name = str(args.get("name") or "")
-            v = spec_tools.verify_brand(name, offline=not online)
+            v = wikidata.verify_brand(name, offline=not online)
             obs = {True: "a company on Wikidata", False: "not a company on "
                    "Wikidata", None: "unknown to Wikidata"}[v]
         elif action == "classify":
@@ -498,32 +474,6 @@ def _classify(text, candidates, items, verdicts, open_ids, step):
     return "\n".join(notes), verdicts, open_ids
 
 
-# ------------------------------------------------------------------ the loop
-def _route(state):
-    return "end" if state["done"] else "decide"
-
-
-def build_graph(decide, act):
-    g = StateGraph(AgentState)
-    g.add_node("decide", decide)
-    g.add_node("act", act)
-    g.set_entry_point("decide")
-    g.add_conditional_edges("decide", lambda s: "end" if s["done"] else "act",
-                            {"act": "act", "end": END})
-    g.add_conditional_edges("act", _route, {"decide": "decide", "end": END})
-    return g.compile()
-
-
-def run_loop(state, decide, act):
-    """The same loop without langgraph."""
-    while not state["done"]:
-        state = {**state, **decide(state)}
-        if state["done"]:
-            break
-        state = {**state, **act(state)}
-    return state
-
-
 def classify_tender(reference, candidates, ask=None, online=False,
                     text_dir=None, use_graph=True, facts_fn=None):
     """Letter every candidate of one tender.
@@ -551,11 +501,8 @@ def classify_tender(reference, candidates, ask=None, online=False,
                        history=[], steps=0, done=False, stop_reason="")
     text = TenderText(reference, text_dir)
     decide, act = make_nodes(text, ask, online, facts_fn)
-    if use_graph and StateGraph is not None:
-        state = build_graph(decide, act).invoke(
-            state, {"recursion_limit": 4 * MAX_STEPS + 4})
-    else:
-        state = run_loop(state, decide, act)
+    state, engine = agent_loop.run(state, decide, act, AgentState, MAX_STEPS,
+                                   use_graph)
 
     by_id = {c["id"]: c for c in cands}
     verdicts = [dict(by_id[int(i)], **v) for i, v in state["verdicts"].items()]
@@ -568,5 +515,5 @@ def classify_tender(reference, candidates, ask=None, online=False,
     return {"verdicts": verdicts,
             "unresolved": [by_id[i] for i in state["open_ids"]],
             "steps": state["steps"], "stop_reason": state["stop_reason"],
-            "engine": "langgraph" if (use_graph and StateGraph) else "loop",
+            "engine": engine,
             "trace": trace}

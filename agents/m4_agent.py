@@ -37,18 +37,10 @@ the baseline that shows whether the model's choices add anything.
     case = coordinate(ref, m1, m2, m3, default_hooks(ref, row, graph, m3))
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import copy
 import json
@@ -56,10 +48,7 @@ from typing import TypedDict
 
 import m4_case_builder as m4
 
-try:
-    from langgraph.graph import END, StateGraph
-except ImportError:          # same loop, run by hand (see run_loop)
-    StateGraph = None
+import agent_loop
 
 MAX_STEPS = 4
 AWARDS_SHOWN = 4
@@ -287,29 +276,10 @@ def render(state, hooks):
     return "\n".join(out)
 
 
-def _as_action(reply):
-    """Normalise a reply into (action, args, thought)."""
-    if not isinstance(reply, dict):
-        return "", {}, ""
-    if "action" not in reply and "name" in reply:   # a native tool call
-        reply = {"action": reply.get("name"),
-                 "args": reply.get("arguments") or {}}
-    action = str(reply.get("action", "")).strip().lower().split(".")[-1]
-    args = reply.get("args") if isinstance(reply.get("args"), dict) else {}
-    return action, args, str(reply.get("thought", ""))[:300]
-
-
 def model_chooser(ask, hooks):
     def choose(state):
-        try:
-            reply = ask(SYSTEM, render(state, hooks))
-        except ValueError:            # not JSON: a wasted step
-            reply = {}
-        except RuntimeError as e:     # an empty answer is a wasted step too
-            if type(e).__name__ != "EmptyAnswer":
-                raise
-            reply = {}
-        return _as_action(reply)
+        return agent_loop.parse_action(
+            agent_loop.ask_model(ask, SYSTEM, render(state, hooks)))
     return choose
 
 
@@ -496,29 +466,6 @@ def make_nodes(m1, hooks, choose):
     return decide, act
 
 
-# ------------------------------------------------------------------ the loop
-def build_graph(decide, act):
-    g = StateGraph(AgentState)
-    g.add_node("decide", decide)
-    g.add_node("act", act)
-    g.set_entry_point("decide")
-    g.add_conditional_edges("decide", lambda s: "end" if s["done"] else "act",
-                            {"act": "act", "end": END})
-    g.add_conditional_edges("act", lambda s: "end" if s["done"] else "decide",
-                            {"decide": "decide", "end": END})
-    return g.compile()
-
-
-def run_loop(state, decide, act):
-    """The same loop without langgraph."""
-    while not state["done"]:
-        state = {**state, **decide(state)}
-        if state["done"]:
-            break
-        state = {**state, **act(state)}
-    return state
-
-
 def coordinate(reference, m1, m2, m3, hooks, mode="model", ask=None,
                use_graph=True):
     """Build the case, ask the follow-ups that are still open, re-score.
@@ -546,12 +493,8 @@ def coordinate(reference, m1, m2, m3, hooks, mode="model", ask=None,
                 tools=_tools())
         choose = model_chooser(ask, hooks)
     decide, act = make_nodes(m1, hooks, choose)
-    engine = "langgraph" if (use_graph and StateGraph) else "loop"
-    if engine == "langgraph":
-        state = build_graph(decide, act).invoke(
-            state, {"recursion_limit": 4 * MAX_STEPS + 4})
-    else:
-        state = run_loop(state, decide, act)
+    state, engine = agent_loop.run(state, decide, act, AgentState, MAX_STEPS,
+                                   use_graph)
 
     if state["stop_reason"].startswith("model") and AGENT_DOWN == "stop":
         raise AgentUnavailable(f"{reference}: {state['stop_reason']}")

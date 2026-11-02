@@ -50,23 +50,11 @@ STORAGE  reports/kb/<group>/  - append-only, so a crash loses at most the
   the base retroactively. Labels not yet in the map are kept as written.
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.abspath(__file__))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import repo  # noqa: F401  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import argparse
 import collections
 import csv
-import importlib.util
 import io
 import json
 import os
@@ -79,7 +67,8 @@ import m1_screener
 import m3_investigator
 import m2_spec_auditor
 import m4_case_builder
-import spec_tools
+import brands
+import documents
 import tenderlens
 
 try:
@@ -87,10 +76,7 @@ try:
 except Exception:
     pass
 
-_spec = importlib.util.spec_from_file_location(
-    "census", _os.path.join(_ROOT, "prepare", "04_census.py"))
-census = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(census)
+census = repo.census()
 
 MAP_PATH = "reports/attribute_map.json"
 OBS_COLS = ["run_id", "reference", "unspsc8", "pub_date", "label",
@@ -217,10 +203,10 @@ def notice_meta(row):
 
 def extract_tender(ref, row, group, run_id):
     """Raw observations for one tender, through prepare/04_census.py's own steps."""
-    docs = spec_tools.tender_documents(ref)
+    docs = documents.tender_documents(ref)
     rows = []
     for d in docs:
-        got = census.extract(d["text"], scoped=True)
+        got = census.extract(d["text"])
         for r in got:
             r["reference"] = ref
             r["file"] = f"{ref}__{d['document']}.txt"
@@ -267,7 +253,7 @@ def todo_list(notices, group, state, until=None):
     for ref in tenderlens.select(notices, group):
         ev = state.get(ref)
         if ev and not ((ev["status"] == "no_documents"
-                        and spec_tools.tender_documents(ref))
+                        and documents.tender_documents(ref))
                        or ev["status"] == "still_open"):
             continue
         _, date = notice_meta(notices[ref])
@@ -356,8 +342,9 @@ def run(a):
         peers = [r for r in base if r["reference"] != ref] + mine
         try:
             case = tenderlens.run_one(ref, (notices, wstats, peers, graph),
-                                      a.llm, a.online, a.agent,
-                                      a.m3_agent, a.m4_agent)
+                                      online=a.online, agent=a.agent,
+                                      m3_agent=a.m3_agent,
+                                      m4_mode=a.m4_agent)
         except tenderlens.AGENT_DOWN as e:
             # Nothing written for this tender: the next run starts here.
             # Answers already given are cached, so nothing is paid twice.
@@ -397,7 +384,7 @@ def run(a):
     meta = {"scope": f"UNSPSC-4 {a.group}, incremental batch {stamp}",
             "generated": time.strftime("%Y-%m-%d %H:%M"),
             "tenders": len(cases), "awards": graph is not None,
-            "llm": a.llm, "agent": a.agent, "m4_agent": a.m4_agent,
+            "agent": a.agent, "m4_agent": a.m4_agent,
             "weights": m4_case_builder.WEIGHTS,
             "alert_at": m4_case_builder.ALERT,
             "watch_at": m4_case_builder.WATCH}
@@ -541,7 +528,7 @@ def main():
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--agent", action="store_true",
                     help="let the M2 agent letter brand candidates a-f "
-                         "(LLM, Windows; replaces the --llm judge)")
+                         "(LLM, Windows)")
     ap.add_argument("--m3-agent", action="store_true",
                     help="let the M3 agent decide which other spellings of "
                          "the winner are the same supplier (LLM, Windows)")
@@ -552,7 +539,6 @@ def main():
                          "the M3 agent checks the winner's spellings (LLM, "
                          "Windows). 'fixed' runs every follow-up without "
                          "the model choosing")
-    ap.add_argument("--llm", action="store_true")
     ap.add_argument("--online", action="store_true")
     ap.add_argument("--l2-level", type=int, choices=[6, 8], default=8)
     ap.add_argument("--kb-root", default="reports/kb",
@@ -567,9 +553,9 @@ def main():
     ap.add_argument("--queue", nargs="?", const="current", metavar="STAMP",
                     help="write a queue from cases.jsonl: every tender's "
                          "latest case (default), or one batch by its stamp")
-    spec_tools.add_l1_args(ap)
+    brands.add_l1_args(ap)
     a = ap.parse_args()
-    spec_tools.apply_l1_args(a)
+    brands.apply_l1_args(a)
     if a.status:
         status(a)
     elif a.feedback:

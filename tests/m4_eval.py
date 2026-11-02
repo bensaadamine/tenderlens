@@ -18,18 +18,10 @@ routes as `fixed`, keep `fixed`: the model's choices add cost, not value.
 Writes reports/m4_eval/<stamp>/cases.csv and summary.txt; never overwrites.
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import argparse
 import collections
@@ -45,20 +37,25 @@ OUT_DIR = os.path.join("reports", "m4_eval")
 MODES = ("off", "fixed", "model")
 
 
-def _tokens(since):
-    """Tokens logged by the agents since `since` (an ISO timestamp)."""
-    n = 0
+def _usage_rows():
+    """Rows of the token log, in order (calls logged by any tag)."""
     if not os.path.exists("reports/llm_usage.csv"):
-        return 0
+        return []
     with io.open("reports/llm_usage.csv", encoding="utf-8",
                  errors="replace") as f:
-        for r in csv.DictReader(line.replace("\0", "") for line in f):
-            if (r.get("ts") or "") >= since and \
-                    (r.get("tag") or "").endswith("_agent"):
-                try:
-                    n += int(float(r.get("total_tokens") or 0))
-                except ValueError:
-                    pass
+        return list(csv.DictReader(line.replace("\0", "") for line in f))
+
+
+def _agent_tokens(rows):
+    """Tokens the agents used in these rows. Counted by position in the log,
+    not by time: the log can be written on another clock."""
+    n = 0
+    for r in rows:
+        if (r.get("tag") or "").endswith("_agent"):
+            try:
+                n += int(float(r.get("total_tokens") or 0))
+            except ValueError:
+                pass
     return n
 
 
@@ -81,7 +78,7 @@ def main():
 
     rows, tokens = [], {}
     for mode in a.modes:
-        t0 = time.strftime("%Y-%m-%dT%H:%M:%S")
+        start = len(_usage_rows())
         for ref in refs:
             try:
                 c = tenderlens.run_one(ref, shared, online=a.online,
@@ -99,7 +96,7 @@ def main():
                          "followups": checks})
             print(f"  {mode:5} {ref:28} {route:6} (lock-in labelled: "
                   f"{'f' in want[ref]})")
-        tokens[mode] = _tokens(t0)
+        tokens[mode] = _agent_tokens(_usage_rows()[start:])
 
     with io.open(os.path.join(out_dir, "cases.csv"), "w", encoding="utf-8",
                  newline="") as f:

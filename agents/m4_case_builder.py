@@ -44,18 +44,10 @@ table so that calibrating them later is one edit. Do not quote a score as a
 probability.
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import re
@@ -84,30 +76,25 @@ WEIGHTS = {
 CAPS = {"brand_without_equivalent": 2, "level2": 2}
 
 ALERT = 5
-ALERT_FROM = "documents"   # or "all" - see build_case
 # What the buyer DECLARES on the notice: an advance award notice, a limited
 # tendering method or reason. User decision 2026-10-19: alone, these rank a
 # case but never put it in the queue - measured on 4110, an ACAN alone sent
 # 194 of 957 tenders (20%) to WATCH, burying any document finding. They
 # still reach WATCH together with anything not declared (a brand, a short
-# window, a recurring supplier ...). DECLARED_ALONE = "watch" restores.
+# window, a recurring supplier ...).
 DECLARED = {"acan", "limited_tendering_method", "limited_tendering_reason"}
-DECLARED_ALONE = "close"
 # "No trade agreement" is context, not a sign: it only means the rule against
 # naming brands does not apply. User decision 2026-10-19: it no longer lifts
-# declared signals into WATCH on its own. CONTEXT_ALONE = "watch" restores.
+# declared signals into WATCH on its own.
 CONTEXT_ONLY = {"no_trade_agreement"}
-CONTEXT_ALONE = "close"
 # Brand vs winner (2026-11-01, M4 agent): the brand is also checked against
 # the winner's other spellings that M3 accepted as the same company - a
 # winner written "BENDIX CVS" whose award notices also say "BENDIX
 # COMMERCIAL VEHICLE SYSTEMS". Same whole-word test on each name. False
 # restores the check against the winner's own name only.
 BRAND_VS_SPELLINGS = True
-# Wording of the case page. "plain" (2026-10-19): one sentence per reason,
-# each marked declared / found in the documents / context; no internal codes.
-# "v1" restores the earlier text.
-NARRATIVE = "plain"
+# Wording of the case page (2026-10-19): one sentence per reason, each
+# marked declared / found in the documents / context; no internal codes.
 NATURE = {
     "acan": "Declared by the buyer",
     "limited_tendering_method": "Declared by the buyer",
@@ -306,22 +293,18 @@ def build_case(m1, m2, m3, followups=None):
     # signal measured not to work cannot be what puts a tender in front of
     # an auditor.
     has_other = any(c.get("points") and c["kind"] not in LEVEL2_KINDS
-                    and (DECLARED_ALONE == "watch"
-                         or c["kind"] not in DECLARED)
-                    and (CONTEXT_ALONE == "watch"
-                         or c["kind"] not in CONTEXT_ONLY)
+                    and c["kind"] not in DECLARED
+                    and c["kind"] not in CONTEXT_ONLY
                     for c in claims)
     # Measured 2026-10-19: one brand (3) + an ACAN (2) + no trade agreement
     # (1) = 6 reached ALERT, against the routing rule - notice signals are
     # what the buyer declared, so they can rank a case, never make it an
     # alert. An alert now needs ALERT points from document findings alone
-    # (two brands, or a brand that is the winner). ALERT_FROM = "all"
-    # restores the earlier rule.
+    # (two brands, or a brand that is the winner).
     doc_score = sum(c.get("points") or 0 for c in claims
                     if c.get("agent") in ("M2", "M4")
                     and c["kind"] not in LEVEL2_KINDS)
-    alert_score = doc_score if ALERT_FROM == "documents" else score
-    if alert_score >= ALERT and can_alert:
+    if doc_score >= ALERT and can_alert:
         route = "alert"
     elif score >= WATCH and has_other:
         route = "watch"
@@ -338,10 +321,7 @@ def build_case(m1, m2, m3, followups=None):
         "score": score,
         "breakdown": breakdown,
         "claims": claims,
-        "narrative": (narrative(route, claims, award)
-                      if NARRATIVE == "v1"
-                      else narrative_plain(route, claims, award, m2,
-                                           followups)),
+        "narrative": narrative_plain(route, claims, award, m2, followups),
         "followups": list(followups or []),
         "readable": bool((m2 or {}).get("readable")),
         "award": award or None,
@@ -420,27 +400,3 @@ def narrative_plain(route, claims, award, m2, followups=None):
     out.append("\nThese are hypotheses with evidence attached, not findings "
                "of wrongdoing. A person decides.")
     return "\n".join(out)
-
-
-def narrative(route, claims, award):
-    """Decision 3 wording. Built only from scored, verified claims."""
-    scored = [c for c in claims if c.get("points")]
-    if route == "close" or not scored:
-        return ("No checkable signal suggests the competition on this "
-                "contract was anything other than genuine.")
-    head = ("The competition on this contract does not appear to have been "
-            "genuine" if route == "alert" else
-            "This contract shows signals worth an auditor's review")
-    reasons = []
-    for c in sorted(scored, key=lambda c: -c["points"]):
-        s = c["source"]
-        loc = s.get("file") or ""
-        if s.get("where"):
-            loc += f" ({s['where']})"
-        reasons.append(f"{c['claim']} [{loc}]")
-    out = head + ", for these reasons:\n- " + "\n- ".join(reasons[:6])
-    if award and award.get("supplier"):
-        out += f"\nAwarded to {award['supplier']}."
-    out += ("\nThese are hypotheses with evidence attached, not findings of "
-            "wrongdoing. A human decides.")
-    return out

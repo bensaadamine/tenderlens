@@ -32,12 +32,14 @@ Four agents look at one tender at a time, each from a different angle, and the l
 ## Folder layout
 
 ```
-tenderlens.py          run the agents on a category, all at once
-tenderlens_stream.py   run tender by tender against a growing knowledge base (normal mode)
-agents/                the four agents (M1–M4)
-tools/                 shared tools: spec_tools.py (brands), level2.py (peer comparison), llm.py (LLM access)
+repo.py                puts the folders below on the import path (every script imports it)
+tenderlens_stream.py   run a category tender by tender against a growing knowledge base
+tenderlens.py          the four agents on one tender (run_one); --tender prints one case in full
+agents/                the four agents (M1–M4); agent_loop.py = the loop M2, M3 and M4 share
+tools/                 documents.py (a tender's text), brands.py (brand rules), wikidata.py,
+                       facts.py (local-model facts), level2.py (peer comparison), llm.py (LLM access)
 prepare/               data preparation, run in order 01 → 05
-tests/                 test_agents.py (rules), synth_rig.py (synthetic rigged tenders), llm_test.py
+tests/                 offline tests (test_*.py), evaluations (m2_eval.py, m4_eval.py), synth_rig.py
 docs/agents/           one page per agent
 data/                  not in git: tenders.csv, awards.csv, downloaded documents
 reports/               not in git: extracted text, knowledge bases, audit queues, caches
@@ -55,9 +57,9 @@ pip install -r requirements.txt     # requests, pdfminer.six, langgraph
 
 No `pandas` (blocked on our Windows machines) — standard library plus those two.
 
-LLM keys go in `.env` (never committed): `GROQ_API_KEY=...`, `GEMINI_API_KEY=...`. With two keys the calls are shared between providers.
+LLM keys go in `.env` (never committed): `GROQ_API_KEY=...`, `GEMINI_API_KEY=...`. With two keys the calls are shared between providers. The local model (Ollama) is enabled with `TENDERLENS_LOCAL_MODEL=gemma4:e4b`; it is used for the M2 agent's facts.
 
-**Network is needed only on Windows**: downloads (`prepare/01`, `prepare/02`, `agents/m3_investigator.py --fetch`), Wikidata (`--online`), the LLM (`--llm`, `prepare/05`).
+**Network is needed only on Windows**: downloads (`prepare/01`, `prepare/02`, `agents/m3_investigator.py --fetch`), Wikidata (`--online`), the LLM (`--agent`, `--m3-agent`, `--m4-agent`, `prepare/05`).
 
 ---
 
@@ -78,17 +80,21 @@ Open `reports/kb/2510/batches/<date>_queue.html`.
 | flag | effect |
 |---|---|
 | `--online` | check brand names on Wikidata (free, cached) |
-| `--agent` | the M2 agent letters every brand candidate a–f with a quote (LLM; replaces `--llm`) |
-| `--llm` | older path: the LLM triages unconfirmed names and judges findings yes/no |
+| `--agent` | the M2 agent letters every brand candidate a–f with a quote (LLM) |
+| `--m3-agent` | the M3 agent decides which spellings of the winner are the same company (LLM) |
+| `--m4-agent [fixed]` | M4 re-checks cases with a brand finding before ranking them (LLM; `fixed` = no model choosing) |
+| `--reprocess REF… / quarantine / all` | run tenders again with today's code (auditor-judged tenders are kept) |
+| `--queue [STAMP]` | rebuild a queue from the case log |
 | `--until YYYY-MM-DD` | only tenders published up to that date |
 | `--status` | what is in the knowledge base |
 | `--feedback` | apply the auditor's verdicts from `reports/kb/<group>/feedback.csv` |
 
 One tender, with every agent's reasoning: `python tenderlens.py --tender cb-425-92729935`
 
-Tests: `python tests/test_agents.py` and `python tests/test_m2_agent.py` (no data, no network) · `python tests/synth_rig.py --run` (synthetic rigged tenders) · `python tests/m2_eval.py [--agent --online]` (M2 against the 36 cases judged by hand, `tests/m2_labels.csv`).
+Tests (no data, no network): `python tests/test_agents.py`, `test_m2_agent.py`, `test_m3_agent.py`, `test_m4_agent.py`, `test_stream_cases.py`, `test_m2_eval.py`, `test_redesign.py`.
+Measurements: `python tests/synth_rig.py --run` (synthetic rigged tenders) · `python tests/m2_eval.py [--agent --online] [--split holdout]` (M2 against the labelled names: 36 tuning + 40 held-out) · `python tests/m4_eval.py --online` (M4 agent: model vs fixed).
 
-**Long runs** (`--llm` over a whole category, about an hour) are done **once, at the end of a category** — not after each fix. Fixes are checked offline on the affected tenders and on the synthetic set.
+**Long runs** (agents over a whole category) are done **once, at the end of a category** — not after each fix. Fixes are checked offline on the affected tenders and on the synthetic set.
 
 ---
 
@@ -109,16 +115,16 @@ One line per case in `feedback.csv` (`reference,verdict,note,reviewer,date`), th
 
 ---
 
-## Where things stand (2026-10-22)
+## Where things stand (2026-11-02)
 
 | category | tenders | alert | watch | note |
 |---|---|---|---|---|
-| 2510 motor vehicles | 613 (193 with documents) | 0 | 9 | offline run; with the LLM: Bendix AD9 air dryer found in 2 tenders (genuine) |
-| 4110 lab equipment | 957 | 1 | 13 | offline run; **9 of the 11 brand findings checked by hand are false** |
+| 2510 motor vehicles | 613 (193 with documents) | 0 | 3 | offline, rules only |
+| 4110 lab equipment | 957 | 2 | 10 | offline, rules only; to audit |
 
-- **The brand check is the weak point.** On the 36 cases judged by hand, the rules alone give 11 findings of which **10 are false**, and find 1 of the 4 real lock-ins. The M2 agent (`--agent`) is built to fix this: the rules only collect candidates, and the agent investigates each one and gives it a letter a–f with a quote. Its score on the same 36 cases is the next measurement.
+- **M2 on the 40 held-out names** (never used for tuning): rules alone find **1 of 8** real lock-ins; with the M2 agent, **6 of 7** (precision 6 of 10). 3 of its 4 false findings are the buyer's own equipment described elsewhere in the tender - what the facts tool (local model) is for.
+- **Synthetic test (2510):** of 160 rigged copies, the brand is found in 64 offline; 17 reach alert; 0 of 120 clean copies are flagged.
 - **Peer comparison (level 2)** stays dormant: few product groups have 8 comparable tenders yet.
-- **Synthetic test (2510):** of 160 rigged copies, the brand is found in 64; 17 reach alert; 0 of 120 clean copies are flagged. Brands Wikidata knows are found 48/60; others 20/140.
 
 ---
 

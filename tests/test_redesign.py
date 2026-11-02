@@ -13,18 +13,10 @@ The 2026-11-01 changes, tested offline (no data, no network, no tokens):
     python tests/test_redesign.py
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import io
 import json
@@ -37,7 +29,7 @@ import facts
 import llm
 import m2_agent
 import m3_agent
-import spec_tools
+import documents
 
 FAILS = 0
 
@@ -131,12 +123,12 @@ Payment terms: Net 30 days.
 
 
 def test_m2():
-    view = spec_tools.requirement_view(SPEC)
+    view = documents.requirement_view(SPEC)
     check("requirements view keeps ANNEX A, blanks the rest, same length",
           "Honda GX390" in view and "Howe Street" not in view
           and "Net 30" not in view and len(view) == len(SPEC))
     check("no requirements section: the whole document is kept",
-          spec_tools.requirement_view("Suite 1400\nHonda GX390") ==
+          documents.requirement_view("Suite 1400\nHonda GX390") ==
           "Suite 1400\nHonda GX390")
 
     docs = [{"document": "rfp.pdf", "category": "x", "text": SPEC},
@@ -188,7 +180,7 @@ def test_m2():
                              "line_no": 5, "evidence": "Honda GX390"}],
                              open_ids=[1], verdicts={}, history=[], steps=0,
                              done=False, stop_reason="")
-    st = m2_agent.run_loop(st, decide, act)
+    st = m2_agent.agent_loop.run_loop(st, decide, act)
     check("the M2 agent's facts tool reaches the facts module",
           seen == ["Honda"]
           and st["history"][0]["observation"].startswith("buyer_owns"))

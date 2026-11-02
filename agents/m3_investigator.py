@@ -42,18 +42,10 @@ same mistake as guessing a unit (decision 15). If detection fails, the error
 lists every header so the mapping can be fixed in one line.
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import argparse
@@ -110,8 +102,6 @@ def norm_name(s):
 # the same tender with its number written differently in the award file
 # ("W8476-246744/A" vs "/B", "23-58204" vs "23-58204 Version B"). A third
 # lookup ignores that suffix, and only accepts an award from the SAME buyer.
-# SOL_SUFFIX = False restores the earlier two lookups.
-SOL_SUFFIX = True
 RE_SOL_SUFFIX = re.compile(r"(?:VERSION[A-Z0-9]+|[/\-_][A-Z0-9]{1,3}|(?<=\d)[A-Z])$")
 
 
@@ -333,7 +323,7 @@ def investigate(reference, notice_row=None, graph=None, agent=False,
     if not recs:
         recs = graph["by_ref"].get(reference, [])
         via = "reference number"
-    if not recs and SOL_SUFFIX and sol and graph.get("by_base"):
+    if not recs and sol and graph.get("by_base"):
         buyer = norm_name((notice_row or {}).get(
             "contractingEntityName-nomEntitContractante-eng"))
         recs = [r for r in graph["by_base"].get(base_sol(sol), [])

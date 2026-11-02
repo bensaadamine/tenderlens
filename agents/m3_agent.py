@@ -35,18 +35,10 @@ What stays in CODE, never left to the model:
     out = aliases_for("AGILENT TECHNOLOGIES", graph)   # -> {"same": [...]}
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import csv
 import io
@@ -56,10 +48,7 @@ import re
 import time
 from typing import TypedDict
 
-try:
-    from langgraph.graph import END, StateGraph
-except ImportError:          # same loop, run by hand (see run_loop)
-    StateGraph = None
+import agent_loop
 
 ALIASES = os.path.join("reports", "supplier_aliases.csv")
 ALIAS_COLS = ["winner", "name", "verdict", "reason", "decided_by", "date"]
@@ -303,35 +292,17 @@ def render(state, index):
     return "\n".join(out)
 
 
-def _as_action(reply):
-    """Normalise a reply into (action, args)."""
-    if not isinstance(reply, dict):
-        return "", {}
-    if "action" not in reply and ("same" in reply or "different" in reply):
-        return "decide", reply                      # the final call
-    if "action" not in reply and "name" in reply:   # a native tool call
-        reply = {"action": reply.get("name"),
-                 "args": reply.get("arguments") or {}}
-    action = str(reply.get("action", "")).strip().lower().split(".")[-1]
-    args = reply.get("args") if isinstance(reply.get("args"), dict) else {}
-    return action, args
-
-
 def make_nodes(index, ask, shown, accepted=()):
     """The graph's two nodes. `shown` = names the tools have shown;
     `accepted` = spellings already stored as the same company."""
 
     def one_reply(state, final=False):
-        try:
-            reply = ask(FINAL_SYSTEM if final else SYSTEM,
-                        render(state, index))
-        except ValueError:
-            reply = {}
-        except RuntimeError as e:
-            if type(e).__name__ != "EmptyAnswer":
-                raise
-            reply = {}
-        return _as_action(reply)
+        reply = agent_loop.ask_model(ask, FINAL_SYSTEM if final else SYSTEM,
+                                     render(state, index))
+        if "action" not in reply and ("same" in reply
+                                      or "different" in reply):
+            return "decide", reply                  # the final call
+        return agent_loop.parse_action(reply)[:2]
 
     def decide(state):
         try:
@@ -409,27 +380,6 @@ def make_nodes(index, ask, shown, accepted=()):
     return decide, act
 
 
-def run_loop(state, decide, act):
-    while not state["done"]:
-        state = {**state, **decide(state)}
-        if state["done"]:
-            break
-        state = {**state, **act(state)}
-    return state
-
-
-def build_graph(decide, act):
-    g = StateGraph(AgentState)
-    g.add_node("decide", decide)
-    g.add_node("act", act)
-    g.set_entry_point("decide")
-    g.add_conditional_edges("decide", lambda s: "end" if s["done"] else "act",
-                            {"act": "act", "end": END})
-    g.add_conditional_edges("act", lambda s: "end" if s["done"] else "decide",
-                            {"decide": "decide", "end": END})
-    return g.compile()
-
-
 # ------------------------------------------------------------------- entry
 def aliases_for(winner, graph, ask=None, use_graph=True, path=None,
                 store=True, only=None):
@@ -482,12 +432,8 @@ def aliases_for(winner, graph, ask=None, use_graph=True, path=None,
                        different=[], reasons={}, history=[], steps=0,
                        done=False, stop_reason="")
     decide, act = make_nodes(index, ask, shown, accepted=same)
-    engine = "langgraph" if (use_graph and StateGraph) else "loop"
-    if engine == "langgraph":
-        state = build_graph(decide, act).invoke(
-            state, {"recursion_limit": 4 * MAX_STEPS + 4})
-    else:
-        state = run_loop(state, decide, act)
+    state, engine = agent_loop.run(state, decide, act, AgentState, MAX_STEPS,
+                                   use_graph)
 
     today = time.strftime("%Y-%m-%d")
     rows = [{"winner": winner, "name": n, "verdict": v,

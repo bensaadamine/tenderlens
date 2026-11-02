@@ -29,18 +29,10 @@ prompt, so a re-run costs nothing and the team gets identical results. Commit
 that file.
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import csv
@@ -61,35 +53,22 @@ USAGE_PATH = "reports/llm_usage.csv"
 # written anywhere.
 ERRORS_PATH = "reports/llm_errors.csv"
 
-# Groq's free tier is ~6,000 tokens per MINUTE. Staying a little under it is
-# cheaper than discovering the ceiling: a 429 costs the Retry-After wait plus
-# a round trip, and the retry spends the tokens again anyway. _throttle()
-# keeps a sliding 60-second window and sleeps rather than colliding.
-TPM_BUDGET = 5500
-_recent = []          # (unix_time, tokens) within the last 60s - legacy name
-
 # LOAD SHARING (user decision 2026-10-19). With two or more keys, each call
 # goes to the provider with the most free capacity in ITS OWN 60-second
-# window, instead of always to the first one. A provider that errors still
-# falls back to the next. SPREAD = "fallback" restores the earlier behaviour
-# (always the first provider, others only on error). Budgets are per provider
-# and deliberately under each free tier:
-#   groq     ~6,000 tokens/min                  -> 5,500
-#   mistral  free tier: about 1 request/second  -> 1 call per 1.1 s
-#   others   unknown                            -> 5,500 tokens/min
-SPREAD = os.environ.get("TENDERLENS_LLM_SPREAD", "share")
-BUDGETS = {"groq": 5500, "mistral": 400000, "cerebras": 5500,
-           "gemini": 5500, "ollama": 10 ** 9}
-MIN_GAP = {"mistral": 1.1}     # seconds between two calls
+# window; a provider that errors falls back to the next. Budgets (tokens per
+# minute) stay a little under each free tier - a 429 costs the Retry-After
+# wait plus a round trip, and the retry spends the tokens again:
+#   groq ~6,000 tokens/min -> 5,500; others unknown -> 5,500
+TPM_BUDGET = 5500
+BUDGETS = {"groq": 5500, "cerebras": 5500, "gemini": 5500, "ollama": 10 ** 9}
 _windows = {}         # provider -> [(unix_time, tokens)]
 _last_call = {}       # provider -> unix_time
 _down_until = {}      # provider -> unix_time; a provider that errored rests
 DOWN_FOR = 60         # seconds
 # Groq's gpt-oss sometimes answers a plain prompt with a native tool call
 # ("Tool choice is none, but model called a tool", HTTP 400). The call it
-# meant is in the error body; "recover" returns it as the answer so the
-# caller can read it. "fail" restores the old behaviour (provider failed).
-TOOL_SLIP = "recover"
+# meant is in the error body; it is returned as the answer so the caller
+# can read it.
 DAY_OUT = 6 * 3600    # seconds a provider is skipped after "quota per day"
 # Native tool calling (2026-11-01). The agents used to describe their tools in
 # the prompt and parse a JSON reply; measured in the 4110 traces, about half
@@ -121,11 +100,6 @@ PROVIDERS = [
         "name": "cerebras",
         "env": "CEREBRAS_API_KEY",
         "base": "https://api.cerebras.ai/v1",
-    },
-    {
-        "name": "mistral",
-        "env": "MISTRAL_API_KEY",
-        "base": "https://api.mistral.ai/v1",
     },
     {
         "name": "gemini",
@@ -333,7 +307,7 @@ def _post(provider, model, system, user, max_tokens, temperature, timeout,
     if tools and msg.get("tool_calls"):
         return tool_answer(msg), data.get("usage") or {}
     answer = msg.get("content") or ""
-    if not answer.strip() and TOOL_SLIP == "recover":
+    if not answer.strip():
         answer = _slip_from_message(msg)
     if not answer.strip():
         # kept for the error log: why was the answer empty?
@@ -405,13 +379,12 @@ def _wait_needed(name, est, now=None):
     spent = sum(n for _t, n in win)
     if spent + est > budget and win:
         wait = 60 - (now - win[0][0]) + 1
-    gap = MIN_GAP.get(name, 0) - (now - _last_call.get(name, 0))
-    return max(wait, gap, 0.0)
+    return max(wait, 0.0)
 
 
 def _order(provs, est):
     """Providers sorted by how soon they can take this call (share mode)."""
-    if SPREAD != "share" or len(provs) < 2:
+    if len(provs) < 2:
         return provs
     now = time.time()
     return sorted(provs, key=lambda p: (_down_until.get(p["name"], 0) > now,
@@ -431,28 +404,6 @@ def _throttle_p(name, est, verbose=False):
     _last_call[name] = now
 
 
-def _throttle(est, verbose=False):
-    """Sleep if this call would breach the tokens-per-minute budget."""
-    now = time.time()
-    _recent[:] = [(t, n) for t, n in _recent if now - t < 60]
-    spent = sum(n for _t, n in _recent)
-    if spent + est <= TPM_BUDGET:
-        return
-    wait = 60 - (now - _recent[0][0]) + 1 if _recent else 0
-    if wait > 0:
-        if verbose:
-            print(f"    [throttle] {spent} tok in the last minute, "
-                  f"waiting {wait:.0f}s before spending ~{est} more")
-        time.sleep(min(wait, 65))
-        now = time.time()
-        _recent[:] = [(t, n) for t, n in _recent if now - t < 60]
-
-
-USAGE_COLS = ["ts", "tag", "provider", "model", "cached",
-              "prompt_tokens", "completion_tokens", "total_tokens",
-              "estimated"]
-
-
 def _http_body(exc):
     """The error body of an HTTPError, read once. Never raises."""
     try:
@@ -463,7 +414,7 @@ def _http_body(exc):
 
 def _tool_slip(body):
     """The tool call a model emitted by mistake, as JSON text, else None."""
-    if TOOL_SLIP != "recover" or "tool_use_failed" not in body:
+    if "tool_use_failed" not in body:
         return None
     try:
         gen = json.loads(body)["error"].get("failed_generation") or ""
@@ -513,8 +464,6 @@ def _log_usage(tag, provider, model, usage, cached, est_total):
     if tt is None:
         tt = 0 if cached else est_total
         estimated = 0 if cached else 1
-    if not cached:
-        _recent.append((time.time(), tt or 0))
     row = {
         "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "tag": tag or "", "provider": provider, "model": model,
@@ -614,10 +563,7 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
         wait_for = max(timeout, LOCAL_TIMEOUT) if p.get("local") else timeout
         for attempt in range(retries + 1):
             try:
-                if SPREAD == "share":
-                    _throttle_p(p["name"], est, verbose)
-                else:
-                    _throttle(est, verbose)
+                _throttle_p(p["name"], est, verbose)
                 answer, usage = _post(p, model, system, user, max_tokens,
                                       temperature, wait_for, use_tools)
                 _log_usage(tag, p["name"], model, usage, False,

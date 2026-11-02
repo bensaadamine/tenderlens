@@ -9,18 +9,10 @@ case silently, and the LangGraph graph and the plain loop agree.
     python tests/test_m4_agent.py
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import copy
 import sys
@@ -263,7 +255,7 @@ def main():
           and case["route"] == "alert")
 
     # ---- graph = loop
-    if m4_agent.StateGraph is None:
+    if m4_agent.agent_loop.StateGraph is None:
         print("skip langgraph not installed - graph vs loop not compared")
     else:
         out = []

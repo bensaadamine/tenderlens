@@ -4,31 +4,23 @@ M2 SPEC AUDITOR - the agent.
 Reads the specification of ONE tender with two tools and decides how far to
 take each:
 
-    tool 1  spec_tools.brands_without_equivalent   detection level 1
+    tool 1  brands.brands_without_equivalent       detection level 1
     tool 2  level2.tight_requirements              detection level 2
 
     from m2_spec_auditor import audit
-    audit("cb-258-72766150", depth="full")
+    audit("cb-258-72766150", online=True, agent=True)
 
 Every step it takes is written to `trace`, with the reason, so the auditor
 can see what the agent did and why - not only what it concluded.
 
 ------------------------------------------------------------- the decisions
 
-DEPTH comes from M1 and gates only what costs TOKENS. "standard" runs both
-tools on rules alone. "full" also lets level 1 ask the LLM to judge each
-suspected lock-in in context (the step that clears "Leica products (or
-equivalent)"). M1 decides which tenders are worth that spend; M2 never
-decides it for itself.
-
-LEVEL 1 RETRY, gated by `online` alone. If the rules leave brands
-UNRESOLVED - candidates the offline cache cannot confirm or reject - M2
-re-runs the tool against Wikidata. That is free and cached for every later
-tender, so it is not tied to depth. It IS required in practice: the cache
-was built on 4110 and resolves 0 of 129 candidates on a 2510 tender. An
-unresolved brand is not a finding and not a clearance; leaving it there
-silently would be both. Wikidata, like CanadaBuys and Groq, is reachable
-only from the Windows machine.
+LEVEL 1 = rules, then the M2 agent. The rules find brand names and clear
+the obvious cases; with `online` they check unknown names on Wikidata (free,
+cached; reachable only from the Windows machine). What they leave open -
+UNRESOLVED names, and their findings - goes to the M2 agent (`agent`),
+which letters each one a-f with a verified quote. Without the agent an
+unresolved name stays unresolved: neither a finding nor a clearance.
 
 LEVEL 2 CONFIDENCE. Measured 2026-10-15 (see level2.py): the peer comparison
 on UNSPSC-6 groups confuses vehicle CLASS with tightness - its top-ranked
@@ -38,18 +30,10 @@ with its peer group attached, and the within-document test is reported
 beside it as the level-2 signal that does not depend on peers.
 """
 
-# --- repo layout: find the agents/, tools/, prepare/ folders and run from
-# the repository root, whatever folder the script sits in (2026-10-22).
-import os as _os
-import sys as _sys
-_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-for _d in ("agents", "tools", "prepare", "tests", ""):
-    _p = _os.path.join(_ROOT, _d)
-    if _p not in _sys.path:
-        _sys.path.insert(0, _p)
-if __name__ == "__main__":
-    _os.chdir(_ROOT)
-# ---
+import pathlib
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import argparse
@@ -59,7 +43,8 @@ import sys
 
 import level2
 import m2_agent
-import spec_tools
+import brands
+import documents
 
 # Rule results the agent looks at again: the rules' own findings, the names
 # they could not settle, and the rule clearances listed here. Clearances
@@ -108,86 +93,44 @@ def _llm_available():
         return False
 
 
-def audit(reference, depth="standard", rows=None, online=False,
-          agent=False):
+def audit(reference, rows=None, online=False, agent=False):
     """Audit ONE tender's specification.
 
-    depth: "standard" (rules, offline) or "full" (adds LLM judgement and,
-    if `online`, live brand verification). agent: let the M2 agent letter
-    the brand candidates (agents/m2_agent.py) instead of the LLM judge.
+    online: check names the brand cache does not know on Wikidata (free,
+    cached). agent: let the M2 agent letter the names the rules found or
+    could not settle (agents/m2_agent.py).
     Returns a dict with `readable`, `level1`, `level2`, `findings`
     (normalised, each with a source) and `trace`.
     """
     trace = []
-    docs = spec_tools.tender_documents(reference)
+    docs = documents.tender_documents(reference)
     if not docs:
         trace.append("no extracted text for this tender - nothing to read")
         return {"reference": reference, "readable": False, "findings": [],
                 "level1": None, "level2": None, "trace": trace}
     trace.append(f"read {len(docs)} document(s)")
-    l1 = run_level1(reference, depth, online, agent, trace)
-    return _finish(reference, depth, rows, l1, trace, docs)
+    l1 = run_level1(reference, online, agent, trace)
+    return _finish(reference, rows, l1, trace, docs)
 
 
-def run_level1(reference, depth="standard", online=False, agent=False,
-               trace=None):
-    """Level 1 for one tender: rules, then Wikidata (online), then either
-    the LLM judge (depth full/auto) or the M2 agent. Returns spec_tools'
-    full result (findings, ok, unresolved), plus "agent" when it ran."""
+def run_level1(reference, online=False, agent=False, trace=None):
+    """Level 1 for one tender: the rules (brand names checked against the
+    Wikidata cache, or Wikidata itself when `online`), then, with `agent`,
+    the M2 agent on what the rules found or could not settle. Returns
+    brands.py's full result (findings, ok, unresolved), plus "agent" when
+    it ran."""
     trace = [] if trace is None else trace
-    if agent:
-        depth = "standard"        # the agent replaces the judge, not both
-    use_llm = depth == "full" and _llm_available()
-    if depth == "full" and not use_llm:
-        trace.append("depth=full requested but no LLM key is set - level 1 "
-                     "runs on rules only")
-
-    # ------------------------------------------------------------ level 1
-    l1 = spec_tools.brands_without_equivalent(
-        reference, offline=True, use_llm=use_llm)
-    trace.append(f"level 1 (offline{', LLM judge' if use_llm else ''}): "
+    # Online, every name is looked up again: fresh cache entries cost
+    # nothing, and entries written under an older rule are re-checked
+    # (measured 2026-10-17: two stale "is a brand" entries, "Dec" and
+    # "Refer", raised watch cases).
+    l1 = brands.brands_without_equivalent(reference, offline=not online)
+    trace.append(f"level 1 ({'online' if online else 'offline'}): "
                  f"{len(l1.get('findings', []))} finding(s), "
                  f"{len(l1.get('unresolved', []))} unresolved")
-
-    # Online verification is free (Wikidata) and cached for every later
-    # tender, so it is gated by --online alone, not by depth. Depth gates
-    # only what costs tokens. Measured: the brand cache was built on 4110,
-    # so offline it resolves 0 of 129 candidates on a 2510 tender - level 1
-    # without --online finds nothing.
-    # With --online, ALWAYS take the online pass: fresh cache entries cost
-    # nothing, and entries written under an older verification rule are
-    # re-checked. Measured 2026-10-17: gating this on "unresolved" let two
-    # stale "is a brand" entries ("Dec", "Refer") raise watch cases.
-    if online:
-        trace.append("re-running level 1 with online verification")
-        l1 = spec_tools.brands_without_equivalent(
-            reference, offline=False, use_llm=use_llm)
-        trace.append(f"level 1 (online): {len(l1.get('findings', []))} "
-                     f"finding(s), {len(l1.get('unresolved', []))} "
-                     f"still unresolved")
-    elif l1.get("unresolved"):
-        trace.append("unresolved brands left as unresolved - neither a "
-                     "finding nor a clearance (run with --online to "
-                     "resolve)")
-
-    # depth "auto" (user decision 2026-10-17): the LLM is used on ANY tender
-    # whose rules leave names Wikidata could not settle, or a brand finding
-    # to judge - not only on tenders M1 routed deep. Before this, a rigged
-    # OPEN tender naming a brand Wikidata does not know could never be
-    # caught (synthetic: 2 of 46 such brands found). Tokens are spent only
-    # where the rules leave something open.
-    if depth == "auto" and (l1.get("unresolved") or l1.get("findings")):
-        if _llm_available():
-            trace.append("names left open by the rules - asking the LLM "
-                         "(triage, then judge)")
-            l1 = spec_tools.brands_without_equivalent(
-                reference, offline=not online, use_llm=True)
-            trace.append(f"level 1 (LLM): {len(l1.get('findings', []))} "
-                         f"finding(s), {len(l1.get('unresolved', []))} "
-                         f"still unresolved")
-        else:
-            trace.append("--llm asked but no LLM key is set - left as is")
-
+    if l1.get("unresolved") and not agent:
+        trace.append("unresolved names left as unresolved - neither a "
+                     "finding nor a clearance (--online, --agent resolve)")
     if agent:
         if _llm_available():
             l1 = _agent_pass(reference, l1, online, trace)
@@ -254,17 +197,13 @@ def _agent_pass(reference, l1, online, trace):
                 agent={k: out[k] for k in ("steps", "stop_reason", "engine")})
 
 
-# moved to spec_tools (shared with the facts extractor); kept here by name
-quote_in_documents = spec_tools.quote_in_documents
-
-
 def _check_sources(findings, docs, trace):
     """Mark each finding's source checked or not (M4 scores only checked
     ones - audit finding 2026-11-01)."""
     bad = 0
     for f in findings:
         s = f["source"]
-        s["checked"] = bool(s.get("line")) and quote_in_documents(
+        s["checked"] = bool(s.get("line")) and documents.quote_in_documents(
             docs, s.get("file"), s.get("line"))
         s["checked_how"] = ("words found in the tender's text by M2"
                             if s["checked"] else "words NOT found in the "
@@ -275,7 +214,7 @@ def _check_sources(findings, docs, trace):
                      f"documents - they will not score")
 
 
-def _finish(reference, depth, rows, l1, trace, docs=None):
+def _finish(reference, rows, l1, trace, docs=None):
     """Level 2, then every finding normalised with its source."""
     # ------------------------------------------------------------ level 2
     if rows is None:
@@ -340,9 +279,9 @@ def _finish(reference, depth, rows, l1, trace, docs=None):
         })
 
     if docs is None:
-        docs = spec_tools.tender_documents(reference)
+        docs = documents.tender_documents(reference)
     _check_sources(findings, docs, trace)
-    return {"reference": reference, "readable": True, "depth": depth,
+    return {"reference": reference, "readable": True,
             "level1": _slim_l1(l1), "level2": _slim_l2(l2),
             "findings": findings, "trace": trace}
 
@@ -350,7 +289,7 @@ def _finish(reference, depth, rows, l1, trace, docs=None):
 def _l1_source(f):
     """The document location of a level-1 finding.
 
-    Field names are spec_tools' own (brands_without_equivalent builds the
+    Field names are brands.py's own (brands_without_equivalent builds the
     row): `document`, `page`, `line_no`, `evidence` is the line itself, and
     `locations` lists every other place the brand appears.
     """
@@ -379,14 +318,12 @@ def _slim_l2(l2):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tender", required=True)
-    ap.add_argument("--depth", choices=["standard", "full", "auto"],
-                    default="standard")
     ap.add_argument("--online", action="store_true")
     ap.add_argument("--agent", action="store_true",
                     help="let the M2 agent letter the brand candidates")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
-    res = audit(a.tender, depth=a.depth, online=a.online, agent=a.agent)
+    res = audit(a.tender, online=a.online, agent=a.agent)
     if a.json:
         print(json.dumps(res, indent=2, default=str))
         return
