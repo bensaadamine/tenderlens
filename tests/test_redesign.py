@@ -5,8 +5,9 @@ The 2026-11-01 changes, tested offline (no data, no network, no tokens):
     the agents read; the tool list is part of the cache key; a provider that
     rejects tools is asked again without them; TENDERLENS_NATIVE_TOOLS=off
     restores the old request; the local model stays out of the shared pool;
-  * M2: brand names only from the requirements section; the facts module
-    keeps only facts whose quote is in the document; the agent's facts tool;
+  * M2: brand names only from the requirements section; what the agent is
+    shown before its first step (what the tender buys, the buyer's-equipment
+    sentences) and the supply test in its instructions;
   * M3: decisions shared by a group of spellings; no chained merges;
   * the incremental run's --reprocess.
 
@@ -25,7 +26,6 @@ import sys
 import tempfile
 import urllib.error
 
-import facts
 import llm
 import m2_agent
 import m3_agent
@@ -94,6 +94,23 @@ def test_llm():
         for k, v in saved.items():
             setattr(llm, k, v)
 
+    # the real bookkeeping, not a fake (a removed constant once broke it
+    # while every test passed, 2026-11-04)
+    saved_paths = llm.USAGE_PATH, llm.ERRORS_PATH
+    tmp = tempfile.mkdtemp()
+    llm.USAGE_PATH = os.path.join(tmp, "usage.csv")
+    llm.ERRORS_PATH = os.path.join(tmp, "errors.csv")
+    try:
+        llm._log_usage("m2_agent", "groq", "m", {"total_tokens": 7}, False, 0)
+        llm._log_error("m2_agent", "groq", "m", "HTTP 429", "quota")
+        with io.open(llm.USAGE_PATH, encoding="utf-8") as f:
+            rows = f.read().splitlines()
+        check("the token log and the error log really write",
+              len(rows) == 2 and rows[1].endswith(",7,0")
+              and os.path.exists(llm.ERRORS_PATH))
+    finally:
+        llm.USAGE_PATH, llm.ERRORS_PATH = saved_paths
+
     os.environ["TENDERLENS_LOCAL_MODEL"] = "gemma4:e4b"
     os.environ.pop("TENDERLENS_LOCAL_SHARE", None)
     try:
@@ -131,66 +148,34 @@ def test_m2():
           documents.requirement_view("Suite 1400\nHonda GX390") ==
           "Suite 1400\nHonda GX390")
 
-    docs = [{"document": "rfp.pdf", "category": "x", "text": SPEC},
-            {"document": "amd.pdf", "category": "x",
-             "text": "Answer 3: The Honda engine is the one the buyer "
-                     "already owns.\nThe existing generator procured by "
-                     "NRC must be used.\n"}]
-    ps = facts.passages(docs, ["Honda"])
-    check("facts read passages outside the requirements section only",
-          ps and all("must be a Honda GX390" not in t for _d, _l, t in ps)
-          and any("already owns" in t for _d, _l, t in ps))
-
-    def fake_local(system, user):
-        return {"facts": [
-            {"name": "Honda", "kind": "buyer_owns", "document": "amd.pdf",
-             "line": 1, "quote": "The Honda engine is the one the buyer "
-                                 "already owns"},
-            {"name": "Honda", "kind": "buyer_answer", "document": "amd.pdf",
-             "line": 1, "quote": "Honda is refused"},          # invented
-            {"name": "*", "kind": "opinion", "document": "amd.pdf",
-             "line": 2, "quote": "The existing generator"}]}   # bad kind
-    facts.FACTS_DIR = tempfile.mkdtemp()
-    out = facts.get("t-1", ["Honda"], ask=fake_local, docs=docs)
-    check("a fact is kept only if its quote is in the document and its "
-          "kind is known", [f["kind"] for f in out["facts"]] == ["buyer_owns"])
-    check("facts are stored and reused without asking again",
-          facts.get("t-1", ["Honda"], ask=None, docs=docs)["facts"]
-          == out["facts"])
-    shown = facts.facts_for("t-1", ["Honda"], "Honda", docs=docs)
-    check("the facts tool shows the kept fact", "buyer_owns:" in shown
-          and "already owns" in shown)
-    os.environ.pop("TENDERLENS_LOCAL_MODEL", None)
-    none = facts.facts_for("t-2", ["Bendix"], "Bendix", docs=docs)
-    check("no local model: the tool says so, nothing stored",
-          none.startswith("no facts: no local model")
-          and not os.path.exists(facts._path("t-2")))
-
-    # the agent dispatches the facts tool
-    seen = []
-    replies = iter([{"action": "facts", "args": {"name": "Honda"}},
-                    {"action": "finish", "args": {}}])
-    text = m2_agent.TenderText.__new__(m2_agent.TenderText)
-    text.docs, text.bidder, text.pages = {}, {}, {}
-    decide, act = m2_agent.make_nodes(
-        text, lambda s, u: next(replies), facts_fn=lambda n: seen.append(n)
-        or "buyer_owns: \u201cx\u201d")
-    st = m2_agent.AgentState(reference="t", candidates=[{"id": 1,
-                             "name": "Honda", "document": "rfp.pdf",
-                             "line_no": 5, "evidence": "Honda GX390"}],
-                             open_ids=[1], verdicts={}, history=[], steps=0,
-                             done=False, stop_reason="")
-    st = m2_agent.agent_loop.run_loop(st, decide, act)
-    check("the M2 agent's facts tool reaches the facts module",
-          seen == ["Honda"]
-          and st["history"][0]["observation"].startswith("buyer_owns"))
-    check("tool schemas: facts offered when on, not when off",
-          "facts" in [t["name"] for t in m2_agent._tools()])
-    facts.FACTS = "off"
-    check("...off: the facts tool and its prompt line are gone",
-          "facts" not in [t["name"] for t in m2_agent._tools()]
-          and m2_agent.system_prompt() == m2_agent.SYSTEM_NO_FACTS)
-    facts.FACTS = "on"
+    # what the agent is shown before its first step (2026-11-04)
+    tmp = tempfile.mkdtemp()
+    os.makedirs(os.path.join(tmp, "4110"))
+    with io.open(os.path.join(tmp, "4110", "t-1__rfp.pdf.txt"), "w",
+                 encoding="utf-8") as f:
+        f.write("SCOPE\nThe simulator will be based on an existing wind\n"
+                "turbine generator previously procured by NRC.\n"
+                "Question 3: we already own a Honda pump?\nAnswer 3: no.\n"
+                "ANNEX A\nGenerator Eocycle-C5000\n")
+    text = m2_agent.TenderText("t-1", tmp)
+    owned = text.owned()
+    check("buyer's-equipment sentences are found, with the next line",
+          "existing wind turbine generator previously procured by NRC"
+          in owned)
+    check("...but not inside a bidder's question", "Honda" not in owned)
+    ctx = m2_agent.context(text, "Wind turbine simulator")
+    check("the context says what the tender buys and what the buyer has",
+          "What this tender buys: Wind turbine simulator" in ctx
+          and "previously procured by NRC" in ctx)
+    st = m2_agent.AgentState(reference="t-1", candidates=[{
+        "id": 1, "name": "Eocycle", "document": "rfp.pdf", "line_no": 7,
+        "evidence": "Generator Eocycle-C5000"}], open_ids=[1], verdicts={},
+        context=ctx, history=[], steps=0, done=False, stop_reason="")
+    check("the model sees the context before its first step",
+          "previously procured by NRC" in m2_agent.render(st))
+    check("the instructions carry the supply test; no facts tool",
+          "must SUPPLY" in m2_agent.SYSTEM
+          and "facts" not in [t["name"] for t in m2_agent._tools()])
 
 
 # ------------------------------------------------------------------ M3

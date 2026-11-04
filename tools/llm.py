@@ -83,9 +83,9 @@ _no_tools = set()     # providers that rejected a tools request this run
 # Local model (decision 34, 2026-11-01): Ollama on the user's machine, free,
 # no daily limit. Enabled by naming the model in TENDERLENS_LOCAL_MODEL (e.g.
 # gemma4:e4b); OLLAMA_HOST if not on localhost:11434. Used only by callers
-# that ask for it (provider="ollama": fact extraction) until the eval shows
-# it is close enough to the cloud judge; TENDERLENS_LOCAL_SHARE=1 also lets
-# it take ordinary calls.
+# that ask for it (provider="ollama") until the eval shows it is close
+# enough to the cloud model; TENDERLENS_LOCAL_SHARE=1 also lets it take
+# ordinary calls.
 LOCAL_TIMEOUT = 600   # seconds: a small GPU can be slow on a long prompt
 
 # Order matters: first with a key present wins, and the rest are fallbacks.
@@ -171,12 +171,6 @@ class NoProvider(Exception):
 
 
 def load_dotenv(path=".env"):
-    """Read KEY=value lines from .env into the environment.
-
-    Done by hand rather than with python-dotenv so there is nothing to install.
-    A real environment variable always wins, so an exported key overrides the
-    file. Called automatically on import; .env must stay out of git.
-    """
     if not os.path.exists(path):
         return
     try:
@@ -448,6 +442,11 @@ def _log_error(tag, provider, model, error, exc=None, detail=None):
             w.writerow(row)
     except OSError:
         pass
+
+
+USAGE_COLS = ["ts", "tag", "provider", "model", "cached",
+              "prompt_tokens", "completion_tokens", "total_tokens",
+              "estimated"]
 
 
 def _log_usage(tag, provider, model, usage, cached, est_total):

@@ -1,6 +1,6 @@
 # M2 — Spec Auditor
 
-**Code:** `agents/m2_spec_auditor.py` (the auditor) · `agents/m2_agent.py` (its agent) · `tools/brands.py` (brand rules) · `tools/documents.py` (the tender's text) · `tools/wikidata.py` · `tools/facts.py`
+**Code:** `agents/m2_spec_auditor.py` (the auditor) · `agents/m2_agent.py` (its agent) · `tools/brands.py` (brand rules) · `tools/documents.py` (the tender's text) · `tools/wikidata.py`
 
 ## Role
 Reads the **specification documents** of one tender and looks for requirements written so that only one product can win.
@@ -35,10 +35,11 @@ Find, with a quoted line, a departure from the trade-agreement rule: *a specific
 | `search` | every line containing a text, bidders' questions marked |
 | `read` | the lines around a line |
 | `equivalents` | every sentence of the tender accepting an equivalent |
-| `facts` | short quoted facts found **outside the requirements section** by the local model (`tools/facts.py`): the buyer's answers to bidders, equipment the buyer already owns, equivalents accepted. Extracted once per tender when first asked, quotes checked by code, stored in `reports/facts/`. No local model configured → the tool says so. `TENDERLENS_FACTS=off` removes it. |
 | `wikidata` | whether a name is a company (cached) |
 | `classify` | letters + quotes for one or several candidates |
 | `finish` | stop; unlettered candidates stay unresolved |
+
+**Shown before its first step, by code:** what the tender buys (the notice title, the document names) and every sentence saying the buyer already has or uses something ("existing", "procured by NRC"…). Its instructions carry the supply test: "f" only if the bidder must supply that brand's product; if the purchase must connect to it, be controlled by it or be based on it, that is "c".
 
 **How the model calls them:** native tool calling, one schema per tool (`llm.tool`); a plain JSON reply still works. `TENDERLENS_NATIVE_TOOLS=off` restores the prompt-only calls.
 

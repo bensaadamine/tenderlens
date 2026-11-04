@@ -93,12 +93,13 @@ def _llm_available():
         return False
 
 
-def audit(reference, rows=None, online=False, agent=False):
+def audit(reference, rows=None, online=False, agent=False, title=""):
     """Audit ONE tender's specification.
 
     online: check names the brand cache does not know on Wikidata (free,
     cached). agent: let the M2 agent letter the names the rules found or
-    could not settle (agents/m2_agent.py).
+    could not settle (agents/m2_agent.py). title: the notice's title,
+    shown to the agent as what the tender buys.
     Returns a dict with `readable`, `level1`, `level2`, `findings`
     (normalised, each with a source) and `trace`.
     """
@@ -109,11 +110,11 @@ def audit(reference, rows=None, online=False, agent=False):
         return {"reference": reference, "readable": False, "findings": [],
                 "level1": None, "level2": None, "trace": trace}
     trace.append(f"read {len(docs)} document(s)")
-    l1 = run_level1(reference, online, agent, trace)
+    l1 = run_level1(reference, online, agent, trace, title)
     return _finish(reference, rows, l1, trace, docs)
 
 
-def run_level1(reference, online=False, agent=False, trace=None):
+def run_level1(reference, online=False, agent=False, trace=None, title=""):
     """Level 1 for one tender: the rules (brand names checked against the
     Wikidata cache, or Wikidata itself when `online`), then, with `agent`,
     the M2 agent on what the rules found or could not settle. Returns
@@ -133,7 +134,7 @@ def run_level1(reference, online=False, agent=False, trace=None):
                      "finding nor a clearance (--online, --agent resolve)")
     if agent:
         if _llm_available():
-            l1 = _agent_pass(reference, l1, online, trace)
+            l1 = _agent_pass(reference, l1, online, trace, title)
         elif AGENT_DOWN == "stop":
             raise AgentUnavailable("no LLM key is set (GROQ_API_KEY, "
                                    "GEMINI_API_KEY in .env)")
@@ -142,7 +143,7 @@ def run_level1(reference, online=False, agent=False, trace=None):
     return l1
 
 
-def _agent_pass(reference, l1, online, trace):
+def _agent_pass(reference, l1, online, trace, title=""):
     """Let the M2 agent letter what the rules found or could not settle."""
     recheck = [o for o in l1.get("ok", []) if o.get("status") in AGENT_RECHECK]
     rows = l1.get("findings", []) + l1.get("unresolved", []) + recheck
@@ -156,7 +157,8 @@ def _agent_pass(reference, l1, online, trace):
     cands = [{"name": r["brand"], "document": r["document"],
               "line_no": r["line_no"], "evidence": r["evidence"]}
              for r in rows]
-    out = m2_agent.classify_tender(reference, cands, online=online)
+    out = m2_agent.classify_tender(reference, cands, online=online,
+                                   title=title)
     if AGENT_DOWN == "stop" and out["stop_reason"].startswith("model"):
         raise AgentUnavailable(f"{reference}: {out['stop_reason']}")
     if out["steps"] == 0 and out["stop_reason"].startswith("model"):

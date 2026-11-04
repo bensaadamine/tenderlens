@@ -37,7 +37,7 @@ tenderlens_stream.py   run a category tender by tender against a growing knowled
 tenderlens.py          the four agents on one tender (run_one); --tender prints one case in full
 agents/                the four agents (M1–M4); agent_loop.py = the loop M2, M3 and M4 share
 tools/                 documents.py (a tender's text), brands.py (brand rules), wikidata.py,
-                       facts.py (local-model facts), level2.py (peer comparison), llm.py (LLM access)
+                       level2.py (peer comparison), llm.py (LLM access)
 prepare/               data preparation, run in order 01 → 05
 tests/                 offline tests (test_*.py), evaluations (m2_eval.py, m4_eval.py), synth_rig.py
 docs/agents/           one page per agent
@@ -57,7 +57,7 @@ pip install -r requirements.txt     # requests, pdfminer.six, langgraph
 
 No `pandas` (blocked on our Windows machines) — standard library plus those two.
 
-LLM keys go in `.env` (never committed): `GROQ_API_KEY=...`, `GEMINI_API_KEY=...`. With two keys the calls are shared between providers. The local model (Ollama) is enabled with `TENDERLENS_LOCAL_MODEL=gemma4:e4b`; it is used for the M2 agent's facts.
+LLM keys go in `.env` (never committed): `GROQ_API_KEY=...`, `GEMINI_API_KEY=...`. With two keys the calls are shared between providers. A local model (Ollama) can be added with `TENDERLENS_LOCAL_MODEL=gemma4:e4b`; it is used only when a script asks for it.
 
 **Network is needed only on Windows**: downloads (`prepare/01`, `prepare/02`, `agents/m3_investigator.py --fetch`), Wikidata (`--online`), the LLM (`--agent`, `--m3-agent`, `--m4-agent`, `prepare/05`).
 
@@ -122,7 +122,7 @@ One line per case in `feedback.csv` (`reference,verdict,note,reviewer,date`), th
 | 2510 motor vehicles | 613 (193 with documents) | 0 | 3 | offline, rules only |
 | 4110 lab equipment | 957 | 2 | 10 | offline, rules only; to audit |
 
-- **M2 on the 40 held-out names** (never used for tuning): rules alone find **1 of 8** real lock-ins; with the M2 agent, **6 of 7** (precision 6 of 10). 3 of its 4 false findings are the buyer's own equipment described elsewhere in the tender - what the facts tool (local model) is for.
+- **M2 on the 40 held-out names** (never used for tuning): rules alone find **1 of 8** real lock-ins; with the M2 agent, **6 of 7** (precision 6 of 10). 3 of its 4 false findings were the buyer's own equipment described elsewhere in the tender; since 2026-11-04 the agent is shown those sentences and what the tender buys before its first step (re-measure pending).
 - **Synthetic test (2510):** of 160 rigged copies, the brand is found in 64 offline; 17 reach alert; 0 of 120 clean copies are flagged.
 - **Peer comparison (level 2)** stays dormant: few product groups have 8 comparable tenders yet.
 

@@ -363,6 +363,12 @@ def main():
             n = (name or "").lower()
             return any(k in n or n in k for k in wanted.get(ref, ()))
         m2_spec_auditor.AGENT_ONLY = only
+    titles = {}
+    if a.agent:                     # what each tender buys, shown to the agent
+        import m1_screener
+        notices = m1_screener.load_notices()
+        titles = {r: (notices.get(r) or {}).get(m1_screener.C_TITLE, "")
+                  for r in by_ref}
     mode = ("agent" if a.agent else "rules") + ("-online" if a.online else "")
     out_dir, stamp = run_dir(mode, bool(a.only or a.limit
                                         or a.split != "all"))
@@ -372,6 +378,7 @@ def main():
     for ref, labs in by_ref.items():
         trace = []
         l1 = m2_spec_auditor.run_level1(ref, online=a.online, agent=a.agent,
+                                        title=titles.get(ref, ""),
                                         trace=trace)
         ran = agent_status(l1, trace) if a.agent else "-"
         for lab in labs:

@@ -7,7 +7,7 @@ design review found. Every behaviour change gets a flag restoring the old.
 |---|---|---|---|
 | 1 | Tool calling (all agents) | The model calls tools through the provider's native tool calling, with a schema per tool; plain JSON stays the fallback. Measured: about half the agent steps were lost on tools that don't exist or wrong arguments. | done 2026-11-01 |
 | 2a | M2: names from the requirements section | Candidate brand names are found only in the requirements section (whole document when none is detected). Judging still reads the whole tender. Measured on 76 labelled cases: 0 of 12 lock-ins lost, 10 of 46 junk names removed. | done 2026-11-01 |
-| 2b | M2: facts from the other documents | The local model (Ollama) reads the passages around a name outside the requirements section, and buyer's-equipment sentences, and returns short facts with quotes (buyer's answer about a product, equipment the buyer owns). Code checks each quote; facts are stored per tender. New agent tool `facts`. Without a local model the tool says so. | done 2026-11-01 |
+| 2b | M2: the buyer's own equipment | ~~Local-model facts from outside the requirements section~~ — built, then removed 2026-11-04: the deciding sentences sit inside the requirements section, and the agent did not call the tool. Replaced by code-shown context (what the tender buys, the buyer's-equipment sentences) and the supply test in the agent's instructions. | done 2026-11-04 |
 | 3 | M3: two fixes | Stored decisions apply to the whole group of spellings (no re-asking when a merged spelling wins). A merge must share a postal code with the winner itself (no chains). | done 2026-11-01 |
 | 4 | M4: measurement | Script comparing routes with the M4 agent in `model` and `fixed` modes on the labelled tenders. If equal, keep `fixed`. | done 2026-11-01 |
 | 5 | Reprocessing (audit fix 4) | `--reprocess` re-runs named tenders, or all of quarantine; each batch records its settings. Tenders with an auditor verdict are not re-judged. | done 2026-11-01 |
@@ -27,7 +27,6 @@ Not changing: M1 (rules only), routing and weights, the knowledge base.
 |---|---|
 | `TENDERLENS_NATIVE_TOOLS=off` | tools described in the prompt only |
 | `--l1-scope all` | brand names looked for everywhere |
-| `TENDERLENS_FACTS=off` | no facts tool |
 | `TENDERLENS_LOCAL_MODEL=gemma4:e4b` | (enables the local model; unset = none) |
 | `m3_agent.CHAIN = True` / `GROUPS = False` | chained merges / per-winner decisions |
 | `--reprocess REF… / quarantine / all` | (new option) |

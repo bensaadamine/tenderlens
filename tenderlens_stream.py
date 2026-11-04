@@ -330,7 +330,6 @@ def run(a):
                    "reprocessed": list(a.reprocess or []),
                    "native_tools": os.environ.get("TENDERLENS_NATIVE_TOOLS",
                                                   "on"),
-                   "facts": os.environ.get("TENDERLENS_FACTS", "on"),
                    "local_model": os.environ.get("TENDERLENS_LOCAL_MODEL")},
                   f, indent=1)
     cases, piles = [], collections.Counter()

@@ -12,16 +12,21 @@ and tools, and decides itself what to read next:
              a  not a brand (own acronym, ordinary word, standard, URL, date,
                 payment term, material grade)
              b  a bidder is speaking (inside "Question N" ... "Answer N")
-             c  the buyer's own equipment - the purchase must fit, carry,
-                repair or connect to it
+             c  the buyer's own equipment - the bidder does not supply it;
+                the purchase must fit, carry, repair, connect to, be
+                controlled by or be based on it
              d  one of several brands listed as alternatives / compatibility
              e  the tender accepts an equivalent for it
-             f  the brand is REQUIRED and no equivalent is accepted
-    TOOLS  search, read, equivalents, facts, wikidata, classify, finish
-           (facts: what the local model extracted outside the requirements
-           section - buyer's answers, equipment the buyer owns; tools/facts.py)
-           Called through the provider's native tool calling (llm.tool
-           schemas, 2026-11-01); a plain JSON reply still works.
+             f  the bidder must SUPPLY this brand and no equivalent is
+                accepted
+    SHOWN  before the first step, by code: what the tender buys (its title
+           and documents) and every sentence about equipment the buyer
+           already has - measured 2026-11-04, the agent called "an existing
+           wind turbine generator previously procured by NRC" a lock-in
+           because it never looked for that sentence.
+    TOOLS  search, read, equivalents, wikidata, classify, finish - called
+           through the provider's native tool calling (llm.tool schemas); a
+           plain JSON reply still works.
     LOOP   decide -> act -> decide ... until every candidate has a letter,
            the model says finish, or MAX_STEPS is reached.
 
@@ -49,7 +54,6 @@ import json
 import re
 from typing import TypedDict
 
-import facts as _facts
 import brands
 import documents
 import wikidata
@@ -129,6 +133,28 @@ class TenderText:
                          f"{_squash(lines[i - 1])[:220]}"
                          for i in range(lo, hi + 1))
 
+    def owned(self, limit=8):
+        """Sentences saying the buyer already has, uses or provides
+        something - anywhere in the tender, bidders' questions left out.
+        Each line is shown with the next one: pdfminer cuts sentences."""
+        hits = []
+        for doc, lines in self.docs.items():
+            skip = -1
+            for i, line in enumerate(lines):
+                if i == skip or self.bidder[doc][i] or \
+                        not RE_OWNED.search(line):
+                    continue
+                nxt = ""
+                if i + 1 < len(lines) and not self.bidder[doc][i + 1]:
+                    nxt, skip = lines[i + 1], i + 1
+                hits.append(f"{doc} line {i + 1}: "
+                            f"{_squash(line + ' ' + nxt)[:220]}")
+        if not hits:
+            return "(none found)"
+        more = len(hits) - limit
+        return "\n".join(hits[:limit]) + (
+            f"\n... and {more} more (search 'existing')" if more > 0 else "")
+
     def equivalents(self):
         pats = (brands.RE_OR_EQUIV, brands.RE_DOC_CLAUSE,
                 brands.RE_EQUIV_CLAUSE, brands.RE_EQUIV_TO)
@@ -172,6 +198,14 @@ class TenderText:
         return None
 
 
+RE_OWNED = re.compile(
+    r"\b(?:existing|currently\s+(?:own\w*|use[sd]?|in\s+use|installed|in\s+"
+    r"service)|already\s+(?:own\w*|ha[sv]e?|installed|in\s+place)|owned\s+by|"
+    r"(?:previously\s+)?procured\s+by|in\s+our\s+possession|our\s+current|"
+    r"government[\s-]+furnished|compatible\s+with\s+(?:our|the\s+existing)|"
+    r"existant\w*|actuellement)\b", re.I)
+
+
 def _squash(s):
     return re.sub(r"\s+", " ", s or "").strip()
 
@@ -197,6 +231,7 @@ class AgentState(TypedDict):
     candidates: list        # [{id, name, document, line_no, evidence}]
     open_ids: list          # candidates still without a letter
     verdicts: dict          # id -> {letter, quote, document, line}
+    context: str            # what the tender buys + buyer's equipment
     history: list           # [{step, action, args, observation}]
     steps: int
     done: bool
@@ -213,17 +248,21 @@ a  not a brand: the tender's own acronym, an ordinary word, a standard
    ("Net 30"), a material grade ("Hastelloy C-276"), a unit or abbreviation
 b  a bidder is speaking: the text is inside a bidder's question
    (lines marked [bidder question])
-c  the buyer's own equipment: the purchase must fit, carry, transport,
-   repair, upgrade or connect to something the buyer already has
+c  the buyer's own equipment: the bidder does NOT supply this product -
+   the purchase must fit, carry, transport, repair, upgrade, connect to,
+   be controlled by or be based on something the buyer already has or uses
 d  one of several brands listed as alternatives or for compatibility
 e  the tender accepts an equivalent for it: "or equivalent" near it, above
    its table, or a general clause ("Products that are equivalent in form,
    fit, function and quality ... will be considered")
-f  the tender REQUIRES this brand and accepts no equivalent
+f  the bidder must SUPPLY this brand's product and no equivalent is
+   accepted
 
-Check before you answer: read around the line, look at the equivalence
-sentences of the tender, search other mentions. Give "f" only when you have
-checked that no equivalent is accepted and it is not the buyer's equipment.
+Check before you answer: is this product what the tender BUYS (shown
+below), or something the purchase must work with? Read the sentences about
+equipment the buyer already has (shown below), read around the line, look at
+the equivalence sentences, search other mentions. Give "f" only when the
+bidder must supply that brand's product and no equivalent is accepted.
 
 Steps are few. Letter the obvious candidates in your FIRST reply (several at
 once), then investigate only the uncertain ones. On your last step you must
@@ -252,6 +291,8 @@ def render(state):
     by_id = {c["id"]: c for c in state["candidates"]}
     left = MAX_STEPS - state["steps"]
     out = [f"Tender {state['reference']}. Steps left: {left}."]
+    if state.get("context"):
+        out += ["", state["context"]]
     if left == 1:
         # Measured 2026-10-22: on Bendix the model spent all 8 steps reading
         # and never gave a letter. The last step is for deciding.
@@ -277,28 +318,6 @@ def render(state):
     return "\n".join(out)
 
 
-# With the facts tool (2026-11-01): one more check, one more tool. The prompt
-# without it is kept as it was, so TENDERLENS_FACTS=off gives back the old
-# prompt (and its cache).
-SYSTEM_NO_FACTS = SYSTEM
-SYSTEM = SYSTEM.replace(
-    "look at the equivalence\nsentences of the tender, search other mentions.",
-    "look at the equivalence\nsentences of the tender, search other mentions, "
-    "ask for the facts about the\nname (buyer's answers to bidders, equipment "
-    "the buyer already owns).").replace(
-    "equivalents  {}                              every sentence accepting an "
-    "equivalent\n",
-    "equivalents  {}                              every sentence accepting an "
-    "equivalent\nfacts        {\"name\": \"...\"}                 buyer's "
-    "answers and equipment the buyer\n                                       "
-    "      owns, found outside the requirements\n")
-assert SYSTEM != SYSTEM_NO_FACTS
-
-
-def system_prompt():
-    return SYSTEM if _facts.FACTS == "on" else SYSTEM_NO_FACTS
-
-
 def _tools():
     import llm
     t = llm.tool
@@ -310,10 +329,6 @@ def _tools():
           ["document", "line"]),
         t("equivalents", "Every sentence of the tender accepting an "
                          "equivalent product."),
-        t("facts", "Facts found outside the requirements section about a "
-                   "name: the buyer's answers to bidders, equipment the "
-                   "buyer already owns, equivalents accepted.",
-          {"name": {"type": "string"}}, ["name"]),
         t("wikidata", "Is this name a company on Wikidata.",
           {"name": {"type": "string"}}, ["name"]),
         t("classify", "Give candidates their letter a-f, each with a quote "
@@ -331,8 +346,7 @@ def _tools():
           ["verdicts"]),
         t("finish", "Stop; candidates without a letter stay unresolved."),
     ]
-    return out if _facts.FACTS == "on" else [x for x in out
-                                              if x["name"] != "facts"]
+    return out
 
 
 # The last call has no tool menu at all. Measured 2026-10-22: with the menu,
@@ -350,14 +364,13 @@ Reply with ONE JSON object and nothing else:
 
 
 # ----------------------------------------------------------- decide and act
-def make_nodes(text, ask, online=False, facts_fn=None):
-    """The graph's two nodes, bound to one tender's text and one model.
-    facts_fn(name) -> text for the facts tool (tests pass a fake)."""
+def make_nodes(text, ask, online=False):
+    """The graph's two nodes, bound to one tender's text and one model."""
 
     def one_reply(state, final=False):
         """One model call -> (action, args, thought). Raises if no model."""
         reply = agent_loop.ask_model(
-            ask, FINAL_SYSTEM if final else system_prompt(), render(state))
+            ask, FINAL_SYSTEM if final else SYSTEM, render(state))
         if "action" not in reply and "verdicts" in reply:  # the final call
             reply = {"action": "classify",
                      "args": {"verdicts": reply["verdicts"]}}
@@ -387,8 +400,7 @@ def make_nodes(text, ask, online=False, facts_fn=None):
         done = False
         same = [p["step"] for p in state["history"][:-1]
                 if p["action"] == action and p["args"] == args
-                and action in ("search", "read", "equivalents", "wikidata",
-                               "facts")]
+                and action in ("search", "read", "equivalents", "wikidata")]
         if same:
             obs = (f"already done at step {same[0]} - same result as there. "
                    f"Do not repeat: classify with what you know.")
@@ -399,8 +411,6 @@ def make_nodes(text, ask, online=False, facts_fn=None):
                             args.get("line"))
         elif action == "equivalents":
             obs = text.equivalents()
-        elif action == "facts" and facts_fn and _facts.FACTS == "on":
-            obs = facts_fn(str(args.get("name") or ""))
         elif action == "wikidata":
             name = str(args.get("name") or "")
             v = wikidata.verify_brand(name, offline=not online)
@@ -417,9 +427,7 @@ def make_nodes(text, ask, online=False, facts_fn=None):
                    "'action' - reply with JSON only")
         else:
             obs = (f"error: unknown action '{action}'. Use one of: search, "
-                   f"read, equivalents, "
-                   + ("facts, " if _facts.FACTS == "on" else "")
-                   + "wikidata, classify, finish")
+                   f"read, equivalents, wikidata, classify, finish")
         h["observation"] = obs
         stop = done or not open_ids or state["steps"] >= MAX_STEPS
         reason = ("finished by the model" if done else
@@ -474,11 +482,21 @@ def _classify(text, candidates, items, verdicts, open_ids, step):
     return "\n".join(notes), verdicts, open_ids
 
 
+def context(text, title=""):
+    """What the model sees before its first step: what the tender buys
+    and the buyer's-equipment sentences. Found by code, free."""
+    return ("What this tender buys: " + (title or "(title not given)")
+            + "\nIts documents: " + ", ".join(list(text.docs)[:6])
+            + "\n\nSentences about equipment the buyer already has or uses:\n"
+            + text.owned())
+
+
 def classify_tender(reference, candidates, ask=None, online=False,
-                    text_dir=None, use_graph=True, facts_fn=None):
+                    text_dir=None, use_graph=True, title=""):
     """Letter every candidate of one tender.
 
     candidates: [{"name", "document", "line_no", "evidence"}] from the rules.
+    title: the notice's title - what the tender buys, shown to the model.
     ask: (system, user) -> dict; defaults to the shared LLM (strong model).
     Returns {"verdicts": [...], "unresolved": [...], "steps", "stop_reason",
              "trace"}.
@@ -489,18 +507,16 @@ def classify_tender(reference, candidates, ask=None, online=False,
         ask = lambda system, user: llm.ask_json(
             system, user, strong=True, max_tokens=3000, tag="m2_agent",
             tools=None if system == FINAL_SYSTEM else _tools())
-    if facts_fn is None:
-        names = [c["name"] for c in candidates]
-        facts_fn = lambda name: _facts.facts_for(reference, names, name)
     cands = [dict(c, id=i + 1) for i, c in enumerate(candidates)]
     if not cands:
         return {"verdicts": [], "unresolved": [], "steps": 0,
                 "stop_reason": "no candidates", "engine": "none", "trace": []}
+    text = TenderText(reference, text_dir)
     state = AgentState(reference=reference, candidates=cands,
                        open_ids=[c["id"] for c in cands], verdicts={},
-                       history=[], steps=0, done=False, stop_reason="")
-    text = TenderText(reference, text_dir)
-    decide, act = make_nodes(text, ask, online, facts_fn)
+                       context=context(text, title), history=[], steps=0,
+                       done=False, stop_reason="")
+    decide, act = make_nodes(text, ask, online)
     state, engine = agent_loop.run(state, decide, act, AgentState, MAX_STEPS,
                                    use_graph)
 

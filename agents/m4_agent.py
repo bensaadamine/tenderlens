@@ -88,12 +88,15 @@ class Hooks:
 
 def default_hooks(reference, notice_row, graph, m3, online=False):
     """The real follow-ups: the M2 agent, the M3 agent, the award index."""
+    import m1_screener
     import m2_agent
     import m3_investigator as m3i
     key = ((m3 or {}).get("award") or {}).get("supplier_key")
 
     def recheck(cands):
-        return m2_agent.classify_tender(reference, cands, online=online)
+        return m2_agent.classify_tender(
+            reference, cands, online=online,
+            title=(notice_row or {}).get(m1_screener.C_TITLE, ""))
 
     def spellings():
         trace = []

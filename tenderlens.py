@@ -113,7 +113,7 @@ def run_one(ref, shared, online=False, agent=False, m3_agent=False,
     why_none = no_contract_reason(notices.get(ref))
     if m1.get("documents"):
         m2 = m2_spec_auditor.audit(ref, rows=rows, online=online,
-                                   agent=agent)
+                                   agent=agent, title=m1.get("title", ""))
     else:
         m2 = {"reference": ref, "readable": False, "findings": [],
               "trace": ["no documents held for this tender"]}
