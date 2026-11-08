@@ -82,7 +82,7 @@ Open `reports/kb/2510/batches/<date>_queue.html`.
 | `--online` | check brand names on Wikidata (free, cached) |
 | `--agent` | the M2 agent letters every brand candidate a–f with a quote (LLM) |
 | `--m3-agent` | the M3 agent decides which spellings of the winner are the same company (LLM) |
-| `--m4-agent [fixed]` | M4 re-checks cases with a brand finding before ranking them (LLM; `fixed` = no model choosing) |
+| `--m4-agent` | M4 re-checks cases with a brand finding before ranking them: re-reads each finding, checks the winner's spellings (LLM). `model` lets the model choose which checks — measured worse, not the default |
 | `--reprocess REF… / quarantine / all` | run tenders again with today's code (auditor-judged tenders are kept) |
 | `--queue [STAMP]` | rebuild a queue from the case log |
 | `--until YYYY-MM-DD` | only tenders published up to that date |

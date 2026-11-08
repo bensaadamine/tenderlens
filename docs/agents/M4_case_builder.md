@@ -27,6 +27,18 @@ Loop: decide → act → re-score with `build_case` → decide; stops on finish,
 
 What stays in code: all scoring and routing (`build_case`, unchanged); M2's and M3's own checks; the case-page text ("Checked again before ranking", written from the follow-up results). The model adds no claim and sets no points.
 
+**Two modes, measured** (`tests/m4_eval.py`, 73 labelled tenders, M2 on rules only, 2026-11-04):
+
+| mode | flagged | real lock-ins flagged | false alarms | agent tokens |
+|---|---|---|---|---|
+| off (rules only) | 9 | 2 of 12 | 7 | 0 |
+| **fixed** (every check, fixed order) | 2 | 2 of 12 | **0** | 70k |
+| model (the model chooses) | 4 | 2 of 12 | 2 | 14k |
+
+- Re-reading every finding removes all 7 false alarms and keeps both real lock-ins.
+- Letting the model choose saves tokens but it skipped two re-reads, and those false alarms stayed. So **`fixed` is the default**; `model` stays as an option, measured and not chosen.
+- No mode finds a lock-in the rules missed: M4 only re-checks what is already flagged. Finding the others is the M2 agent's job (8 of 8 on the held-out set).
+
 ## How it decides
 | Claim | Points |
 |---|---|
@@ -57,7 +69,7 @@ Points are an ordering, not a probability — there is no ground truth yet to fi
 The orchestrators (`tenderlens.py`, `tenderlens_stream.py`) write all cases to `…_queue.html / .csv / .json`.
 
 ## Run it
-Through the orchestrators (`python tenderlens.py --tender <ref>`). Add `--m4-agent` for the agent (LLM, Windows), or `--m4-agent fixed` to run every follow-up without the model choosing (baseline). Without the flag, behaviour is unchanged. No model answering → the run stops and resumes from that tender (`m4_agent.AGENT_DOWN = "keep"` ranks the case as it stands).
+Through the orchestrators (`python tenderlens.py --tender <ref>`, `tenderlens_stream.py`). Add `--m4-agent` for the re-checks (LLM, Windows; `fixed` by default), or `--m4-agent model` to let the model choose. Without the flag, M4 is rules only. No model answering → the run stops and resumes from that tender (`m4_agent.AGENT_DOWN = "keep"` ranks the case as it stands).
 
 Tests (no data, no network): `python tests/test_agents.py` (rules), `python tests/test_m4_agent.py` (agent, scripted fake model).
 

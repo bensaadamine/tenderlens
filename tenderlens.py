@@ -309,11 +309,13 @@ def main():
     ap.add_argument("--m3-agent", action="store_true",
                     help="let the M3 agent decide which other spellings of "
                          "the winner are the same supplier (LLM, Windows)")
-    ap.add_argument("--m4-agent", nargs="?", const="model",
-                    choices=["model", "fixed"],
-                    help="let M4 re-check a case with a brand finding before "
-                         "ranking it (LLM, Windows); 'fixed' runs every "
-                         "follow-up without the model choosing")
+    ap.add_argument("--m4-agent", nargs="?", const="fixed",
+                    choices=["fixed", "model"],
+                    help="let M4 re-check cases with a brand finding before "
+                         "ranking them (LLM, Windows): the M2 agent re-reads "
+                         "each finding, the M3 agent checks the winner's "
+                         "spellings. 'fixed' (default) runs every check; "
+                         "'model' lets the model choose (measured worse)")
     ap.add_argument("--l2-level", type=int, choices=[6, 8], default=8,
                     help="UNSPSC digits for level-2 peer groups (default 8; "
                          "6 restores the old grouping)")

@@ -107,6 +107,7 @@ def act(name, **args):
 
 
 def run(ask, m2_, m3_=M3, h=None, **kw):
+    kw.setdefault("mode", "model")      # these tests drive the model mode
     return m4_agent.coordinate("t-1", M1, copy.deepcopy(m2_),
                                copy.deepcopy(m3_), h or hooks(), ask=ask,
                                use_graph=kw.pop("use_graph", False), **kw)

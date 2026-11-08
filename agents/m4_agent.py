@@ -30,8 +30,21 @@ What stays in CODE, never left to the model:
   * each follow-up runs at most once; a tender without a brand finding is
     never sent to the model.
 
-mode "fixed" runs every available follow-up in a fixed order, no model -
-the baseline that shows whether the model's choices add anything.
+TWO MODES, MEASURED (tests/m4_eval.py, 73 labelled tenders, M2 rules only,
+2026-11-04):
+
+    mode    flagged   real lock-ins flagged   false alarms   agent tokens
+    off        9            2 of 12                7              0
+    fixed      2            2 of 12                0            70k
+    model      4            2 of 12                2            14k
+
+  "fixed" runs every available follow-up in a fixed order: re-read every
+  finding, then the winner's spellings. It removed all 7 false alarms and
+  kept both real lock-ins. "model" lets the model choose; it saved tokens by
+  skipping the re-read on two tenders, and their false alarms stayed. So
+  "fixed" is the DEFAULT; "model" stays as an option, measured and not
+  chosen. Neither finds a lock-in the rules missed - M4 only re-checks what
+  is already flagged; finding the others is the M2 agent's job.
 
     from m4_agent import coordinate, default_hooks
     case = coordinate(ref, m1, m2, m3, default_hooks(ref, row, graph, m3))
@@ -469,12 +482,13 @@ def make_nodes(m1, hooks, choose):
     return decide, act
 
 
-def coordinate(reference, m1, m2, m3, hooks, mode="model", ask=None,
+def coordinate(reference, m1, m2, m3, hooks, mode="fixed", ask=None,
                use_graph=True):
     """Build the case, ask the follow-ups that are still open, re-score.
 
-    mode: "model" (the model chooses) or "fixed" (every follow-up, no
-    model). Returns build_case's dict plus "m4_agent" and trace["M4"].
+    mode: "fixed" (default: every follow-up, no model choosing) or "model"
+    (the model chooses - measured worse, see the top of this file).
+    Returns build_case's dict plus "m4_agent" and trace["M4"].
     """
     case = m4.build_case(m1, m2, m3)
     state = AgentState(reference=reference, m2=m2 or {}, m3=m3 or {},
