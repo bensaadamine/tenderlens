@@ -137,8 +137,12 @@ def plain_text(c, award=None):
                 "rule against naming brands does not apply.")
     if k == "brand_without_equivalent":
         b = c.get("brand") or "a brand"
-        return (f"The specification requires {b} and does not accept an "
-                f"equivalent product.")
+        also = c.get("also_written") or []
+        by = c.get("decided_by")
+        return (f"The specification requires {b}"
+                + (f" (also written {', '.join(also)})" if also else "")
+                + " and does not accept an equivalent product"
+                + (f" (settled by {by})" if by else "") + ".")
     return c.get("claim", "")
 WATCH = 2
 # Audit finding 2026-11-01: "verified" meant only that a source was attached
@@ -331,6 +335,13 @@ def build_case(m1, m2, m3, followups=None):
     }
 
 
+# Case page, "Brand names checked": every name the documents raised and who
+# settled it - a rule, Wikidata, or the M2 agent (decided_by).
+NAMES_SHOWN = 8
+NAME_RESULT = {"finding": "kept as a finding", "cleared": "cleared",
+               "open": "not settled"}
+
+
 def narrative_plain(route, claims, award, m2, followups=None):
     """The case page text: why it is listed, what we could not check, the
     supplier's history. Built only from scored, verified claims."""
@@ -372,6 +383,19 @@ def narrative_plain(route, claims, award, m2, followups=None):
     if gaps:
         out.append("\nWhat we could not check")
         out += [f"- {g}" for g in gaps]
+    names = [n for n in m2.get("names") or [] if n["result"] != "dropped"]
+    dropped = len(m2.get("names") or []) - len(names)
+    if names:
+        out.append("\nBrand names checked")
+        out += [f"- {n['name']}: {NAME_RESULT[n['result']]} - "
+                f"{n['decided_by']}" for n in names[:NAMES_SHOWN]]
+        more = len(names) - NAMES_SHOWN
+        if more > 0 or dropped:
+            out.append("- " + "; ".join(
+                ([f"{more} more"] if more > 0 else [])
+                + ([f"{dropped} other name(s) dropped as not brands"]
+                   if dropped else []))
+                + " (technical details)")
     if award and award.get("supplier"):
         out.append("\nSupplier history")
         tot, mine = award.get("buyer_awards_in_group"), \

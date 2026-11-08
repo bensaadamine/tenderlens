@@ -173,11 +173,13 @@ def _agent_pass(reference, l1, online, trace, title=""):
     for i, r in enumerate(rows, 1):
         v = lettered.get(i)
         if v is None:
-            unresolved.append(r)
+            unresolved.append(dict(r, decided_by="the M2 agent gave no "
+                                                 "letter"))
             continue
         row = dict(r, document=v["document"], line_no=v["line"],
                    page=v["page"], evidence=v["quote"], agent_letter=v["letter"],
-                   agent_reason=m2_agent.LETTERS[v["letter"]])
+                   agent_reason=m2_agent.LETTERS[v["letter"]],
+                   decided_by=f"the M2 agent: {m2_agent.LETTERS[v['letter']]}")
         if v["letter"] == "f":
             row["status"] = "BRAND_WITHOUT_EQUIVALENT"
             row["llm_reason"] = ("checked by the M2 agent: required, no "
@@ -197,6 +199,56 @@ def _agent_pass(reference, l1, online, trace, title=""):
          ok if r in recheck else unresolved).append(r)
     return dict(l1, findings=findings, ok=ok, unresolved=unresolved,
                 agent={k: out[k] for k in ("steps", "stop_reason", "engine")})
+
+
+# One brand written several ways in a tender ("Formlabs", "FormLabs Form")
+# was counted as several brands - two brands make an alert (demo, 2026-11-08:
+# Formlabs reached alert alone). Findings whose names share their first word
+# are now one finding. The error this rule can make (two companies sharing a
+# first word, both required) costs an alert, never adds one. None restores
+# one finding per spelling.
+SAME_BRAND = "first word"
+
+
+def _first_word(name):
+    words = re.findall(r"[a-z0-9]+", (name or "").lower())
+    return words[0] if words else (name or "").lower()
+
+
+def merge_spellings(findings):
+    """Level-1 findings -> one per brand. The kept row: lettered by the
+    agent first, then the shortest name (the plainest spelling: "Formlabs",
+    not "FormLabs Form"); the others go in also_written."""
+    if SAME_BRAND is None:
+        return findings
+    groups = {}
+    for f in findings:
+        groups.setdefault(_first_word(f["brand"]), []).append(f)
+    out = []
+    for fs in groups.values():
+        fs = sorted(fs, key=lambda f: (f.get("agent_letter") != "f",
+                                       len(f["brand"])))
+        main = dict(fs[0])
+        if fs[1:]:
+            main["also_written"] = [f["brand"] for f in fs[1:]]
+            main["occurrences"] = sum(f.get("occurrences", 1) for f in fs)
+        out.append(main)
+    return out
+
+
+def names_checked(l1):
+    """Every brand name the tender raised and who settled it, for the case
+    page: [{"name", "result", "decided_by"}]."""
+    out = []
+    for key, result in (("findings", "finding"), ("unresolved", "open"),
+                        ("ok", "cleared"), ("dropped", "dropped")):
+        for r in l1.get(key) or []:
+            out.append({"name": r["brand"], "result": result,
+                        "decided_by": r.get("decided_by", "")})
+            out += [{"name": n, "result": "finding",
+                     "decided_by": f"counted once with '{r['brand']}'"}
+                    for n in r.get("also_written") or []]
+    return out
 
 
 def _check_sources(findings, docs, trace):
@@ -236,15 +288,22 @@ def _finish(reference, rows, l1, trace, docs=None):
                      f"without enough peers")
 
     findings = []
+    l1 = dict(l1, findings=merge_spellings(l1.get("findings", [])))
 
-    for f in l1.get("findings", []):
+    for f in l1["findings"]:
         src = _l1_source(f)
+        also = f.get("also_written") or []
         findings.append({
             "level": 1, "kind": "brand_without_equivalent",
             "confidence": "high" if f.get("llm_reason") else "medium",
-            "claim": f"Names '{f['brand']}' without accepting an equivalent "
-                     f"product ({f.get('occurrences', 1)} mention(s))",
+            "claim": f"Names '{f['brand']}'"
+                     + (f" (also written {', '.join(repr(n) for n in also)})"
+                        if also else "")
+                     + f" without accepting an equivalent product "
+                       f"({f.get('occurrences', 1)} mention(s))",
             "brand": f["brand"],
+            "also_written": also,
+            "decided_by": f.get("decided_by", ""),
             "detail": f.get("llm_reason") or "",
             "source": src,
             # for the M4 agent, which can hand the finding back to the M2
@@ -289,9 +348,15 @@ def _finish(reference, rows, l1, trace, docs=None):
     if docs is None:
         docs = documents.tender_documents(reference)
     _check_sources(findings, docs, trace)
+    names = names_checked(l1)
+    drop = [n for n in names if n["result"] == "dropped"]
+    if drop:
+        trace.append("dropped by the rules: " + "; ".join(
+            f"{n['name']} ({n['decided_by']})" for n in drop[:20])
+            + (f"; and {len(drop) - 20} more" if len(drop) > 20 else ""))
     return {"reference": reference, "readable": True,
             "level1": _slim_l1(l1), "level2": _slim_l2(l2),
-            "findings": findings, "trace": trace}
+            "findings": findings, "names": names, "trace": trace}
 
 
 def _l1_source(f):

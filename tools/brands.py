@@ -543,6 +543,18 @@ def _buyer_equipment(docs, hits):
     return None
 
 
+# Who settled a name, in words for the case page (decided_by on every row).
+CLEARED_BY = {
+    "OK": "rule: an equivalent is accepted",
+    "OK_BLANKET_CLAUSE": "rule: a clause accepts equivalents for the whole "
+                         "document",
+    "OK_EQUIV_PRODUCTS_CLAUSE": "rule: the Equivalent Products clause",
+    "OK_BUYER_EQUIPMENT": "rule: the buyer's own equipment",
+    "OK_MAKE_LIST": "rule: one of a list of makes",
+    "OK_PLATFORM": "rule: the buyer's computer environment",
+}
+
+
 def _text_clearance(docs, name, hits, lines_of, window, window_before,
                     blanket, equiv_clause):
     """The first thing in the text that clears this name, as row fields
@@ -611,9 +623,13 @@ def brands_without_equivalent(reference, text_dir=None, window=200,
                 occ["qualified"] = bool(RE_OR_EQUIV.search(after)
                                         or RE_EQUIV_TO.search(before))
                 b["hits"].append(occ)
+    # Names dropped before any judgement - kept, with the reason, so the
+    # case page can say who settled every name.
+    dropped = []
     acros = _defined_acronyms(docs)
     for key in [k for k in per_brand if k.split()[0] in acros]:
-        del per_brand[key]
+        dropped.append({"brand": per_brand.pop(key)["name"],
+                        "decided_by": "rule: the tender's own acronym"})
     text_of = {d["document"]: d["text"] for d in docs}
     for key in list(per_brand):
         keep = []
@@ -630,7 +646,8 @@ def brands_without_equivalent(reference, text_dir=None, window=200,
         if keep:
             per_brand[key]["hits"] = keep
         else:
-            del per_brand[key]
+            dropped.append({"brand": per_brand.pop(key)["name"],
+                            "decided_by": "rule: part of a web address"})
     # Wikidata: free and cached. What it cannot settle is "unresolved" -
     # the M2 agent's job.
     wd = {k: verify_brand(b["name"], cache, offline)
@@ -652,28 +669,31 @@ def brands_without_equivalent(reference, text_dir=None, window=200,
                                                                h["page"]))],
             "blanket_clause": best["blanket_clause"],
         }
-        if verdict is False:
-            continue                          # not a brand: not a finding
+        if verdict is False:                  # not a brand: not a finding
+            dropped.append({"brand": b["name"],
+                            "decided_by": "Wikidata: not a brand"})
+            continue
         clear = _text_clearance(docs, b["name"], hits, lines_of, window,
                                 window_before, blanket, equiv_clause)
-        if verdict is None:
-            if clear:
-                row.update(clear, brand_unconfirmed=True)
-                ok.append(row)
-            else:
-                row["reason"] = "could not confirm this is a brand"
-                unresolved.append(row)
-        elif clear:
-            row.update(clear)
+        if clear:
+            row.update(clear, decided_by=CLEARED_BY[clear["status"]])
+            if verdict is None:
+                row["brand_unconfirmed"] = True
             ok.append(row)
+        elif verdict is None:
+            row["reason"] = "could not confirm this is a brand"
+            row["decided_by"] = "Wikidata could not confirm a brand"
+            unresolved.append(row)
         else:
             row["status"] = "BRAND_WITHOUT_EQUIVALENT"
+            row["decided_by"] = ("rules: Wikidata confirms the brand, no "
+                                 "equivalent accepted")
             findings.append(row)
     findings.sort(key=lambda r: -r["occurrences"])
     return {"reference": reference, "documents": len(docs),
             "blanket_clause": blanket, "equiv_products_clause": equiv_clause,
             "findings": findings, "ok": ok,
-            "unresolved": unresolved}
+            "unresolved": unresolved, "dropped": dropped}
 
 
 def main():

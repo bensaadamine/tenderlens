@@ -181,6 +181,7 @@ def _recheck(reference, m2, hooks, brands):
     for i, f in enumerate(rows, 1):
         b, v = f["brand"], by_id.get(i)
         if v is None:
+            _settled(m2, b, "open", "re-read by the M2 agent, no letter")
             gone.add(id(f))
             l1["unresolved"] = (l1.get("unresolved") or 0) + 1
             res, text = "unresolved", (f"'{b}' was re-read by the spec agent "
@@ -189,6 +190,9 @@ def _recheck(reference, m2, hooks, brands):
         else:
             where = f"{v.get('document')}, line {v.get('line')}"
             if v["letter"] == "f":
+                f["decided_by"] = ("re-read by the M2 agent: brand "
+                                   "required, no equivalent")
+                _settled(m2, b, "finding", f["decided_by"])
                 f.update(agent_letter="f", confidence="high",
                          line_no=v.get("line"),
                          detail="re-read by the M2 agent: required, no "
@@ -204,6 +208,8 @@ def _recheck(reference, m2, hooks, brands):
                                      f"(\u201c{v.get('quote')}\u201d, "
                                      f"{where}).")
             else:
+                _settled(m2, b, "cleared", "re-read by the M2 agent: "
+                         + LETTERS.get(v["letter"], v["letter"]))
                 gone.add(id(f))
                 l1["ok"] = (l1.get("ok") or 0) + 1
                 res, text = "cleared", (
@@ -219,6 +225,13 @@ def _recheck(reference, m2, hooks, brands):
     m2["trace"] = list(m2.get("trace", [])) + [
         "M4 recheck: " + t for t in out.get("trace", [])]
     return m2, followups, "; ".join(notes)
+
+
+def _settled(m2, brand, result, decided_by):
+    """Record on M2's list of names who settled this one now."""
+    for n in m2.get("names") or []:
+        if n["name"] == brand and n["result"] == "finding":
+            n.update(result=result, decided_by=decided_by)
 
 
 def _spellings(hooks):

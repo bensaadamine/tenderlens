@@ -226,6 +226,33 @@ def main():
     check("ACAN + no trade agreement -> CLOSE (context only)",
           c8["route"] == "close" and c8["score"] == 3)
 
+    # ---- M2: one brand written several ways is one finding
+    import m2_spec_auditor as m2s
+    rows = [{"brand": "FormLabs Form", "occurrences": 1, "agent_letter": "f",
+             "decided_by": "the M2 agent: brand required, no equivalent"},
+            {"brand": "Formlabs", "occurrences": 1, "agent_letter": "f",
+             "decided_by": "the M2 agent: brand required, no equivalent"},
+            {"brand": "Bendix", "occurrences": 2,
+             "decided_by": "rules: Wikidata confirms the brand"}]
+    merged = m2s.merge_spellings(rows)
+    check("one brand written two ways -> one finding, plainest name kept",
+          [r["brand"] for r in merged] == ["Formlabs", "Bendix"]
+          and merged[0]["also_written"] == ["FormLabs Form"]
+          and merged[0]["occurrences"] == 2)
+    m2s.SAME_BRAND = None
+    check("SAME_BRAND = None restores one finding per spelling",
+          len(m2s.merge_spellings(rows)) == 3)
+    m2s.SAME_BRAND = "first word"
+    names = m2s.names_checked({"findings": merged, "ok": [],
+                               "unresolved": [], "dropped": [
+                                   {"brand": "RFSA", "decided_by":
+                                    "rule: the tender's own acronym"}]})
+    check("every name says who settled it, merged spellings included",
+          [(n["name"], n["result"]) for n in names] == [
+              ("Formlabs", "finding"), ("FormLabs Form", "finding"),
+              ("Bendix", "finding"), ("RFSA", "dropped")]
+          and all(n["decided_by"] for n in names))
+
     print(f"\n{FAILS} failure(s)")
     sys.exit(1 if FAILS else 0)
 

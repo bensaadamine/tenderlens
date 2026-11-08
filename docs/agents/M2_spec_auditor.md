@@ -43,12 +43,17 @@ Find, with a quoted line, a departure from the trade-agreement rule: *a specific
 
 **How the model calls them:** native tool calling, one schema per tool (`llm.tool`); a plain JSON reply still works. `TENDERLENS_NATIVE_TOOLS=off` restores the prompt-only calls.
 
+**Who settles each name is recorded** (`decided_by`, shown on the case page under "Brand names checked"). The rules settle what the text decides exactly: a name dropped as the tender's own acronym, part of a web address, or not a brand on Wikidata; a name cleared by "or equivalent", the Equivalent Products clause, the buyer's own equipment, a list of makes, or the buyer's computer environment. Everything else is for the agent. The rule clearances stay with the rules on measurement: when the agent re-checked the buyer's-equipment clearances, it turned 3 correct ones into false findings (2026-10-22).
+
+**One brand, several spellings, one finding:** findings whose names share their first word ("Formlabs", "FormLabs Form") are merged, the others listed as `also_written` (`SAME_BRAND = None` restores one finding per spelling). Measured 2026-11-08: only the Formlabs demo case changes (alert → watch); synthetic set, 73 labelled tenders and 4110 unchanged.
+
 **Kept in code, never left to the model:** every verdict must quote text really in the named document (the line recorded is where the quote is); an "f" quote must contain the brand; a refused verdict is explained back to the model; a candidate without a valid letter is **unresolved** — neither a finding nor a clearance.
 
 ## Output
 `audit(reference, ...)` returns:
 - `findings` — each with `kind` (`brand_without_equivalent`, `narrow_band`, …), `claim`, `confidence`, `source` {document, location, quoted line}
 - `level1` — counts: findings, cleared, unresolved
+- `names` — every brand name the tender raised: `result` (finding / open / cleared / dropped) and `decided_by`
 - `level2` — score, attributes without enough peers
 - `readable` — False if no text exists
 - `trace` — every step, including each agent step (tool, arguments, result)
