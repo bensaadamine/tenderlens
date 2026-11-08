@@ -1,16 +1,19 @@
 """
-LLM access for TenderLens: one pinned model, one fallback.
+LLM access for TenderLens: one pinned model.
 
 Groq's gpt-oss-120b answers every agent call ("strong"); gpt-oss-20b the
-label map's quick calls ("fast"). Gemini is used only when Groq fails or its
-daily quota is spent. Both speak the OpenAI chat-completions format (Gemini
+label map's quick calls ("fast"). When Groq's daily quota is spent the run
+stops, and the next run resumes where it stopped - every verdict comes from
+the same model. TENDERLENS_SHARE=1 also sends calls to Gemini (twice the
+calls a minute, for a first run of a whole category; verdicts can then
+differ between runs). Both speak the OpenAI chat-completions format (Gemini
 through its compatibility endpoint), so there is one code path and no SDK to
 install: urllib only, nothing for Windows Application Control to block.
 
 Keys go in .env (never committed):
 
     GROQ_API_KEY=gsk_...      (free: console.groq.com)
-    GEMINI_API_KEY=...        (optional fallback, small free quota)
+    GEMINI_API_KEY=...        (optional, used only with TENDERLENS_SHARE=1)
 
 With no key at all, ask() raises NoProvider and the caller falls back to its
 rules: the pipeline must never silently stop producing findings.
@@ -54,45 +57,32 @@ _last_call = {}       # provider -> unix_time
 _down_until = {}      # provider -> unix_time; a provider that errored rests
 DOWN_FOR = 60         # seconds
 DAY_OUT = 6 * 3600    # seconds a provider is skipped after "quota per day"
-# Groq first; Gemini only when Groq fails. Sharing every call
-# between the two (user decision 2026-10-19) made verdicts differ between
-# runs - two models answer differently. TENDERLENS_SHARE=1 restores sharing:
-# twice the calls a minute, for a first run of a whole category.
+# Groq only, by default: two models answer differently, so mixing them made
+# verdicts differ between runs. TENDERLENS_SHARE=1 shares calls with Gemini
+# (user decision 2026-10-19): the provider that can take a call soonest gets
+# it - twice the calls a minute, for a first run of a whole category.
 SHARE = os.environ.get("TENDERLENS_SHARE") == "1"
-# Native tool calling: the request carries a schema per tool and
-# the model's tool call comes back as {"thought", "action", "args"} - the
-# shape the agents read, so a JSON reply still works. Measured before it:
-# about half the agent steps were lost on tools that don't exist or wrong
-# argument names. A provider that rejects tools is asked again without them.
-# "off" restores the prompt-only behaviour (and the old cache keys).
-NATIVE_TOOLS = os.environ.get("TENDERLENS_NATIVE_TOOLS", "on")
+# Native tool calling: the request carries a schema per tool and the model's
+# tool call comes back as {"thought", "action", "args"} - the shape the
+# agents read, so a JSON reply still works. Before it, about half the agent
+# steps were lost on tools that don't exist or wrong argument names. A
+# provider that rejects tools is asked again without them.
 _no_tools = set()     # providers that rejected a tools request this run
 
-# THE MODELS, pinned: the same model gives the same verdicts,
-# and every measurement in MEASUREMENT_LOG was made with these. They are the
-# models the cache was filled with, so cached answers keep working. A model
-# the provider has retired (HTTP 400/404) is replaced, for this run, by the
-# first match of PREFER_* in the provider's own list - with a warning,
-# because verdicts may change.
+# THE MODELS, pinned: the same model gives the same verdicts, and every
+# measurement was made with these. They are the models the cache was filled
+# with, so cached answers keep working (whichever key is set). A model the
+# provider has retired is an error that says so - never a silent switch to
+# another model.
 PROVIDERS = [
     {"name": "groq", "env": "GROQ_API_KEY",
      "base": "https://api.groq.com/openai/v1",
      "fast": "openai/gpt-oss-20b", "strong": "openai/gpt-oss-120b"},
-    {"name": "gemini", "env": "GEMINI_API_KEY",
+    {"name": "gemini", "env": "GEMINI_API_KEY", "shared_only": True,
      "base": "https://generativelanguage.googleapis.com/v1beta/openai",
      "fast": "models/gemini-2.5-flash",
      "strong": "models/gemini-3-flash-preview"},
 ]
-PREFER_FAST = [r"gpt-oss-20b", r"llama.*8b.*instant",
-               r"gemini-[3-9][\w.-]*flash-lite", r"flash"]
-# Gemini Pro left the free tier in 2026: the strong Gemini is a non-lite Flash.
-PREFER_STRONG = [r"gpt-oss-120b", r"llama.*70b",
-                 r"gemini-[3-9][\d.]*-flash(?!-lite)", r"flash(?!-lite)"]
-# Never pick these for text: speech, embedding, vision-only, moderation.
-EXCLUDE_MODELS = re.compile(
-    r"whisper|tts|embed|guard|moderation|vision|image|audio|rerank|ocr",
-    re.I)
-_replaced = {}        # provider -> {"fast", "strong"} found this run
 
 
 def _auth(provider):
@@ -160,40 +150,15 @@ def _key(model, system, user):
 
 # -------------------------------------------------------------- the one call
 def available():
-    """Providers that have a key set, in fallback order."""
-    return [p for p in PROVIDERS if os.environ.get(p["env"])]
+    """Providers a call may be sent to: a key set, and Gemini only when
+    sharing (TENDERLENS_SHARE=1)."""
+    return [p for p in PROVIDERS if os.environ.get(p["env"])
+            and (SHARE or not p.get("shared_only"))]
 
 
-def models_for(provider, refresh=False, verbose=False):
-    """(fast, strong) model IDs for this provider: the pinned ones, or with
-    `refresh` (the pinned one was rejected) the provider's own best match."""
-    name = provider["name"]
-    if refresh:
-        try:
-            req = urllib.request.Request(
-                provider["base"] + "/models",
-                headers={"Authorization": _auth(provider),
-                         "User-Agent": "TenderLens/0.1"})
-            with urllib.request.urlopen(req, timeout=30) as r:
-                ids = sorted(m.get("id", "") for m in json.load(r)
-                             .get("data", []) if m.get("id")
-                             and not EXCLUDE_MODELS.search(m["id"]))
-        except Exception as e:
-            if verbose:
-                print(f"    [{name}] could not list models: "
-                      f"{type(e).__name__}")
-            ids = []
-        pick = lambda prefer: next((i for pat in prefer for i in ids
-                                    if re.search(pat, i, re.I)), None)
-        fast, strong = pick(PREFER_FAST), pick(PREFER_STRONG)
-        if fast or strong:
-            _replaced[name] = {"fast": fast or strong,
-                               "strong": strong or fast}
-            print(f"    WARNING [{name}] pinned model rejected; using "
-                  f"{_replaced[name]} for this run - verdicts may differ "
-                  f"from the measurements")
-    m = _replaced.get(name) or provider
-    return m["fast"], m["strong"]
+def models_for(provider):
+    """(fast, strong): the pinned model IDs of this provider."""
+    return provider["fast"], provider["strong"]
 
 
 def _post(provider, model, system, user, max_tokens, temperature, timeout,
@@ -464,8 +429,6 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
     provider failed - the caller decides what to do, because a silent empty
     answer would look like "no findings".
     """
-    if NATIVE_TOOLS != "on":
-        tools = None
     # the tool list is part of the question: same prompt, other tools,
     # other answer
     sys_key = system if not tools else (
@@ -476,10 +439,8 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
     # A saved answer is reused whichever pinned model gave it, key or no key:
     # a replay needs no account, and an answer already paid is never re-asked.
     for p in PROVIDERS:
-        fast, strg = models_for(p, verbose=verbose)
+        fast, strg = models_for(p)
         model = (strg if strong else fast)
-        if not model:
-            continue
         ck = _key(model, sys_key, user)
         # An empty cached answer is a truncated reasoning model, not a result.
         # Caching one poisoned the cache: the next run returned "" instantly
@@ -497,11 +458,8 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
         if _down_until.get(p["name"], 0) - time.time() > DOWN_FOR:
             errors.append(f"{p['name']}: daily quota used")
             continue
-        fast, strg = models_for(p, verbose=verbose)
+        fast, strg = models_for(p)
         model = (strg if strong else fast)
-        if not model:
-            errors.append(f"{p['name']}: no usable model")
-            continue
         ck = _key(model, sys_key, user)
         use_tools = tools if p["name"] not in _no_tools else None
         for attempt in range(retries + 1):
@@ -575,16 +533,14 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
                               f"waiting {wait:.0f}s")
                     time.sleep(min(wait, 60))
                     continue
-                if e.code in (400, 404) and attempt < retries:
-                    # the model ID was retired - rediscover and try once more
-                    if verbose:
-                        print(f"    [{p['name']}] {model} rejected "
-                              f"({e.code}), refreshing catalogue")
-                    fast, strg = models_for(p, refresh=True, verbose=verbose)
-                    new = (strg if strong else fast)
-                    if new and new != model:
-                        model, ck = new, _key(new, sys_key, user)
-                        continue
+                if e.code == 404 or re.search(r"model.{0,40}(decommission|"
+                                              r"not found|does not exist)",
+                                              body, re.I):
+                    errors.append(f"{p['name']}: pinned model {model} is "
+                                  f"not served any more (HTTP {e.code}) - "
+                                  f"update PROVIDERS in tools/llm.py and "
+                                  f"re-run the evals")
+                    break
                 errors.append(f"{p['name']}: HTTP {e.code}")
                 _down_until[p["name"]] = time.time() + DOWN_FOR
                 break
@@ -653,7 +609,7 @@ def main():
                   f"{d['cached']:7d} {d['tok']:9,}")
         return 0
 
-    print("configured, in fallback order"
+    print("calls go to"
           + (" (sharing calls: TENDERLENS_SHARE=1)" if SHARE else "") + ":")
     for p in provs:
         fast, strong = models_for(p)

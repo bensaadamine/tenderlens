@@ -12,7 +12,7 @@ A ranked queue an auditor can trust: every line in a case points to a source a p
 The three results: `m1` (notice signals), `m2` (document findings), `m3` (award and history).
 
 ## Tools
-Rules (`m4_case_builder.py`): one check of its own, **is the brand the specification requires the company that won?** (`brand_matches_winner`), against the winner's name and the other spellings M3 accepted as the same company (`BRAND_VS_SPELLINGS = False` restores the winner's name only).
+Rules (`m4_case_builder.py`): one check of its own, **is the brand the specification requires the company that won?** (`brand_matches_winner`), against the winner's name and the other spellings M3 accepted as the same company.
 
 Checks (`m4_checks.py`, `--m4-checks`): before ranking a case **that has a brand finding**, three checks run in a fixed order, and `build_case` re-scores the case after them:
 
@@ -52,7 +52,7 @@ What stays in code: all scoring and routing (`build_case`, unchanged); M2's and 
 - **Alert:** 5 points **from document findings alone** — two brands, or a brand that won.
 - **Watch:** 2 points, and at least one claim that is neither declared by the buyer nor context.
 - **Close:** everything else. The score is kept for ranking.
-- A claim scores only if its source is **attached** (an origin and the words) **and checked** — the words found in the document by M2 (or by the M2 agent's quote test), or copied by code from the notice field (M1) or the award records (M3). Otherwise it is shown as unverified and scores 0 (`VERIFY = "attached"` restores the old rule). Each claim carries `source_attached` and `verified`.
+- A claim scores only if its source is **attached** (an origin and the words) **and checked** — the words found in the document by M2 (or by the M2 agent's quote test), or copied by code from the notice field (M1) or the award records (M3). Otherwise it is shown as unverified and scores 0. Each claim carries `source_attached` and `verified`.
 - Brand = winner is checked against every supplier the award notices name for the tender, not only the newest.
 
 Points are an ordering, not a probability — there is no ground truth yet to fit them.
@@ -68,12 +68,12 @@ Points are an ordering, not a probability — there is no ground truth yet to fi
 The pipeline (`pipeline/one_tender.py`, `pipeline/stream.py`, through `tools/report.py`) writes all cases to `…_queue.html / .csv / .json`.
 
 ## Run it
-Through the pipeline (`python tenderlens.py tender <ref>`, `python tenderlens.py run --group <code>`). Add `--m4-checks` for the checks (LLM, Windows), or `--m4-checks model` for the experiment. Without the flag, M4 is rules only. No model answering → the run stops and resumes from that tender (`m4_checks.AGENT_DOWN = "keep"` ranks the case as it stands).
+Through the pipeline (`python tenderlens.py tender <ref>`, `python tenderlens.py run --group <code>`). Add `--m4-checks` for the checks (LLM, Windows), or `--m4-checks model` for the experiment. Without the flag, M4 is rules only. No model answering → the run stops and resumes from that tender (`Settings(on_outage="keep")` ranks the case as it stands).
 
 Tests (no data, no network): `python -m tests.test_agents` (rules), `python -m tests.test_m4_checks` (the checks, fake M2/M3), `python -m tests.test_m4_model_coordinator` (the experiment, scripted fake model).
 
 ## Rules it must keep
 - Never writes "fraud". Strongest wording: *"the competition on this contract does not appear to have been genuine, for these reasons, at these locations."*
 - Declared signals and context never make an alert, and never make a watch on their own.
-- Every change of routing gets a constant that restores the old rule (`ALERT_FROM`, `DECLARED_ALONE`, `CONTEXT_ALONE`, `NARRATIVE`, `BRAND_VS_SPELLINGS`).
+- A change of routing gets a switch restoring the old rule until it is measured; settled switches are removed (git keeps them).
 - The checks only ask; code decides. A check's result changes the case only through `build_case`.

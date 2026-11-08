@@ -250,7 +250,7 @@ def coordinate(reference, m1, m2, m3, hooks, ask=None, use_graph=True):
     state, engine = agent_loop.run(state, decide, act, AgentState, MAX_STEPS,
                                    use_graph)
     if state["stop_reason"].startswith("model") and \
-            checks.AGENT_DOWN == "stop":
+            hooks.on_outage == "stop":
         raise checks.AgentUnavailable(f"{reference}: {state['stop_reason']}")
     trace = [f"step {h['step']}: {h['action']} "
              f"{json.dumps(h['args'], ensure_ascii=False)[:120]} -> "

@@ -165,11 +165,6 @@ def main():
           and any(c["kind"] == "brand_matches_winner"
                   and "also written HONDA POWER" in c["claim"]
                   for c in case["claims"]))
-    m4.BRAND_VS_SPELLINGS = False
-    case = run(m2(HONDA), h=hooks({"Honda": "f"}))
-    m4.BRAND_VS_SPELLINGS = True
-    check("BRAND_VS_SPELLINGS = False restores the winner's name only",
-          case["route"] == "watch")
     h = hooks()
     run(m2(lettered), M3_SPELT, h=h)
     check("spellings already checked by --m3-agent are not asked again",
@@ -193,12 +188,11 @@ def main():
     except m4_checks.AgentUnavailable:
         raised = True
     check("M2's agent without a model stops the run", raised)
-    m4_checks.AGENT_DOWN = "keep"
-    case = run(m2(HONDA, NET),
-               h=hooks(recheck_out={"verdicts": [], "steps": 0,
-                                    "stop_reason": "model unavailable: 429"}))
-    m4_checks.AGENT_DOWN = "stop"
-    check("AGENT_DOWN = 'keep': the findings are kept as they were",
+    h = hooks(recheck_out={"verdicts": [], "steps": 0,
+                           "stop_reason": "model unavailable: 429"})
+    h.on_outage = "keep"
+    case = run(m2(HONDA, NET), h=h)
+    check("on_outage 'keep': the findings are kept as they were",
           case["route"] == before["route"])
 
     try:

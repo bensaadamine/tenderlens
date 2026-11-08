@@ -50,19 +50,18 @@ from tools import documents
 # transporting a Fat Truck") became false findings. Add "OK_BUYER_EQUIPMENT"
 # to let the agent re-check them.
 AGENT_RECHECK = {"OK_MAKE_LIST"}
-# For the exam only (tests/m2_eval.py): a test (reference, name) -> bool
-# choosing which candidates the agent sees; the others keep the rules'
-# result. A tender can hold 50 open names of which one is labelled, and the
-# free quota (about 2-3 calls a minute) makes judging all of them take
-# hours. None = every candidate (normal runs).
-AGENT_ONLY = None
 
-# When the agent was asked for but no model answers (quota used, providers
-# down): "stop" raises AgentUnavailable, so a run stops cleanly and the
-# tenders not yet done are picked up by the next run - a free daily quota
-# then spreads one category over several days. "keep" falls back to the
-# rules' result (the eval and the synthetic test use it).
-AGENT_DOWN = "stop"
+# Two run choices arrive as parameters (pipeline/settings.py):
+#   on_outage   the agent was asked for but no model answers (quota used,
+#               providers down): "stop" raises AgentUnavailable, so a run
+#               stops cleanly and the next run picks up the tenders not yet
+#               done - a free daily quota then spreads one category over
+#               several days. "keep" falls back to the rules' result (the
+#               eval and the synthetic test use it).
+#   agent_only  for the exam only (tests/m2_eval.py): (reference, name) ->
+#               bool, which candidates the agent sees; the others keep the
+#               rules' result. A tender can hold 50 open names of which one
+#               is labelled. None = every candidate.
 
 
 class AgentUnavailable(RuntimeError):
@@ -89,13 +88,15 @@ def _llm_available():
         return False
 
 
-def audit(reference, rows=None, online=False, agent=False, title=""):
+def audit(reference, rows=None, online=False, agent=False, title="",
+          level2_on=True, on_outage="stop"):
     """Audit ONE tender's specification.
 
     online: check names the brand cache does not know on Wikidata (free,
     cached). agent: let the M2 agent letter the names the rules found or
     could not settle (agents/m2_agent.py). title: the notice's title,
-    shown to the agent as what the tender buys.
+    shown to the agent as what the tender buys. level2_on: False skips
+    level 2. on_outage: see above.
     Returns a dict with `readable`, `level1`, `level2`, `findings`
     (normalised, each with a source) and `trace`.
     """
@@ -106,11 +107,12 @@ def audit(reference, rows=None, online=False, agent=False, title=""):
         return {"reference": reference, "readable": False, "findings": [],
                 "level1": None, "level2": None, "trace": trace}
     trace.append(f"read {len(docs)} document(s)")
-    l1 = run_level1(reference, online, agent, trace, title)
-    return _finish(reference, rows, l1, trace, docs)
+    l1 = run_level1(reference, online, agent, trace, title, on_outage)
+    return _finish(reference, rows, l1, trace, docs, level2_on)
 
 
-def run_level1(reference, online=False, agent=False, trace=None, title=""):
+def run_level1(reference, online=False, agent=False, trace=None, title="",
+               on_outage="stop", agent_only=None):
     """Level 1 for one tender: the rules (brand names checked against the
     Wikidata cache, or Wikidata itself when `online`), then, with `agent`,
     the M2 agent on what the rules found or could not settle. Returns
@@ -130,8 +132,9 @@ def run_level1(reference, online=False, agent=False, trace=None, title=""):
                      "finding nor a clearance (--online, --agent resolve)")
     if agent:
         if _llm_available():
-            l1 = _agent_pass(reference, l1, online, trace, title)
-        elif AGENT_DOWN == "stop":
+            l1 = _agent_pass(reference, l1, online, trace, title,
+                             on_outage, agent_only)
+        elif on_outage == "stop":
             raise AgentUnavailable("no LLM key is set (GROQ_API_KEY, "
                                    "GEMINI_API_KEY in .env)")
         else:
@@ -139,13 +142,14 @@ def run_level1(reference, online=False, agent=False, trace=None, title=""):
     return l1
 
 
-def _agent_pass(reference, l1, online, trace, title=""):
+def _agent_pass(reference, l1, online, trace, title="", on_outage="stop",
+                agent_only=None):
     """Let the M2 agent letter what the rules found or could not settle."""
     recheck = [o for o in l1.get("ok", []) if o.get("status") in AGENT_RECHECK]
     rows = l1.get("findings", []) + l1.get("unresolved", []) + recheck
-    held = []                       # left to the rules (AGENT_ONLY)
-    if AGENT_ONLY is not None:
-        held = [r for r in rows if not AGENT_ONLY(reference, r["brand"])]
+    held = []                       # left to the rules (agent_only)
+    if agent_only is not None:
+        held = [r for r in rows if not agent_only(reference, r["brand"])]
         rows = [r for r in rows if r not in held]
     if not rows:
         trace.append("agent: nothing for it to check")
@@ -155,7 +159,7 @@ def _agent_pass(reference, l1, online, trace, title=""):
              for r in rows]
     out = m2_agent.classify_tender(reference, cands, online=online,
                                    title=title)
-    if AGENT_DOWN == "stop" and out["stop_reason"].startswith("model"):
+    if on_outage == "stop" and out["stop_reason"].startswith("model"):
         raise AgentUnavailable(f"{reference}: {out['stop_reason']}")
     if out["steps"] == 0 and out["stop_reason"].startswith("model"):
         # The model never answered: keep the rules' result rather than
@@ -202,9 +206,7 @@ def _agent_pass(reference, l1, online, trace, title=""):
 # "FormLabs From" join "Formlabs". Counted apart, they made two brands and an
 # alert (Formlabs, demo 2026-11-08). "General Electric" and "General Motors"
 # stay two findings: neither begins with the other. A merged spelling keeps
-# its own place and words in the finding's evidence. None: one finding per
-# spelling.
-SAME_BRAND = "prefix"
+# its own place and words in the finding's evidence.
 
 
 def _words(name):
@@ -212,11 +214,9 @@ def _words(name):
 
 
 def merge_spellings(findings):
-    """Level-1 findings -> one per brand (see SAME_BRAND). The kept row is
-    the shortest spelling; the others go in also_written, and their
-    locations and words first in its list of other locations."""
-    if SAME_BRAND is None:
-        return findings
+    """Level-1 findings -> one per brand (see above). The kept row is the
+    shortest spelling; the others go in also_written, and their locations
+    and words first in its list of other locations."""
     hosts = []                         # (words, row), shortest names first
     for f in sorted(findings, key=lambda f: len(_words(f["brand"]))):
         w = _words(f["brand"])
@@ -268,10 +268,10 @@ def _check_sources(findings, docs, trace):
                      f"documents - they will not score")
 
 
-def _finish(reference, rows, l1, trace, docs=None):
+def _finish(reference, rows, l1, trace, docs=None, level2_on=True):
     """Level 2, then every finding normalised with its source."""
     # ------------------------------------------------------------ level 2
-    if not level2.ON[0]:
+    if not level2_on:
         l2 = {"off": True}
         trace.append("level 2: off (--no-level2)")
     else:
@@ -315,10 +315,8 @@ def _finish(reference, rows, l1, trace, docs=None):
             claim=f"'{f['attribute']}' set at {f.get('stated')} against "
                   f"a peer median of {f['peer_median']} {f.get('unit','')} "
                   f"(n={f['peer_n']})",
-            detail=f"Peer group is UNSPSC-{level2.LEVEL[0]}"
-                   + ("; it mixes vehicle classes" if level2.LEVEL[0] < 8
-                      else "") + " - check the peers are the same kind "
-                   "of product.",
+            detail=f"Peer group is UNSPSC-{level2.LEVEL} - check the peers "
+                   "are the same kind of product.",
             source=Evidence(file=f.get("file"), where=f.get("section"),
                             line=f.get("source_line"),
                             context=f.get("context")),

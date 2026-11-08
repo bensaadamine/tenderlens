@@ -39,20 +39,22 @@ from agents import m2_spec_auditor
 from agents import m3_investigator
 from agents import m4_case_builder
 from agents import m4_checks
+from pipeline import settings
+from pipeline.settings import Settings
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception:
     pass
 
-def load_shared(verbose=True):
+def load_shared(verbose=True, level2_on=True):
     t = time.time()
     notices = m1_screener.load_notices()
     wstats = m1_screener.method_windows(notices)
     if verbose:
         print(f"notices: {len(notices):,} ({time.time()-t:.0f}s)")
     try:
-        rows = level2.load_observations() if level2.ON[0] else []
+        rows = level2.load_observations() if level2_on else []
     except SystemExit as e:
         print(f"level 2 knowledge base unavailable: {e}")
         rows = []
@@ -92,18 +94,21 @@ AGENT_DOWN = (m2_spec_auditor.AgentUnavailable,
               m4_checks.AgentUnavailable)
 
 
-def run_one(ref, shared, online=False, agent=False, m3_agent=False,
-            m4_mode=None):
-    """The four components on one tender. m4_mode: None (M4 rules only),
-    "fixed" (M4's checks before ranking a case with a brand finding,
-    agents/m4_checks.py) or "model" (a model chooses those checks - the
-    measured experiment, experiments/m4_model_coordinator.py)."""
+def run_one(ref, shared, s=None):
+    """The four components on one tender, with one run's settings
+    (pipeline/settings.py; default: rules only). s.m4_checks: None (M4
+    rules only), "fixed" (M4's checks before ranking a case with a brand
+    finding, agents/m4_checks.py) or "model" (a model chooses those checks
+    - the measured experiment, experiments/m4_model_coordinator.py)."""
+    s = s or Settings()
     notices, wstats, rows, graph = shared
     m1 = m1_screener.screen(ref, notices, wstats)
     why_none = no_contract_reason(notices.get(ref))
     if m1.get("documents"):
-        m2 = m2_spec_auditor.audit(ref, rows=rows, online=online,
-                                   agent=agent, title=m1.get("title", ""))
+        m2 = m2_spec_auditor.audit(ref, rows=rows, online=s.online,
+                                   agent=s.agent, title=m1.get("title", ""),
+                                   level2_on=s.level2,
+                                   on_outage=s.on_outage)
     else:
         m2 = {"reference": ref, "readable": False, "findings": [],
               "trace": ["no documents held for this tender"]}
@@ -112,11 +117,12 @@ def run_one(ref, shared, online=False, agent=False, m3_agent=False,
               "findings": [], "trace": [f"skipped - {why_none}"]}
     else:
         m3 = m3_investigator.investigate(ref, notices.get(ref), graph,
-                                         agent=m3_agent)
-    if m4_mode and not why_none:
+                                         agent=s.m3_agent,
+                                         on_outage=s.on_outage)
+    if s.m4_checks and not why_none:
         hooks = m4_checks.default_hooks(ref, notices.get(ref), graph, m3,
-                                        online)
-        if m4_mode == "model":
+                                        s.online, s.on_outage)
+        if s.m4_checks == "model":
             from experiments import m4_model_coordinator
             case = m4_model_coordinator.coordinate(ref, m1, m2, m3, hooks)
         else:
@@ -150,36 +156,12 @@ def main():
                                  "reasoning. Whole categories: "
                                  "python tenderlens.py run.")
     ap.add_argument("tender", help="reference number, e.g. cb-258-72766150")
-    ap.add_argument("--online", action="store_true",
-                    help="let M2 verify unknown brands online (Wikidata)")
-    ap.add_argument("--agent", action="store_true",
-                    help="let the M2 agent letter brand candidates a-f "
-                         "(LLM, Windows)")
-    ap.add_argument("--m3-agent", action="store_true",
-                    help="let the M3 agent decide which other spellings of "
-                         "the winner are the same supplier (LLM, Windows)")
-    ap.add_argument("--m4-checks", nargs="?", const="fixed",
-                    choices=["fixed", "model"],
-                    help="before ranking a case with a brand finding, M4 "
-                         "sends the finding back to the M2 agent and the "
-                         "winner's spellings to the M3 agent (LLM, Windows). "
-                         "'model': a model chooses the checks (experiment, "
-                         "measured worse)")
-    ap.add_argument("--l2-level", type=int, choices=[6, 8], default=8,
-                    help="UNSPSC digits for level-2 peer groups (default 8; "
-                         "6 restores the old grouping)")
-    ap.add_argument("--no-level2", action="store_true",
-                    help="skip level 2 (numbers compared with peer tenders; "
-                         "dormant, finds nothing usable today)")
-    brands.add_l1_args(ap)
+    settings.add_args(ap)
     a = ap.parse_args()
-    level2.LEVEL[0] = a.l2_level
-    level2.ON[0] = not a.no_level2
-    brands.apply_l1_args(a)
+    s = Settings.from_args(a)
 
     try:
-        c = run_one(a.tender, load_shared(), online=a.online, agent=a.agent,
-                    m3_agent=a.m3_agent, m4_mode=a.m4_checks)
+        c = run_one(a.tender, load_shared(level2_on=s.level2), s)
     except AGENT_DOWN as e:
         print(f"\nstopped: {e}")
         return 1

@@ -85,9 +85,7 @@ CONTEXT_ONLY = {"no_trade_agreement"}
 # Brand vs winner: the brand is also checked against
 # the winner's other spellings that M3 accepted as the same company - a
 # winner written "BENDIX CVS" whose award notices also say "BENDIX
-# COMMERCIAL VEHICLE SYSTEMS". Same whole-word test on each name. False
-# restores the check against the winner's own name only.
-BRAND_VS_SPELLINGS = True
+# COMMERCIAL VEHICLE SYSTEMS". Same whole-word test on each name.
 # Wording of the case page: one sentence per reason, each
 # marked declared / found in the documents / context; no internal codes.
 NATURE = {
@@ -143,9 +141,7 @@ WATCH = 2
 # A claim scores only if its words were CHECKED against its source
 # (source["checked"]), not merely attached: M2 found them in the document
 # text, M1 and M3 copied them by code from the notice field / award record,
-# the M2 agent and M4's re-read passed their quote test. "attached" restores
-# the weaker rule: an origin and some words are enough.
-VERIFY = "checked"
+# the M2 agent and M4's re-read passed their quote test.
 
 LEVEL2_KINDS = {"narrow_band", "extreme_threshold", "within_document_bands"}
 CONTEXT_KINDS = {"recurring_supplier", "dependent_supplier"}
@@ -161,8 +157,7 @@ def _attached(src):
 
 def _verified(src):
     """Attached, and its words checked against what it names."""
-    return _attached(src) and (VERIFY == "attached"
-                               or bool(src.get("checked")))
+    return _attached(src) and bool(src.get("checked"))
 
 
 def _tokens(s):
@@ -221,9 +216,8 @@ def build_case(m1, m2, m3, followups=None):
         # (name, how it is tied to the contract); the winner first
         others = [w for w in (award.get("winners") or []) if w != winner]
         names = [(winner, "")]
-        if BRAND_VS_SPELLINGS:
-            names += [(n, f" (also written {n} in the award notices)")
-                      for n in award.get("other_spellings") or []]
+        names += [(n, f" (also written {n} in the award notices)")
+                  for n in award.get("other_spellings") or []]
         names += [(n, f"; {n} is one of the {len(others) + 1} suppliers "
                       f"it was awarded to") for n in others]
         for f in (m2 or {}).get("findings", []):

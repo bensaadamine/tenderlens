@@ -17,7 +17,7 @@ An in-memory graph built once from the award file: buyer + category → awards, 
 
 ## Steps
 1. **Depth 1, always:** find the award; count this buyer's awards in the category and the winner's share.
-   When several award rows match, the **newest** is the award (ties: supplier name) — never the file's row order; every distinct supplier is listed in `award.winners` (`AWARD_PICK = "first"` restores the first row).
+   When several award rows match, the **newest** is the award (ties: supplier name) — never the file's row order; every distinct supplier is listed in `award.winners`.
 2. **Depth 2, only if** the winner got **≥ 50 % of ≥ 3** awards: look at the supplier's other buyers.
    - wins everywhere → market leader (`recurring_supplier`)
    - lives off this buyer → relationship (`dependent_supplier`)
@@ -27,8 +27,8 @@ The award file writes one company several ways ("Agilent Technologies" / "Agilen
 
 - **Tools:** `variants` (other names at the same postal code or with the same first word, with city and award count), `awards` (what a name won), `decide`, `finish`. LangGraph loop, 6 steps; the last call has no tools.
 - **Only when it matters:** offered spellings are those that also won from this buyer in this category (they change the share); at depth 2, all spellings. Measured: 18 winners in 2510, 37 in 4110.
-- **Kept in code:** only names the tools showed can be decided; "same" needs a shared postal code **with the winner itself** (no chains through an accepted spelling; `m3_agent.CHAIN = True` allows them), or names equal once generic words are dropped ("Canada", "Group"…); a joint venture is never the same as a partner; the counts are computed in code.
-- **Stored:** every decision goes to `reports/supplier_aliases.csv` (`winner, name, verdict, reason, decided_by, date`) and is never asked again — for the whole group of spellings judged the same company, so a merged spelling that later wins a tender reuses the group's decisions (`m3_agent.GROUPS = False` restores per-winner decisions). Tools are called natively (`llm.tool` schemas). **The auditor can overrule** by adding a row with `decided_by = auditor`.
+- **Kept in code:** only names the tools showed can be decided; "same" needs a shared postal code **with the winner itself** (no chains through an accepted spelling), or names equal once generic words are dropped ("Canada", "Group"…); a joint venture is never the same as a partner; the counts are computed in code.
+- **Stored:** every decision goes to `reports/supplier_aliases.csv` (`winner, name, verdict, reason, decided_by, date`) and is never asked again — for the whole group of spellings judged the same company, so a merged spelling that later wins a tender reuses the group's decisions. Tools are called natively (`llm.tool` schemas). **The auditor can overrule** by adding a row with `decided_by = auditor`.
 - The case page says which spellings were counted together.
 - No model (quota used): the run stops and resumes later, as for M2.
 

@@ -24,10 +24,10 @@ import io
 import os
 import time
 
-from tools import level2
 from tools import llm
 from tools import report
 from pipeline import one_tender
+from pipeline.settings import Settings
 
 TENDERS = [
     ("cb-484-58375289", "real lock-in: SUSS Microtec required, no equivalent"),
@@ -43,9 +43,9 @@ TENDERS = [
 ]
 
 SETUPS = {
-    "rules":   dict(agent=False, m3_agent=False, m4_mode=None),
-    "recheck": dict(agent=False, m3_agent=False, m4_mode="fixed"),
-    "agents":  dict(agent=True, m3_agent=True, m4_mode="fixed"),
+    "rules":   dict(),
+    "recheck": dict(m4_checks="fixed"),
+    "agents":  dict(agent=True, m3_agent=True, m4_checks="fixed"),
 }
 
 
@@ -63,9 +63,8 @@ def main():
     online = not a.offline
     if a.offline:                     # model answers from the cache only
         os.environ["TENDERLENS_OFFLINE"] = "1"
-    level2.ON[0] = not a.no_level2
 
-    shared = one_tender.load_shared(verbose=False)
+    shared = one_tender.load_shared(verbose=False, level2_on=not a.no_level2)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     out_dir = os.path.join("reports", "demo", stamp)
     os.makedirs(out_dir, exist_ok=True)
@@ -76,8 +75,8 @@ def main():
         cases = []
         for ref, _why in TENDERS:
             try:
-                c = one_tender.run_one(ref, shared, online=online,
-                                       **SETUPS[name])
+                c = one_tender.run_one(ref, shared, Settings(
+                    online=online, level2=not a.no_level2, **SETUPS[name]))
                 routes[name, ref] = f"{c['route']} {c['score']}"
                 cases.append(c)
             except one_tender.AGENT_DOWN as e:

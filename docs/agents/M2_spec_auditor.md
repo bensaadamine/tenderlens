@@ -14,7 +14,7 @@ Find, with a quoted line, a departure from the trade-agreement rule: *a specific
 - The run flags `--online`, `--agent`.
 
 ## How it works
-1. **Rules find candidates** (`tools/brands.py`): brand-like names next to a model code, **in the requirements section only** (whole document when no section is found; `--l1-scope all` restores everywhere), outside bidders' questions. Measured on the 76 labelled cases: 0 of 12 lock-ins lost, 10 of 46 junk names removed; synthetic set unchanged (64/160, 17 alerts, 0/120 wrong); on 4110 offline only the two "Net 30" false findings went away. Names Wikidata knows are not companies are dropped. A name is cleared for good only when the text accepts an equivalent ("or equivalent", or the standard "Equivalent Products … form, fit, function" clause).
+1. **Rules find candidates** (`tools/brands.py`): brand-like names next to a model code, **in the requirements section only** (whole document when no section is found), outside bidders' questions. Measured on the 76 labelled cases: 0 of 12 lock-ins lost, 10 of 46 junk names removed; synthetic set unchanged (64/160, 17 alerts, 0/120 wrong); on 4110 offline only the two "Net 30" false findings went away. Names Wikidata knows are not companies are dropped. A name is cleared for good only when the text accepts an equivalent ("or equivalent", or the standard "Equivalent Products … form, fit, function" clause).
 2. **The agent judges the rest** (`--agent`, `agents/m2_agent.py`). Goal: give every remaining candidate the auditor's letter, with a quote:
 
    | | |
@@ -41,11 +41,11 @@ Find, with a quoted line, a departure from the trade-agreement rule: *a specific
 
 **Shown before its first step, by code:** what the tender buys (the notice title, the document names) and every sentence saying the buyer already has or uses something ("existing", "procured by NRC"…). Its instructions carry the supply test: "f" only if the bidder must supply that brand's product; if the purchase must connect to it, be controlled by it or be based on it, that is "c".
 
-**How the model calls them:** native tool calling, one schema per tool (`llm.tool`); a plain JSON reply still works. `TENDERLENS_NATIVE_TOOLS=off` restores the prompt-only calls.
+**How the model calls them:** native tool calling, one schema per tool (`llm.tool`); a plain JSON reply still works.
 
 **Who settles each name is recorded** (`decided_by`, shown on the case page under "Brand names checked"). The rules settle what the text decides exactly: a name dropped as the tender's own acronym, part of a web address, or not a brand on Wikidata; a name cleared by "or equivalent", the Equivalent Products clause, the buyer's own equipment, a list of makes, or the buyer's computer environment. Everything else is for the agent. The rule clearances stay with the rules on measurement: when the agent re-checked the buyer's-equipment clearances, it turned 3 correct ones into false findings (2026-10-22).
 
-**One brand, several spellings, one finding:** findings whose names share their first word ("Formlabs", "FormLabs Form") are merged, the others listed as `also_written` (`SAME_BRAND = None` restores one finding per spelling). Measured 2026-11-08: only the Formlabs demo case changes (alert → watch); synthetic set, 73 labelled tenders and 4110 unchanged.
+**One brand, several spellings, one finding:** a spelling joins a shorter finding whose words it begins with ("FormLabs Form" joins "Formlabs"; "General Electric" and "General Motors" stay two). The others are listed as `also_written`, and each keeps its own place and quote in the finding's evidence. Measured 2026-11-08: only the Formlabs demo case changes (alert → watch); synthetic set, 73 labelled tenders and 4110 unchanged.
 
 **Kept in code, never left to the model:** every verdict must quote text really in the named document (the line recorded is where the quote is); an "f" quote must contain the brand; a refused verdict is explained back to the model; a candidate without a valid letter is **unresolved** — neither a finding nor a clearance.
 
@@ -72,7 +72,7 @@ python -m tools.brands --tender cb-425-92729935 --offline          # rules only
 ## Rules it must keep
 - Every finding quotes its line; no quote, no finding.
 - An unconfirmed name is neither a finding nor a clearance.
-- A new detection rule gets a switch restoring the old behaviour until it is measured (today: `--l1-scope all`); settled switches are removed, their history is in git.
+- A new detection rule gets a switch restoring the old behaviour until it is measured; settled switches are removed, their history is in git.
 
 ## Open work
 - Run `tests/m2_eval.py --agent --online` on Windows and tune the agent's instructions on its mistakes — not the rules.

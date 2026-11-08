@@ -3,8 +3,8 @@ The 2026-11-01 changes, tested offline (no data, no network, no tokens):
 
   * native tool calling in tools/llm.py: a tool call comes back as the JSON
     the agents read; the tool list is part of the cache key; a provider that
-    rejects tools is asked again without them; TENDERLENS_NATIVE_TOOLS=off
-    restores the old request; the local model stays out of the shared pool;
+    rejects tools is asked again without them; the pinned models; Groq
+    only unless sharing; offline replay never sends a call;
   * M2: brand names only from the requirements section; what the agent is
     shown before its first step (what the tender buys, the buyer's-equipment
     sentences) and the supply test in its instructions;
@@ -82,11 +82,6 @@ def test_llm():
         llm.ask("s2", "u")
         check("the tool list is part of the cache key (two calls, not one)",
               posts == [T, None])
-        posts.clear()
-        llm.NATIVE_TOOLS = "off"
-        llm.ask("s3", "u", tools=T)
-        llm.NATIVE_TOOLS = "on"
-        check("NATIVE_TOOLS = 'off' sends no tools", posts == [None])
     finally:
         for k, v in saved.items():
             setattr(llm, k, v)
@@ -139,11 +134,24 @@ def test_llm():
           llm.models_for(groq) == ("openai/gpt-oss-20b",
                                    "openai/gpt-oss-120b")
           and llm.models_for(gemini)[1] == "models/gemini-3-flash-preview")
+    keys = {k: os.environ.get(k) for k in ("GROQ_API_KEY", "GEMINI_API_KEY")}
+    os.environ.update(GROQ_API_KEY="g", GEMINI_API_KEY="m")
+    try:
+        only = [p["name"] for p in llm.available()]
+        llm.SHARE = True
+        shared = [p["name"] for p in llm.available()]
+    finally:
+        llm.SHARE = False
+        for k, v in keys.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    check("Groq only, even with a Gemini key; both when sharing",
+          only == ["groq"] and shared == ["groq", "gemini"])
     saved_win = dict(llm._windows)
     llm._windows["groq"] = [(time.time(), 10 ** 6)]     # Groq's minute is full
     try:
-        check("Groq first even when busy: Gemini is only a fallback",
-              llm._order([groq, gemini], 100) == [groq, gemini])
         llm.SHARE = True
         check("TENDERLENS_SHARE=1 restores sharing: the free one first",
               llm._order([groq, gemini], 100) == [gemini, groq])
@@ -217,10 +225,6 @@ def test_m3():
     check("no chain: a postal code shared only with an accepted spelling "
           "is not enough", m3_agent.allowed_same(index, w, other, acc)
           is not None)
-    m3_agent.CHAIN = True
-    check("CHAIN = True restores the old rule",
-          m3_agent.allowed_same(index, w, other, acc) is None)
-    m3_agent.CHAIN = False
 
     path = os.path.join(tmp, "aliases.csv")
     m3_agent.save_aliases([{"winner": "AGILENT TECHNOLOGIES CANADA",
@@ -240,12 +244,6 @@ def test_m3():
           and "TOWER DENTAL CLINIC" in out["different"]
           and "AGILENT TECHNOLOGIES CANADA" not in out["asked"]
           and "TOWER DENTAL CLINIC" not in out["asked"])
-    m3_agent.GROUPS = False
-    out = m3_agent.aliases_for("AGILENT TECHNOLOGIES", g, ask=fx.scripted(),
-                               path=path, use_graph=False, store=False)
-    m3_agent.GROUPS = True
-    check("GROUPS = False restores per-winner decisions (asked again)",
-          "AGILENT TECHNOLOGIES CANADA" in out["asked"])
 
 
 # ------------------------------------------------------------------ stream

@@ -31,11 +31,9 @@ BAND_RATIO = 0.25
 POSITION_Z = 3.0
 CONJUNCTION = 2
 
-LEVEL = [8]
-# One switch for all of level 2 (decision 42): False skips it everywhere - no
-# numbers extracted per tender, no peers compared, no level-2 claim. True is
-# the behaviour before the switch. Set by --no-level2.
-ON = [True]
+LEVEL = 8            # peer group: the first 8 UNSPSC digits (decision 13)
+# Level 2 can be switched off for a run (--no-level2, pipeline/settings.py):
+# then no numbers are extracted per tender and no peers compared.
 SIGNALS = {"band", "position"}
 
 
@@ -71,7 +69,7 @@ def prepare(rows):
             continue
         r["_lo"] = _f(r.get("base_lo"))
         r["_hi"] = _f(r.get("base_hi"))
-        r["_key"] = (r["unspsc8"][:LEVEL[0]], r["dimension"], r["label"])
+        r["_key"] = (r["unspsc8"][:LEVEL], r["dimension"], r["label"])
         out.append(r)
     return out
 
@@ -247,13 +245,9 @@ def main():
                     help="rank every tender in the knowledge base")
     ap.add_argument("--limit", type=int, default=25)
     ap.add_argument("--json", action="store_true")
-    ap.add_argument("--level", type=int, choices=[6, 8], default=8,
-                    help="UNSPSC digits for the peer group (default 8; "
-                         "6 restores the old grouping)")
     ap.add_argument("--signal", choices=["both", "band", "position"],
                     default="both", help="which signal to score on")
     args = ap.parse_args()
-    LEVEL[0] = args.level
     SIGNALS.clear()
     SIGNALS.update({"band", "position"} if args.signal == "both"
                    else {args.signal})

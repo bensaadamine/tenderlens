@@ -176,13 +176,12 @@ def main():
             check("no model, 'stop': the run is told to stop", False)
         except m3_investigator.AgentUnavailable:
             check("no model, 'stop': the run is told to stop", True)
-        m3_investigator.AGENT_DOWN = "keep"
-        kept = m3_investigator.investigate("t", row, g, agent=True)
+        kept = m3_investigator.investigate("t", row, g, agent=True,
+                                           on_outage="keep")
         check("no model, 'keep': winner's spelling counted alone",
               kept["award"]["to_this_supplier"] == 2)
     finally:
         m3_agent.aliases_for = real
-        m3_investigator.AGENT_DOWN = "stop"
 
     print(f"\n{FAILS} failure(s)")
     sys.exit(1 if FAILS else 0)

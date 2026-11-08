@@ -51,10 +51,6 @@ LETTERS = {
     "e": "an equivalent is accepted",
     "f": "brand required, no equivalent",
 }
-# No model answering: "stop" raises AgentUnavailable (the run stops and
-# resumes from this tender, as for M2/M3); "keep" ranks the case as it
-# stands.
-AGENT_DOWN = "stop"
 
 
 class AgentUnavailable(RuntimeError):
@@ -67,15 +63,21 @@ class Hooks:
     recheck(cands)      -> m2_agent.classify_tender's result
     spellings()         -> a new M3 result counting the winner's spellings
     winner_awards(text, keys) -> {"count": n, "lines": [...]}
+    on_outage           no model answering: "stop" raises AgentUnavailable
+                        (the run stops and resumes from this tender, as for
+                        M2/M3); "keep" ranks the case as it stands
     """
 
-    def __init__(self, recheck=None, spellings=None, winner_awards=None):
+    def __init__(self, recheck=None, spellings=None, winner_awards=None,
+                 on_outage="stop"):
         self.recheck = recheck
         self.spellings = spellings
         self.winner_awards = winner_awards
+        self.on_outage = on_outage
 
 
-def default_hooks(reference, notice_row, graph, m3, online=False):
+def default_hooks(reference, notice_row, graph, m3, online=False,
+                  on_outage="stop"):
     """The real follow-ups: the M2 agent, the M3 agent, the award index."""
     from agents import m1_screener
     from agents import m2_agent
@@ -89,7 +91,7 @@ def default_hooks(reference, notice_row, graph, m3, online=False):
 
     def spellings():
         trace = []
-        same = m3i._agent_aliases(key, graph, trace)
+        same = m3i._agent_aliases(key, graph, trace, on_outage=on_outage)
         out = m3i.investigate(reference, notice_row, graph, spellings=same)
         out["trace"] = trace + out["trace"]
         return out
@@ -112,7 +114,7 @@ def default_hooks(reference, notice_row, graph, m3, online=False):
 
     ok = bool(graph and key)
     return Hooks(recheck, spellings if ok else None,
-                 winner_awards if ok else None)
+                 winner_awards if ok else None, on_outage)
 
 
 # ---------------------------------------------------------- what is open
@@ -169,7 +171,7 @@ def _recheck(reference, m2, hooks, brands):
     out = hooks.recheck(cands)
     if not out.get("steps") and str(out.get("stop_reason", "")) \
             .startswith("model"):
-        if AGENT_DOWN == "stop":
+        if hooks.on_outage == "stop":
             raise AgentUnavailable(f"{reference}: "
                                    f"{out['stop_reason']}")
         return m2, [], "the spec agent has no model - findings kept"

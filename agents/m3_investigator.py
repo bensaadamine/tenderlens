@@ -72,8 +72,7 @@ C_UNSPSC_TENDER = "unspsc"
 # The award is the NEWEST award row (ties: supplier name), and every
 # distinct supplier of the tender is listed in award["winners"] - a standing
 # offer or a split award has several. Taking the first matching row made the
-# winner depend on the CSV's row order. "first" restores that rule.
-AWARD_PICK = "latest"
+# winner depend on the CSV's row order.
 
 REPEAT_SHARE = 0.5   # this buyer gave at least half its awards in the
 REPEAT_MIN = 3       # category to one supplier, over at least 3 awards
@@ -267,17 +266,11 @@ class AgentUnavailable(RuntimeError):
     """--agent was asked for, but no model could answer."""
 
 
-# When the agent was asked for but no model answers: "stop" raises
-# AgentUnavailable so the run stops and resumes later (as for M2); "keep"
-# counts the winner's spelling alone.
-AGENT_DOWN = "stop"
 
 
 def pick_award(recs):
     """(the award row taken as the tender's award, one row per distinct
     winner in the same order). Independent of the file's row order."""
-    if AWARD_PICK == "first":
-        return recs[0], [recs[0]]
     order = sorted(recs, key=lambda r: (r.get("supplier") or "",
                                         r.get("supplier_name") or ""))
     order.sort(key=lambda r: r.get("date") or "", reverse=True)
@@ -295,12 +288,15 @@ def _merged(graph, sup, same):
 
 
 def investigate(reference, notice_row=None, graph=None, agent=False,
-                spellings=None):
+                spellings=None, on_outage="stop"):
     """M3 for ONE tender. Every result is weight='context' (decision 4).
 
     agent=True: the M3 agent first decides which other spellings in the
     award file are the same supplier (m3_agent.py); the counts below then
     treat them as one. The counting itself stays here, in code.
+    on_outage: no model answering - "stop" raises AgentUnavailable (the run
+    stops and resumes later, as for M2); "keep" counts the winner's
+    spelling alone.
 
     spellings: normalised names already judged the same supplier (the M4
     agent asks the M3 agent for ALL of them, not only those that won from
@@ -345,7 +341,8 @@ def investigate(reference, notice_row=None, graph=None, agent=False,
         # Measured 2026-10-26: 18 winners in 2510, 37 in 4110.
         same = _agent_aliases(
             a["supplier"], graph, trace,
-            only=lambda n: graph["bsg"].get((a["buyer"], n, grp), 0) > 0)
+            only=lambda n: graph["bsg"].get((a["buyer"], n, grp), 0) > 0,
+            on_outage=on_outage)
     names = _merged(graph, a["supplier"], same)
 
     total = graph["bg"].get((a["buyer"], grp), 0)
@@ -374,7 +371,8 @@ def investigate(reference, notice_row=None, graph=None, agent=False,
         if agent and spellings is None:
             # depth 2 reads the supplier's other buyers: now every spelling
             # matters (decisions already made are reused, not asked again)
-            same = _agent_aliases(a["supplier"], graph, trace)
+            same = _agent_aliases(a["supplier"], graph, trace,
+                                  on_outage=on_outage)
             names = _merged(graph, a["supplier"], same)
             award["other_spellings"] = [graph["names"].get(n, n)
                                         for n in same]
@@ -414,7 +412,7 @@ def investigate(reference, notice_row=None, graph=None, agent=False,
             "agent": bool(agent or spellings is not None)}
 
 
-def _agent_aliases(sup, graph, trace, only=None):
+def _agent_aliases(sup, graph, trace, only=None, on_outage="stop"):
     """Spellings the M3 agent judged to be the same supplier."""
     from agents import m3_agent
     try:
@@ -423,7 +421,7 @@ def _agent_aliases(sup, graph, trace, only=None):
         out = {"same": [], "stop_reason": f"model unavailable: {e}",
                "steps": 0, "asked": [1], "trace": []}
     if out["stop_reason"].startswith("model") and out.get("asked"):
-        if AGENT_DOWN == "stop":
+        if on_outage == "stop":
             raise AgentUnavailable(out["stop_reason"])
         trace.append(f"M3 agent could not run ({out['stop_reason'][:120]}) "
                      f"- winner's spelling counted alone")

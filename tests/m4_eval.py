@@ -30,6 +30,7 @@ import time
 from tools import llm
 from tests import m2_eval
 from pipeline import one_tender
+from pipeline.settings import Settings
 
 OUT_DIR = os.path.join("reports", "m4_eval")
 MODES = ("off", "fixed", "model")
@@ -57,9 +58,9 @@ def main():
         start = len(llm.usage_rows())
         for ref in refs:
             try:
-                c = one_tender.run_one(ref, shared, online=a.online,
-                                       m4_mode=None if mode == "off"
-                                       else mode)
+                c = one_tender.run_one(ref, shared, Settings(
+                    online=a.online,
+                    m4_checks=None if mode == "off" else mode))
                 route = c["route"]
                 steps = (c.get("m4_checks") or {}).get("checks", 0)
                 checks = "; ".join(f["text"][:80]

@@ -71,6 +71,8 @@ from tools import report
 from tools import brands
 from tools import documents
 from pipeline import one_tender
+from pipeline import settings
+from pipeline.settings import Settings
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -93,8 +95,7 @@ FB_COLS = ["reference", "verdict", "note", "reviewer", "date"]
 QUARANTINE_ROUTES = {"alert", "watch"}
 # Each case goes to cases.jsonl BEFORE its register event, so a crash never
 # leaves a tender registered as done with no case anywhere (the next run
-# would skip it). False: no case log.
-CASE_LOG = True
+# would skip it).
 
 
 # ------------------------------------------------------------------ storage
@@ -200,11 +201,11 @@ def notice_meta(row):
     return code[:8], (row.get(m1_screener.C_PUB) or "").strip()[:10]
 
 
-def extract_tender(ref, row, group, run_id):
+def extract_tender(ref, row, group, run_id, level2_on=True):
     """Raw observations for one tender, through prepare/census.py's own
     steps. Level 2 off: the documents only, no observation."""
     docs = documents.tender_documents(ref)
-    if not level2.ON[0]:
+    if not level2_on:
         return docs, []
     rows = []
     for d in docs:
@@ -242,8 +243,8 @@ def comparable(rows, amap):
     return level2.prepare(out)
 
 
-def base_rows(kb, state, amap):
-    if not level2.ON[0]:
+def base_rows(kb, state, amap, level2_on=True):
+    if not level2_on:
         return []
     rows = []
     for ref, rs in kb.observations(state, "base").items():
@@ -301,10 +302,9 @@ def reprocess_list(kb, notices, group, state, which):
 
 def run(a):
     kb = KB(a.group, a.kb_root)
-    level2.LEVEL[0] = a.l2_level
-    level2.ON[0] = not a.no_level2
+    s = Settings.from_args(a)
     amap = load_map()
-    notices, wstats, _, graph = one_tender.load_shared()
+    notices, wstats, _, graph = one_tender.load_shared(level2_on=False)
     state = kb.state()
     todo = todo_list(notices, a.group, state, a.until)
     if a.reprocess:
@@ -313,7 +313,7 @@ def run(a):
         print(f"  re-run: {len(again)} tender(s)")
     if a.limit:
         todo = todo[:a.limit]
-    base = base_rows(kb, state, amap)
+    base = base_rows(kb, state, amap, s.level2)
     n_base = len({r["reference"] for r in base})
     print(f"knowledge base: {n_base} tender(s) in base, "
           f"{sum(1 for e in state.values() if e['pile'] == 'quarantine')} "
@@ -341,14 +341,12 @@ def run(a):
     for i, ref in enumerate(todo, 1):
         run_id = f"{stamp}-{i:04d}"
         row = notices[ref]
-        docs, raw = extract_tender(ref, row, a.group, run_id)
+        docs, raw = extract_tender(ref, row, a.group, run_id, s.level2)
         mine = comparable(raw, amap)
         peers = [r for r in base if r["reference"] != ref] + mine
         try:
             case = one_tender.run_one(ref, (notices, wstats, peers, graph),
-                                      online=a.online, agent=a.agent,
-                                      m3_agent=a.m3_agent,
-                                      m4_mode=a.m4_checks)
+                                      s)
         except one_tender.AGENT_DOWN as e:
             # Nothing written for this tender: the next run starts here.
             # Answers already given are cached, so nothing is paid twice.
@@ -371,8 +369,7 @@ def run(a):
         piles[pile] += 1
 
         kb.append_obs(raw)               # observations first,
-        if CASE_LOG:                     # then the case,
-            kb.append_case(run_id, stamp, case)
+        kb.append_case(run_id, stamp, case)   # then the case,
         kb.append_event(reference=ref, run_id=run_id,   # then the event
                         pub_date=notice_meta(row)[1], event="processed",
                         status=status, pile=pile, score=case["score"],
@@ -482,7 +479,6 @@ def feedback(a):
 
 def status(a):
     kb = KB(a.group, a.kb_root)
-    level2.LEVEL[0] = a.l2_level
     state = kb.state()
     c = collections.Counter((e["pile"], e["status"]) for e in state.values())
     print(f"register: {len(state)} tender(s)")
@@ -498,7 +494,7 @@ def status(a):
                     if len(v) >= level2.MIN_PEERS), reverse=True)
     print(f"\nbase: {len({r['reference'] for r in base})} tender(s) with "
           f"comparable requirements, {len(per_fam)} peer group(s) "
-          f"(UNSPSC-{level2.LEVEL[0]})")
+          f"(UNSPSC-{level2.LEVEL})")
     print(f"  groups with >= {level2.MIN_PEERS} tenders: "
           f"{sum(1 for v in per_fam.values() if len(v) >= level2.MIN_PEERS)}")
     print(f"  attributes that can be judged (>= {level2.MIN_PEERS} peers): "
@@ -530,25 +526,7 @@ def main():
     ap.add_argument("--until", help="only tenders published on or before "
                     "this date (YYYY-MM-DD) - to simulate an earlier batch")
     ap.add_argument("--limit", type=int, default=0)
-    ap.add_argument("--agent", action="store_true",
-                    help="let the M2 agent letter brand candidates a-f "
-                         "(LLM, Windows)")
-    ap.add_argument("--m3-agent", action="store_true",
-                    help="let the M3 agent decide which other spellings of "
-                         "the winner are the same supplier (LLM, Windows)")
-    ap.add_argument("--m4-checks", nargs="?", const="fixed",
-                    choices=["fixed", "model"],
-                    help="before ranking a case with a brand finding, M4 "
-                         "sends the finding back to the M2 agent and the "
-                         "winner's spellings to the M3 agent (LLM, Windows). "
-                         "'model': a model chooses the checks (experiment, "
-                         "measured worse)")
-    ap.add_argument("--online", action="store_true")
-    ap.add_argument("--l2-level", type=int, choices=[6, 8], default=8)
-    ap.add_argument("--no-level2", action="store_true",
-                    help="skip level 2: no numbers extracted, no peers "
-                         "compared. Tenders run this way add no observation "
-                         "to the base; --reprocess with level 2 on adds them")
+    settings.add_args(ap)
     ap.add_argument("--kb-root", default="reports/kb",
                     help="where knowledge bases live (one folder per group)")
     ap.add_argument("--status", action="store_true")
@@ -561,9 +539,7 @@ def main():
     ap.add_argument("--queue", nargs="?", const="current", metavar="STAMP",
                     help="write a queue from cases.jsonl: every tender's "
                          "latest case (default), or one batch by its stamp")
-    brands.add_l1_args(ap)
     a = ap.parse_args()
-    brands.apply_l1_args(a)
     if a.status:
         status(a)
     elif a.feedback:

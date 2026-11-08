@@ -135,12 +135,10 @@ class AwardIndex:
 # A merge must share a postal code with the WINNER ITSELF (or have the same
 # name once generic words are dropped). Sharing one with an accepted
 # spelling is not enough: merges would chain - A shares a code with B, B with
-# C, and C becomes A without sharing anything with it. True: chains allowed.
-CHAIN = False
+# C, and C becomes A without sharing anything with it.
 # A decision applies to the whole group of spellings judged the same
 # company, so a spelling merged into FISHER SCIENTIFIC is not asked again
-# from scratch the day it wins a tender itself. False: per-winner decisions.
-GROUPS = True
+# from scratch the day it wins a tender itself (aliases_for).
 
 
 def allowed_same(index, winner, name, accepted):
@@ -149,12 +147,10 @@ def allowed_same(index, winner, name, accepted):
         return "a joint venture is not the same company as a partner"
     if core(name) == core(winner):
         return None
-    group = [winner] + (list(accepted) if CHAIN else [])
-    if any(index.codes(name) & index.codes(n) for n in group):
+    if index.codes(name) & index.codes(winner):
         return None
-    return ("no shared postal code with the winner"
-            + (" or its accepted spellings" if CHAIN else "")
-            + ", and the names differ beyond generic words")
+    return ("no shared postal code with the winner, and the names differ "
+            "beyond generic words")
 
 
 def group_of(winner, stored):
@@ -391,20 +387,16 @@ def aliases_for(winner, graph, ask=None, use_graph=True, path=None,
     index = graph["_m3_index"]
     stored = load_aliases(path)
     cands = [n for n in index.variants(winner) if only is None or only(n)]
-    if GROUPS:
-        members = group_of(winner, stored)
-        known = {}
-        for n in cands:
-            if n in members:
-                known[n] = {"verdict": "same"}
-            else:
-                row = next((stored[(m, n)] for m in members
-                            if (m, n) in stored), None)
-                if row:
-                    known[n] = row
-    else:
-        known = {n: stored[(winner, n)] for n in cands
-                 if (winner, n) in stored}
+    members = group_of(winner, stored)
+    known = {}
+    for n in cands:
+        if n in members:
+            known[n] = {"verdict": "same"}
+        else:
+            row = next((stored[(m, n)] for m in members
+                        if (m, n) in stored), None)
+            if row:
+                known[n] = row
     same = [n for n, r in known.items() if r["verdict"] == "same"]
     different = [n for n, r in known.items() if r["verdict"] == "different"]
     todo = [n for n in cands if n not in known]

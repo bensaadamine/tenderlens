@@ -171,12 +171,6 @@ def main():
           and any(c["kind"] == "brand_matches_winner"
                   and "also written HONDA POWER" in c["claim"]
                   for c in case["claims"]))
-    m4.BRAND_VS_SPELLINGS = False
-    case = run(scripted(act("recheck", brands=["Honda"]), act("spellings")),
-               m2(HONDA), h=hooks({"Honda": "f"}))
-    m4.BRAND_VS_SPELLINGS = True
-    check("BRAND_VS_SPELLINGS = False restores the winner's name only",
-          case["route"] == "watch")
 
     h = hooks({"Honda": "f"})
     case = run(scripted(act("spellings"), act("spellings")), m2(HONDA), h=h)
@@ -228,10 +222,10 @@ def main():
     except m4_checks.AgentUnavailable:
         raised = True
     check("no model: the run stops (AgentUnavailable)", raised)
-    m4_checks.AGENT_DOWN = "keep"
-    case = run(scripted(RuntimeError("groq: HTTP 429")), m2(HONDA, NET))
-    m4_checks.AGENT_DOWN = "stop"
-    check("AGENT_DOWN = 'keep': the case is ranked as it stands",
+    h = hooks()
+    h.on_outage = "keep"
+    case = run(scripted(RuntimeError("groq: HTTP 429")), m2(HONDA, NET), h=h)
+    check("on_outage 'keep': the case is ranked as it stands",
           case["route"] == before["route"]
           and case["score"] == before["score"])
     try:

@@ -237,22 +237,6 @@ RE_UNIT_AFTER_NUM = re.compile(
 # regulations, cross-references). A document with no recognisable section is
 # read whole, as before. Judging still reads the whole tender ("or
 # equivalent", the Equivalent Products clause, the agent's tools).
-# --l1-scope all restores looking for names everywhere.
-CANDIDATE_SCOPE = "section"
-
-
-def add_l1_args(ap):
-    """The level-1 option shared by every script that runs the system."""
-    ap.add_argument("--l1-scope", choices=["section", "all"],
-                    default="section",
-                    help="where brand names are looked for: the requirements "
-                         "section (default; whole document if none found) or "
-                         "everywhere (old rule)")
-
-
-def apply_l1_args(a):
-    global CANDIDATE_SCOPE
-    CANDIDATE_SCOPE = getattr(a, "l1_scope", "section")
 
 
 RE_STRONG_MODEL = re.compile(
@@ -600,12 +584,8 @@ def brands_without_equivalent(reference, text_dir=None, window=200,
         blanket = blanket or clause
         equiv_clause = equiv_clause or bool(
             RE_EQUIV_CLAUSE.search(text))
-        if is_amendment(d):
-            view = amendment_view(text)
-        elif CANDIDATE_SCOPE == "section":
-            view = requirement_view(text)
-        else:
-            view = text
+        view = amendment_view(text) if is_amendment(d) else \
+            requirement_view(text)
         for c in _candidates(view):
             key = c["name"].lower()
             b = per_brand.setdefault(key, {"name": c["name"], "hits": []})

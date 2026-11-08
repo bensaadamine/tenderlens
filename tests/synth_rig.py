@@ -45,13 +45,12 @@ import time
 
 from agents import m1_screener
 from agents import m2_spec_auditor
-
-m2_spec_auditor.AGENT_DOWN = "keep"   # a copy without a model keeps the rules' result
 from agents import m4_case_builder
 from tools import brands
 from tools import documents
 from tools.report import write_outputs
 from pipeline import one_tender
+from pipeline.settings import Settings
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -264,7 +263,7 @@ def run(a):
     documents.TEXT_DIR = SYN_TEXT
     m1_screener.TEXT_DIR = SYN_TEXT
 
-    notices, wstats, _, graph = one_tender.load_shared()
+    notices, wstats, _, graph = one_tender.load_shared(level2_on=False)
     kb = stream.KB(GROUP)
     state = kb.state()
     amap = stream.load_map()
@@ -316,12 +315,14 @@ def run(a):
         _, raw = stream.extract_tender(sref, row, GROUP, f"synth-{i:04d}")
         mine = stream.comparable(raw, amap)
         peers = [r for r in base if r["reference"] not in (ref, sref)] + mine
+        # a copy without a model keeps the rules' result
         case = one_tender.run_one(sref, (notices, wstats, peers, graph),
-                                  online=a.online, agent=a.agent)
+                                  Settings(online=a.online, agent=a.agent,
+                                           on_outage="keep"))
         # M2's own level-1 path again, to see what happened to each injected
         # brand. LLM answers are cached, so repeating it costs nothing.
         l1 = m2_spec_auditor.run_level1(sref, online=a.online,
-                                        agent=a.agent)
+                                        agent=a.agent, on_outage="keep")
         outs = [brand_outcome(l1, b) for b in m["brands"].split("|") if b]
         res = dict(m)
         res.update({"route": case["route"], "score": case["score"],
@@ -484,9 +485,7 @@ def main():
                     help="--build: pick only base tenders that do NOT already "
                          "accept equivalents for every brand (default); "
                          "'any' = the earlier selection")
-    brands.add_l1_args(ap)
     a = ap.parse_args()
-    brands.apply_l1_args(a)
     if a.build or not a.run:
         build(a.n, a.seed, a.bases)
     if a.run or not a.build:

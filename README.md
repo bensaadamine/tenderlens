@@ -36,7 +36,7 @@ M4's checks run in a fixed order: a version where a model chose them was measure
 ```
 tenderlens.py          the one command: demo, tender, run, test, eval, awards, prepare, llm
 pipeline/              one_tender.py (the four components on one tender), stream.py (a category,
-                       tender by tender, against its knowledge base), demo.py
+                       tender by tender, against its knowledge base), demo.py, settings.py (one run's choices)
 agents/                M1–M4; m4_checks.py = M4's checks; agent_loop.py = the loop the M2 and M3 agents share
 tools/                 documents.py (a tender's text), brands.py (brand rules), wikidata.py,
                        level2.py (peer comparison), llm.py (LLM access), report.py (the queue pages)
@@ -60,7 +60,7 @@ pip install -r requirements.txt     # requests, pdfminer.six, langgraph
 
 No `pandas` (blocked on our Windows machines) — standard library plus those two.
 
-LLM keys go in `.env` (never committed): `GROQ_API_KEY=...`, and optionally `GEMINI_API_KEY=...`. The models are pinned (`tools/llm.py`): Groq's gpt-oss-120b answers every agent call; Gemini is used only when Groq fails or its daily quota is spent. `TENDERLENS_SHARE=1` shares calls between the two instead (twice the calls a minute, but verdicts can differ between runs). `python tenderlens.py llm` shows the models; `--usage` the tokens spent.
+LLM keys go in `.env` (never committed): `GROQ_API_KEY=...`, and optionally `GEMINI_API_KEY=...`. The models are pinned (`tools/llm.py`): Groq's gpt-oss-120b answers every agent call. When its daily quota is spent the run stops, and the next run resumes where it stopped — every verdict comes from the same model. `TENDERLENS_SHARE=1` also sends calls to Gemini (twice the calls a minute, but verdicts can differ between runs). `python tenderlens.py --offline <command>` takes model answers from the cache only: a missing one is reported, never paid, and no key is needed. `python tenderlens.py llm` shows the models; `--usage` the tokens spent.
 
 **Network is needed only on Windows**: downloads (`prepare profile`, `prepare docs`, `awards --fetch`), Wikidata (`--online`), the LLM (`--agent`, `--m3-agent`, `--m4-checks`, `prepare labels`).
 

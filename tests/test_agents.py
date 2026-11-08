@@ -107,15 +107,6 @@ def main():
           picks[0] == picks[1] and picks[0][0] == "Bravo Trucks Ltd")
     check("every supplier of a split award is listed, newest first",
           picks[0][1] == ["Bravo Trucks Ltd", "Alpha Trucks Ltd"])
-    m3.AWARD_PICK = "first"
-    p3 = os.path.join(tempfile.mkdtemp(), "awards.csv")
-    awards_file(p3, split)
-    a = m3.investigate("cb-s", {"solicitationNumber-numeroSollicitation":
-                                "W-SPLIT"}, m3.load_graph(p3))["award"]
-    m3.AWARD_PICK = "latest"
-    check("AWARD_PICK = 'first' restores the first row",
-          a["supplier"] == "Alpha Trucks Ltd"
-          and a["winners"] == ["Alpha Trucks Ltd"])
 
     print("\nM4 case builder")
     m1 = {"reference": "cb-x", "title": "Crane truck", "signals": [],
@@ -165,10 +156,6 @@ def main():
           c6["score"] == 0 and c6["claims"][0]["source_attached"]
           and not c6["claims"][0]["verified"]
           and "not found" in c6["claims"][0]["not_scored_because"])
-    m4.VERIFY = "attached"
-    c7 = m4.build_case(m1, {"readable": True, "findings": [unchecked]}, None)
-    m4.VERIFY = "checked"
-    check("VERIFY = 'attached' restores the old rule", c7["score"] == 3)
 
     alpha = dict(l1, brand="Alpha")
     split_m3 = {"award": {"supplier": "Bravo Trucks Ltd",
@@ -258,10 +245,6 @@ def main():
                               {"brand": "General Motors"}])
     check("two companies sharing a first word stay two findings",
           [r["brand"] for r in ge] == ["General Electric", "General Motors"])
-    m2s.SAME_BRAND = None
-    check("SAME_BRAND = None restores one finding per spelling",
-          len(m2s.merge_spellings(rows)) == 3)
-    m2s.SAME_BRAND = "prefix"
     names = m2s.names_checked({"findings": merged, "ok": [],
                                "unresolved": [], "dropped": [
                                    {"brand": "RFSA", "decided_by":

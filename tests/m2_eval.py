@@ -311,10 +311,6 @@ def _row(ref, r, source):
 
 # ------------------------------------------------------------------ main
 def main():
-    # Tenders the agent could not run on are listed apart, not a stop. Set
-    # here, not at import: importing this module must not change how the
-    # agents behave for the caller (2026-11-08).
-    m2_spec_auditor.AGENT_DOWN = "keep"
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--agent", action="store_true")
     ap.add_argument("--online", action="store_true")
@@ -332,9 +328,7 @@ def main():
     ap.add_argument("--sample", action="store_true",
                     help="build tests/m2_holdout.csv for the auditor to "
                          "label, and stop")
-    brands.add_l1_args(ap)
     a = ap.parse_args()
-    brands.apply_l1_args(a)
     if a.sample:
         sample(a)
         return
@@ -361,7 +355,8 @@ def main():
         def only(ref, name):
             n = (name or "").lower()
             return any(k in n or n in k for k in wanted.get(ref, ()))
-        m2_spec_auditor.AGENT_ONLY = only
+    else:
+        only = None
     titles = {}
     if a.agent:                     # what each tender buys, shown to the agent
         from agents import m1_screener
@@ -376,9 +371,11 @@ def main():
     rows, down_in_a_row = [], 0
     for ref, labs in by_ref.items():
         trace = []
+        # a tender the agent could not run on is listed apart, not a stop
         l1 = m2_spec_auditor.run_level1(ref, online=a.online, agent=a.agent,
                                         title=titles.get(ref, ""),
-                                        trace=trace)
+                                        trace=trace, on_outage="keep",
+                                        agent_only=only)
         ran = agent_status(l1, trace) if a.agent else "-"
         for lab in labs:
             got = letter_for(l1, lab["name"])
