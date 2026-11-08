@@ -65,6 +65,15 @@ LLM keys go in `.env` (never committed): `GROQ_API_KEY=...`, `GEMINI_API_KEY=...
 
 ## Running
 
+**The demo** — seven chosen tenders (real lock-ins, false alarms, an ordinary tender), each run three ways side by side: rules only; rules + M4 sending flagged findings back to the M2 agent; every agent.
+
+```bash
+python demo.py               # Windows, online: the first run fills the caches
+python demo.py --offline     # anywhere: replays from the caches, no network
+```
+
+Writes `reports/demo/<stamp>/summary.txt` (the table) and one queue page per setup.
+
 First time, for one category (example 2510, motor vehicles):
 
 ```bash

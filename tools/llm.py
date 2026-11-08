@@ -507,6 +507,28 @@ def usage_summary(path=USAGE_PATH):
     return calls, cached, total, by_tag
 
 
+def usage_rows(path=USAGE_PATH):
+    """Rows of the token log, in order (calls logged by any tag)."""
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8", errors="replace", newline="") as f:
+        return list(csv.DictReader(line.replace("\0", "") for line in f))
+
+
+def agent_tokens(rows):
+    """Tokens the agents used in these rows. Count by position in the log
+    (usage_rows()[start:]), not by time: the log can be written on another
+    clock."""
+    n = 0
+    for r in rows:
+        if (r.get("tag") or "").endswith("_agent"):
+            try:
+                n += int(float(r.get("total_tokens") or 0))
+            except ValueError:
+                pass
+    return n
+
+
 def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
         timeout=60, retries=2, verbose=False, tag="", tools=None,
         provider=None):

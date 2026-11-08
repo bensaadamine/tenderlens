@@ -30,33 +30,12 @@ import io
 import os
 import time
 
+import llm
 import m2_eval
 import tenderlens
 
 OUT_DIR = os.path.join("reports", "m4_eval")
 MODES = ("off", "fixed", "model")
-
-
-def _usage_rows():
-    """Rows of the token log, in order (calls logged by any tag)."""
-    if not os.path.exists("reports/llm_usage.csv"):
-        return []
-    with io.open("reports/llm_usage.csv", encoding="utf-8",
-                 errors="replace") as f:
-        return list(csv.DictReader(line.replace("\0", "") for line in f))
-
-
-def _agent_tokens(rows):
-    """Tokens the agents used in these rows. Counted by position in the log,
-    not by time: the log can be written on another clock."""
-    n = 0
-    for r in rows:
-        if (r.get("tag") or "").endswith("_agent"):
-            try:
-                n += int(float(r.get("total_tokens") or 0))
-            except ValueError:
-                pass
-    return n
 
 
 def main():
@@ -78,7 +57,7 @@ def main():
 
     rows, tokens = [], {}
     for mode in a.modes:
-        start = len(_usage_rows())
+        start = len(llm.usage_rows())
         for ref in refs:
             try:
                 c = tenderlens.run_one(ref, shared, online=a.online,
@@ -96,7 +75,7 @@ def main():
                          "followups": checks})
             print(f"  {mode:5} {ref:28} {route:6} (lock-in labelled: "
                   f"{'f' in want[ref]})")
-        tokens[mode] = _agent_tokens(_usage_rows()[start:])
+        tokens[mode] = llm.agent_tokens(llm.usage_rows()[start:])
 
     with io.open(os.path.join(out_dir, "cases.csv"), "w", encoding="utf-8",
                  newline="") as f:
