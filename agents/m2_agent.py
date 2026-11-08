@@ -46,6 +46,7 @@ three agents.
 """
 
 
+import collections
 import json
 import re
 from typing import TypedDict
@@ -495,18 +496,21 @@ def classify_tender(reference, candidates, ask=None, online=False,
     title: the notice's title - what the tender buys, shown to the model.
     ask: (system, user) -> dict; defaults to the shared LLM (strong model).
     Returns {"verdicts": [...], "unresolved": [...], "steps", "stop_reason",
-             "trace"}.
+             "models", "trace"} - models: which model answered, how often.
     """
+    models = collections.Counter()
     if ask is None:
         from tools import llm
+        call = llm.json_asker(models, strong=True, max_tokens=3000,
+                              tag="m2_agent")
         # native tools on investigating steps; the final call has none
-        ask = lambda system, user: llm.ask_json(
-            system, user, strong=True, max_tokens=3000, tag="m2_agent",
-            tools=None if system == FINAL_SYSTEM else _tools())
+        ask = lambda system, user: call(
+            system, user, tools=None if system == FINAL_SYSTEM else _tools())
     cands = [dict(c, id=i + 1) for i, c in enumerate(candidates)]
     if not cands:
         return {"verdicts": [], "unresolved": [], "steps": 0,
-                "stop_reason": "no candidates", "engine": "none", "trace": []}
+                "stop_reason": "no candidates", "engine": "none",
+                "models": {}, "trace": []}
     text = TenderText(reference, text_dir)
     state = AgentState(reference=reference, candidates=cands,
                        open_ids=[c["id"] for c in cands], verdicts={},
@@ -527,5 +531,5 @@ def classify_tender(reference, candidates, ask=None, online=False,
     return {"verdicts": verdicts,
             "unresolved": [by_id[i] for i in state["open_ids"]],
             "steps": state["steps"], "stop_reason": state["stop_reason"],
-            "engine": engine,
+            "engine": engine, "models": dict(models),
             "trace": trace}

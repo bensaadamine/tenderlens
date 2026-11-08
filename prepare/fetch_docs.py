@@ -485,8 +485,8 @@ def main():
                                "category_counts.json")
     # MERGE, never overwrite. counts[] only holds what this run scanned, and a
     # narrow run (--only 4110) would otherwise wipe the other 19 groups'
-    # usable counts - which 03 needs to project a sampled rate onto a whole
-    # category, and which the Phase 2 table in CLAUDE.md quotes.
+    # usable counts - which `prepare text` needs to project a sampled rate
+    # onto a whole category, and which the category choice was measured on.
     prev = {"usable": {}, "labels": {}, "sampled": {}}
     if os.path.exists(counts_path):
         try:

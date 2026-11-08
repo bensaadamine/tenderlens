@@ -48,6 +48,7 @@ import time
 from agents import m2_spec_auditor
 
 from tools import brands
+from tools import llm
 from tools import documents
 
 LABELS = os.path.join("tests", "m2_labels.csv")
@@ -369,6 +370,7 @@ def main():
     traces = io.open(os.path.join(out_dir, "traces.txt"), "w",
                      encoding="utf-8") if a.agent else None
     rows, down_in_a_row = [], 0
+    log_start = len(llm.usage_rows())
     for ref, labs in by_ref.items():
         trace = []
         # a tender the agent could not run on is listed apart, not a stop
@@ -416,6 +418,12 @@ def main():
                          "tenders_run": len({r["reference"] for r in rows}),
                          "left_out_agent_did_not_run": len(skipped)}}
     text = summary_text(scored, mode, meta)
+    by_model = llm.answers_by_model(llm.usage_rows()[log_start:])
+    if by_model:
+        text += ("\nagent answers by model: " + ", ".join(
+            f"{k} {v}" for k, v in sorted(by_model.items()))
+            + (" - MIXED: the score is not one model's" if len(by_model) > 1
+               else "") + "\n")
     if skipped:
         text += (f"\n{len(skipped)} case(s) left out - the agent did not run "
                  f"on their tender: " + "; ".join(sorted({r["agent"]

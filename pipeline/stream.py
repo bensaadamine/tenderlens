@@ -331,8 +331,6 @@ def run(a):
                                 if isinstance(v, (str, int, float, bool,
                                                   list, type(None)))},
                    "reprocessed": list(a.reprocess or []),
-                   "native_tools": os.environ.get("TENDERLENS_NATIVE_TOOLS",
-                                                  "on"),
                    "models": {p["name"]: llm.models_for(p)
                               for p in llm.PROVIDERS},
                    "share": llm.SHARE},

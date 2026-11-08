@@ -4,7 +4,8 @@ Compares a tender's numeric requirements with peer tenders (same UNSPSC-8
 code, same attribute): a band much narrower than peers allow, or a threshold
 far more restrictive than theirs. Also gives the within-document share of
 two-sided bands, which needs no peers. Measured on 2510: peer comparison
-finds nothing usable (see MEASUREMENT_LOG), so results are low confidence.
+finds nothing usable (its top-ranked "finding" was a semi-trailer compared
+with pickup trucks), so results are low confidence.
 """
 
 

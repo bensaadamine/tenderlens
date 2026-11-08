@@ -8,7 +8,7 @@ for ONE tender: who won it, and is that a pattern?
     investigate("cb-258-72766150", notices, graph)
 
 Get the data once, ON WINDOWS (canadabuys.canada.ca is blocked from the
-agent's container and from the device shell - CLAUDE.md gotchas):
+agent's container and from the device shell):
 
     python tenderlens.py awards --fetch          # -> data/awards.csv
     python tenderlens.py awards --columns        # check what was detected
@@ -426,8 +426,11 @@ def _agent_aliases(sup, graph, trace, only=None, on_outage="stop"):
         trace.append(f"M3 agent could not run ({out['stop_reason'][:120]}) "
                      f"- winner's spelling counted alone")
         return []
+    models = ", ".join(f"{k} x{v}" for k, v in
+                       sorted((out.get("models") or {}).items()))
     trace.append(f"M3 agent ({out.get('engine', 'none')}, {out['steps']} "
-                 f"step(s), {out['stop_reason']}): same supplier: "
+                 f"step(s), {out['stop_reason']}"
+                 + (f"; {models}" if models else "") + "): same supplier: "
                  + ("; ".join(out["same"]) or "none"))
     trace.extend("  M3 agent " + t for t in out.get("trace", []))
     return out["same"]

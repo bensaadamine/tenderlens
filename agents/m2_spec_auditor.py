@@ -189,7 +189,8 @@ def _agent_pass(reference, l1, online, trace, title="", on_outage="stop",
             row["status"] = f"AGENT_{v['letter'].upper()}"
             ok.append(row)
     trace.append(f"agent ({out['engine']}, {out['steps']} step(s), "
-                 f"{out['stop_reason']}): {len(rows)} candidate(s) -> "
+                 f"{out['stop_reason']}; {_models(out)}): "
+                 f"{len(rows)} candidate(s) -> "
                  f"{len(findings)} finding(s), "
                  f"{len(rows) - len(findings) - len(unresolved)} cleared, "
                  f"{len(unresolved)} unresolved")
@@ -198,7 +199,16 @@ def _agent_pass(reference, l1, online, trace, title="", on_outage="stop",
         (findings if r in l1.get("findings", []) else
          ok if r in recheck else unresolved).append(r)
     return dict(l1, findings=findings, ok=ok, unresolved=unresolved,
-                agent={k: out[k] for k in ("steps", "stop_reason", "engine")})
+                agent={k: out.get(k) for k in ("steps", "stop_reason",
+                                               "engine", "models")})
+
+
+def _models(out):
+    """Which model answered the agent, for the trace: "groq/openai/gpt-oss-
+    120b x5" - two models in one result means a mixed (or replayed) run."""
+    m = out.get("models") or {}
+    return ", ".join(f"{k} x{v}" for k, v in sorted(m.items())) or \
+        "no model call"
 
 
 # One brand written several ways in a tender is one finding: a spelling

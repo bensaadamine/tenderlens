@@ -36,6 +36,7 @@ What stays in CODE, never left to the model:
 """
 
 
+import collections
 import csv
 import io
 import json
@@ -408,11 +409,13 @@ def aliases_for(winner, graph, ask=None, use_graph=True, path=None,
     if not todo:
         return out
 
+    models = collections.Counter()
     if ask is None:
         from tools import llm
-        ask = lambda system, user: llm.ask_json(
-            system, user, strong=True, max_tokens=2000, tag="m3_agent",
-            tools=None if system == FINAL_SYSTEM else _tools())
+        call = llm.json_asker(models, strong=True, max_tokens=2000,
+                              tag="m3_agent")
+        ask = lambda system, user: call(
+            system, user, tools=None if system == FINAL_SYSTEM else _tools())
     shown = set(cands)
     state = AgentState(winner=winner, open_names=todo, same=[],
                        different=[], reasons={}, history=[], steps=0,
@@ -435,5 +438,5 @@ def aliases_for(winner, graph, ask=None, use_graph=True, path=None,
     out.update(same=same + state["same"],
                different=different + state["different"],
                steps=state["steps"], stop_reason=state["stop_reason"],
-               engine=engine, trace=trace)
+               engine=engine, models=dict(models), trace=trace)
     return out

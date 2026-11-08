@@ -22,7 +22,7 @@ competition - the case level 1 exists for - looks perfectly ordinary on the
 notice. Letting M1 close it would make the system blind to its own target.
 So every tender with documents gets M2.
 
-The agent works per tender (CLAUDE.md); batching belongs to the tools, so
+Each component works on one tender; batching belongs to the tools, so
 the shared data - notices, observations, awards - is loaded once here and
 handed to each component.
 """

@@ -15,8 +15,11 @@ Keys go in .env (never committed):
     GROQ_API_KEY=gsk_...      (free: console.groq.com)
     GEMINI_API_KEY=...        (optional, used only with TENDERLENS_SHARE=1)
 
-With no key at all, ask() raises NoProvider and the caller falls back to its
-rules: the pipeline must never silently stop producing findings.
+With no key, ask() raises NoProvider; when every provider fails, a
+RuntimeError. The agents then stop the run (the next run resumes there) or,
+for the evals, keep the rules' result - never silently produce "no
+findings". Offline (TENDERLENS_OFFLINE=1) no key is needed: answers come
+from the cache only, and a missing one raises NotCached.
 
 Groq's free tier is about 6,000 tokens PER MINUTE and 200,000 per day - the
 real constraint on design: one question about forty candidates is far
@@ -149,11 +152,17 @@ def _key(model, system, user):
 
 
 # -------------------------------------------------------------- the one call
+def allowed():
+    """The providers whose model may answer this run: Groq, and Gemini only
+    when sharing (TENDERLENS_SHARE=1). A cached answer from another model is
+    not used - except in an offline replay, which reuses whatever answered
+    before and says which (meta, json_asker)."""
+    return [p for p in PROVIDERS if SHARE or not p.get("shared_only")]
+
+
 def available():
-    """Providers a call may be sent to: a key set, and Gemini only when
-    sharing (TENDERLENS_SHARE=1)."""
-    return [p for p in PROVIDERS if os.environ.get(p["env"])
-            and (SHARE or not p.get("shared_only"))]
+    """Providers a call may be sent to: allowed, and a key set."""
+    return [p for p in allowed() if os.environ.get(p["env"])]
 
 
 def models_for(provider):
@@ -264,7 +273,7 @@ def _wait_needed(name, est, now=None):
 
 
 def _order(provs, est):
-    """Fallback order; with SHARE, the provider that can take this call
+    """Groq first; with SHARE, the provider that can take this call
     soonest first."""
     if not SHARE or len(provs) < 2:
         return provs
@@ -418,13 +427,14 @@ def agent_tokens(rows):
 
 
 def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
-        timeout=60, retries=2, verbose=False, tag="", tools=None):
+        timeout=60, retries=2, verbose=False, tag="", tools=None, meta=None):
     """Ask the model. Returns the raw text answer: from the cache if this
     question was answered before, else from the first provider that
     answers (_ask_one, with its retries).
 
     tools: [llm.tool(...)] for native tool calling; a tool call comes back
-    as JSON text {"thought", "action", "args"}.
+    as JSON text {"thought", "action", "args"}. meta: a dict, filled with
+    who answered - {"provider", "model", "cached"}.
 
     Raises NotCached offline (TENDERLENS_OFFLINE=1) when the answer is not
     in the cache, NoProvider if no key is set, or RuntimeError if every
@@ -435,7 +445,8 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
     # other answer
     sys_key = system if not tools else (
         system + "\x01" + json.dumps(tools, sort_keys=True))
-    hit = _from_cache(sys_key, user, strong, tag)
+    meta = {} if meta is None else meta
+    hit = _from_cache(sys_key, user, strong, tag, meta)
     if hit is not None:
         return hit
     if offline():
@@ -453,6 +464,8 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
                                  temperature, timeout, retries, verbose, tag,
                                  tools, est)
         if answer is not None:
+            meta.update(provider=p["name"], model=models_for(p)[
+                1 if strong else 0], cached=False)
             return answer
         if error:
             errors.append(error)
@@ -462,12 +475,13 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
     raise RuntimeError(msg)
 
 
-def _from_cache(sys_key, user, strong, tag):
-    """The saved answer to this question, or None. Looked up under every
-    pinned model, key or no key: a replay needs no account, and an answer
-    already paid is never re-asked."""
+def _from_cache(sys_key, user, strong, tag, meta):
+    """The saved answer to this question, or None - key or no key: a replay
+    needs no account. A live run takes only answers from the models it may
+    call (allowed); an offline replay takes any pinned model's, and meta
+    says which."""
     cache = _load_cache()
-    for p in PROVIDERS:
+    for p in (PROVIDERS if offline() else allowed()):
         model = models_for(p)[1 if strong else 0]
         hit = cache.get(_key(model, sys_key, user))
         # An empty cached answer is a truncated reasoning model, not a result.
@@ -475,6 +489,7 @@ def _from_cache(sys_key, user, strong, tag):
         # and never retried. Ignore them, and they get overwritten.
         if hit and hit.get("answer", "").strip():
             _log_usage(tag, p["name"], model, {}, True, 0)
+            meta.update(provider=p["name"], model=model, cached=True)
             return hit["answer"]
     return None
 
@@ -588,6 +603,32 @@ def offline():
 class EmptyAnswer(RuntimeError):
     """A provider answered, but with nothing usable. The caller may try again
     with a different prompt; it is not an outage."""
+
+
+def json_asker(models, **kw):
+    """An agent's (system, user) -> JSON function that counts, in `models`
+    (a collections.Counter), which model answered each call:
+    {"groq/openai/gpt-oss-120b": 5}. kw goes to ask_json (tag, strong...);
+    a call may add more (tools=...)."""
+    def call(system, user, **more):
+        meta = {}
+        try:
+            return ask_json(system, user, meta=meta, **dict(kw, **more))
+        finally:
+            if meta:
+                models[f"{meta['provider']}/{meta['model']}"] += 1
+    return call
+
+
+def answers_by_model(rows):
+    """{provider/model: calls} for the agents' calls in these token-log
+    rows (usage_rows()[start:]), cache hits included."""
+    out = {}
+    for r in rows:
+        if (r.get("tag") or "").endswith("_agent"):
+            k = f"{r.get('provider')}/{r.get('model')}"
+            out[k] = out.get(k, 0) + 1
+    return out
 
 
 RE_JSON = re.compile(r"\{.*\}|\[.*\]", re.S)

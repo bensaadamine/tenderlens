@@ -208,6 +208,26 @@ def main():
     check("ACAN + no trade agreement -> CLOSE (context only)",
           c8["route"] == "close" and c8["score"] == 3)
 
+    # ---- brand = winner: every word of the brand, not its first one
+    check("a brand matches its maker, every word: Ford, Zurich Instruments",
+          m4._brand_matches("Ford", "FORD MOTOR COMPANY OF CANADA")
+          and m4._brand_matches("Zurich Instruments", "ZURICH INSTRUMENTS AG"))
+    check("a shared first word is not identity: General Electric vs "
+          "General Motors", not m4._brand_matches("General Electric",
+                                                  "GENERAL MOTORS OF CANADA"))
+    ge = {"kind": "brand_without_equivalent", "brand": "General Electric",
+          "claim": "x", "level": 1,
+          "source": {"file": "01_rfp.pdf", "where": "p1", "line": "GE",
+                     "checked": True}}
+    c = m4.build_case({"reference": "t", "signals": []},
+                      {"readable": True, "findings": [ge]},
+                      {"award": {"supplier": "GENERAL MOTORS OF CANADA"},
+                       "findings": []})
+    check("...so General Electric required, General Motors won: watch, "
+          "not alert", c["route"] == "watch"
+          and not any(x["kind"] == "brand_matches_winner"
+                      for x in c["claims"]))
+
     # ---- what M2 and M3 hand to M4 (agents/evidence.py)
     from agents.evidence import Evidence, Finding
     d = Finding(kind="brand_without_equivalent", level=1, claim="c",

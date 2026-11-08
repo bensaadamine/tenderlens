@@ -43,7 +43,8 @@ tools/                 documents.py (a tender's text), brands.py (brand rules), 
 prepare/               data preparation, in order: profile → docs → text → census → labels
 tests/                 offline tests (test_*.py), evaluations (m2_eval.py, m4_eval.py), synth_rig.py
 experiments/           measured and not chosen: m4_model_coordinator.py (a model choosing M4's checks)
-docs/agents/           one page per agent
+docs/agents/           one page per component
+docs/DECISIONS.md      the numbered decisions the code cites ("decision 15")
 data/                  not in git: tenders.csv, awards.csv, downloaded documents
 reports/               not in git: extracted text, knowledge bases, audit queues, caches
 ```

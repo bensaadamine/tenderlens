@@ -37,8 +37,9 @@ make a case worth WATCHING but not, on its own, an alert:
 
 ------------------------------------------------------------- the weights
 
-UNCALIBRATED. There is no ground truth yet (decision 7: synthetic rigged
-tenders measure recall, real complaints prove relevance; neither exists).
+UNCALIBRATED. Calibrating them needs real ground truth (decision 7): the
+synthetic rigged tenders measure recall, but real complaints and
+cancellations - what would prove relevance - are not collected yet.
 They are an ordering, chosen so the logic above holds, and they are in one
 table so that calibrating them later is one edit. Do not quote a score as a
 probability.
@@ -167,13 +168,18 @@ def _tokens(s):
 def _brand_matches(brand, supplier):
     """Does the brand named in the spec appear in the winner's name?
 
-    Whole-word, first significant token of the brand: "Ford" matches "FORD
-    MOTOR COMPANY OF CANADA", "Leica" matches "LEICA MICROSYSTEMS". Not
-    fuzzy - a fuzzy match between a brand and a company name is the kind of
-    coincidence that becomes an accusation.
+    EVERY word of the brand (3+ letters), whole words (decision 48): "Ford"
+    matches "FORD MOTOR COMPANY OF CANADA", "Zurich Instruments" matches
+    "ZURICH INSTRUMENTS AG"; "General Electric" does not match "GENERAL
+    MOTORS" - a shared first word is not identity, and a brand-winner match
+    adds 3 points (an alert). The cost: a brand written with its product
+    ("Gamry Interface") does not match its maker ("GAMRY INSTRUMENTS"); that
+    error loses an alert, never invents one. Not fuzzy - a fuzzy match
+    between a brand and a company name is the kind of coincidence that
+    becomes an accusation.
     """
-    bt = [t for t in re.findall(r"[A-Za-zÀ-ÿ0-9]{3,}", (brand or "").upper())]
-    return bool(bt) and bt[0] in _tokens(supplier)
+    bt = _tokens(brand)
+    return bool(bt) and bt <= _tokens(supplier)
 
 
 def build_case(m1, m2, m3, followups=None):

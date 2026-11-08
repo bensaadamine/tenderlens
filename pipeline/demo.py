@@ -69,7 +69,7 @@ def main():
     out_dir = os.path.join("reports", "demo", stamp)
     os.makedirs(out_dir, exist_ok=True)
 
-    routes, tokens = {}, {}
+    routes, tokens, models = {}, {}, {}
     for name in a.setups:
         start = len(llm.usage_rows())
         cases = []
@@ -85,6 +85,7 @@ def main():
                 print(f"  {name} {ref}: {str(e)[:120]}")
             print(f"  {name:8} {ref:18} {routes[name, ref]}")
         tokens[name] = llm.agent_tokens(llm.usage_rows()[start:])
+        models[name] = llm.answers_by_model(llm.usage_rows()[start:])
         if cases:
             report.write_outputs(cases, {
                 "scope": f"demo, setup '{name}'"
@@ -104,7 +105,10 @@ def main():
     lines += ["", f"{'model tokens paid':{19 + w}}  "
               + "".join(f"{tokens[n]:<14,}" for n in a.setups),
               "", "(route and score; tokens are 0 when every answer came "
-              "from the cache)"]
+              "from the cache)", "", "agent answers by model:"]
+    lines += [f"  {n:8} " + (", ".join(f"{k} {v}" for k, v in
+                                      sorted(models[n].items())) or "none")
+              for n in a.setups]
     text = "\n".join(lines)
     with io.open(os.path.join(out_dir, "summary.txt"), "w",
                  encoding="utf-8") as f:

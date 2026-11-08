@@ -15,6 +15,7 @@ The 2026-11-01 changes, tested offline (no data, no network, no tokens):
 """
 
 
+import collections
 import io
 import json
 import os
@@ -124,6 +125,40 @@ def test_llm():
             missed = True
         check("offline: a cached answer needs no key; a miss is reported, "
               "nothing sent", hit == "yes" and missed and not sent)
+    finally:
+        os.environ.pop("TENDERLENS_OFFLINE", None)
+        for k, v in saved.items():
+            setattr(llm, k, v)
+
+    # a cached answer from a model this run may not call (Gemini, no
+    # sharing): not used live; used by an offline replay, which says so
+    saved = {k: getattr(llm, k) for k in ("_post", "_load_cache", "_log_usage",
+                                          "available")}
+    gem = llm.PROVIDERS[1]["strong"]
+    llm._load_cache = lambda path=None: {llm._key(gem, "s", "q"):
+                                         {"answer": '{"from": "gemini"}'}}
+    llm._log_usage = lambda *a, **k: None
+    llm.available = lambda: []
+    llm._post = lambda *a, **k: ("paid", {})
+    try:
+        try:
+            llm.ask("s", "q", strong=True)
+            live = "used"
+        except llm.NoProvider:
+            live = "not used"
+        os.environ["TENDERLENS_OFFLINE"] = "1"
+        meta = {}
+        got = llm.ask("s", "q", strong=True, meta=meta)
+        models = collections.Counter()
+        parsed = llm.json_asker(models, strong=True)("s", "q")
+        check("a live run ignores another model's cached answer; a replay "
+              "uses it and says which model",
+              live == "not used" and got == '{"from": "gemini"}'
+              and meta == {"provider": "gemini", "model": gem,
+                           "cached": True})
+        check("an agent's asker counts which model answered each call",
+              parsed == {"from": "gemini"}
+              and models == {f"gemini/{gem}": 1})
     finally:
         os.environ.pop("TENDERLENS_OFFLINE", None)
         for k, v in saved.items():
