@@ -35,11 +35,12 @@ Four agents look at one tender at a time, each from a different angle, and the l
 repo.py                puts the folders below on the import path (every script imports it)
 tenderlens_stream.py   run a category tender by tender against a growing knowledge base
 tenderlens.py          the four agents on one tender (run_one); --tender prints one case in full
-agents/                the four agents (M1–M4); agent_loop.py = the loop M2, M3 and M4 share
+agents/                M1–M4; m4_checks.py = M4's checks; agent_loop.py = the loop the M2 and M3 agents share
 tools/                 documents.py (a tender's text), brands.py (brand rules), wikidata.py,
                        level2.py (peer comparison), llm.py (LLM access)
 prepare/               data preparation, run in order 01 → 05
 tests/                 offline tests (test_*.py), evaluations (m2_eval.py, m4_eval.py), synth_rig.py
+experiments/           measured and not chosen: m4_model_coordinator.py (a model choosing M4's checks)
 docs/agents/           one page per agent
 data/                  not in git: tenders.csv, awards.csv, downloaded documents
 reports/               not in git: extracted text, knowledge bases, audit queues, caches
@@ -59,7 +60,7 @@ No `pandas` (blocked on our Windows machines) — standard library plus those tw
 
 LLM keys go in `.env` (never committed): `GROQ_API_KEY=...`, `GEMINI_API_KEY=...`. With two keys the calls are shared between providers. A local model (Ollama) can be added with `TENDERLENS_LOCAL_MODEL=gemma4:e4b`; it is used only when a script asks for it.
 
-**Network is needed only on Windows**: downloads (`prepare/01`, `prepare/02`, `agents/m3_investigator.py --fetch`), Wikidata (`--online`), the LLM (`--agent`, `--m3-agent`, `--m4-agent`, `prepare/05`).
+**Network is needed only on Windows**: downloads (`prepare/01`, `prepare/02`, `agents/m3_investigator.py --fetch`), Wikidata (`--online`), the LLM (`--agent`, `--m3-agent`, `--m4-checks`, `prepare/05`).
 
 ---
 
@@ -91,7 +92,7 @@ Open `reports/kb/2510/batches/<date>_queue.html`.
 | `--online` | check brand names on Wikidata (free, cached) |
 | `--agent` | the M2 agent letters every brand candidate a–f with a quote (LLM) |
 | `--m3-agent` | the M3 agent decides which spellings of the winner are the same company (LLM) |
-| `--m4-agent` | M4 re-checks cases with a brand finding before ranking them: re-reads each finding, checks the winner's spellings (LLM). `model` lets the model choose which checks — measured worse, not the default |
+| `--m4-checks` | before ranking a case with a brand finding, M4 sends each finding back to the M2 agent and the winner's spellings to the M3 agent, in a fixed order (LLM). `model` lets a model choose the checks — an experiment, measured worse |
 | `--reprocess REF… / quarantine / all` | run tenders again with today's code (auditor-judged tenders are kept) |
 | `--queue [STAMP]` | rebuild a queue from the case log |
 | `--until YYYY-MM-DD` | only tenders published up to that date |
@@ -100,8 +101,8 @@ Open `reports/kb/2510/batches/<date>_queue.html`.
 
 One tender, with every agent's reasoning: `python tenderlens.py --tender cb-425-92729935`
 
-Tests (no data, no network): `python tests/test_agents.py`, `test_m2_agent.py`, `test_m3_agent.py`, `test_m4_agent.py`, `test_stream_cases.py`, `test_m2_eval.py`, `test_redesign.py`.
-Measurements: `python tests/synth_rig.py --run` (synthetic rigged tenders) · `python tests/m2_eval.py [--agent --online] [--split holdout]` (M2 against the labelled names: 36 tuning + 40 held-out) · `python tests/m4_eval.py --online` (M4 agent: model vs fixed).
+Tests (no data, no network): `python tests/test_agents.py`, `test_m2_agent.py`, `test_m3_agent.py`, `test_m4_checks.py`, `test_m4_model_coordinator.py`, `test_stream_cases.py`, `test_m2_eval.py`, `test_redesign.py`.
+Measurements: `python tests/synth_rig.py --run` (synthetic rigged tenders) · `python tests/m2_eval.py [--agent --online] [--split holdout]` (M2 against the labelled names: 36 tuning + 40 held-out) · `python tests/m4_eval.py --online` (M4: no checks / fixed / model).
 
 **Long runs** (agents over a whole category) are done **once, at the end of a category** — not after each fix. Fixes are checked offline on the affected tenders and on the synthetic set.
 

@@ -1,12 +1,12 @@
 """
-The M4 agent's rules, tested with a scripted fake model and fake M2/M3
-follow-ups - no text, no award file, no network, no tokens. Checks what must
+The M4 model experiment (experiments/m4_model_coordinator.py), tested with a
+scripted fake model and fake M2/M3 follow-ups - no text, no award file, no network, no tokens. Checks what must
 hold whatever the model says: only code sets the route, follow-ups run once
 and only when open, a re-read that clears a finding drops the route, a
 spelling that matches the brand raises it, a missing model never changes a
 case silently, and the LangGraph graph and the plain loop agree.
 
-    python tests/test_m4_agent.py
+    python tests/test_m4_model_coordinator.py
 """
 
 import pathlib
@@ -17,8 +17,9 @@ import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works fro
 import copy
 import sys
 
-import m4_agent
 import m4_case_builder as m4
+import m4_checks
+import m4_model_coordinator as mc
 
 FAILS = 0
 DOC = "01_rfp.pdf"
@@ -97,7 +98,7 @@ def hooks(letters=None, recheck_out=None):
     def winner_awards(text, keys):
         log.append(("winner_awards", text, tuple(keys)))
         return {"count": 1, "lines": ["2025-01-01 | DND | Honda pumps"]}
-    h = m4_agent.Hooks(recheck, spellings, winner_awards)
+    h = m4_checks.Hooks(recheck, spellings, winner_awards)
     h.log = log
     return h
 
@@ -107,8 +108,7 @@ def act(name, **args):
 
 
 def run(ask, m2_, m3_=M3, h=None, **kw):
-    kw.setdefault("mode", "model")      # these tests drive the model mode
-    return m4_agent.coordinate("t-1", M1, copy.deepcopy(m2_),
+    return mc.coordinate("t-1", M1, copy.deepcopy(m2_),
                                copy.deepcopy(m3_), h or hooks(), ask=ask,
                                use_graph=kw.pop("use_graph", False), **kw)
 
@@ -125,13 +125,13 @@ def main():
     ask = scripted()
     case = run(ask, m2())
     check("no brand finding: the model is never called",
-          not ask.calls and case["m4_agent"]["stop_reason"] == "no brand finding")
+          not ask.calls and case["m4_checks"]["note"] == "no brand finding")
     ask = scripted()
     lettered = finding("Honda", 2, "The engine must be a Honda GX390.", "f")
     m3_nowin = dict(M3, award=None)
     case = run(ask, m2(lettered), m3_nowin)
     check("finding already lettered by M2's agent, no winner: no call",
-          not ask.calls and case["m4_agent"]["stop_reason"] == "nothing to check")
+          not ask.calls and case["m4_checks"]["note"] == "nothing to check")
 
     # ---- recheck
     h = hooks({"Honda": "f", "Net": "a"})
@@ -207,12 +207,12 @@ def main():
     case = run(ask, m2(HONDA, NET), h=h)
     check("it stops by itself when no follow-up is left",
           len(ask.calls) == 3
-          and case["m4_agent"]["stop_reason"] == "nothing left to check")
+          and case["m4_checks"]["note"].endswith("nothing left to check"))
 
     ask = scripted(*[{"no": "json"}] * 10)
     case = run(ask, m2(HONDA, NET))
     check("the step budget stops a model that never acts",
-          len(ask.calls) == m4_agent.MAX_STEPS
+          len(ask.calls) == mc.MAX_STEPS
           and case["route"] == before["route"])
 
     case = run(scripted(act("finish", route="close", score=0)), m2(HONDA, NET))
@@ -229,12 +229,12 @@ def main():
     try:
         run(scripted(RuntimeError("groq: HTTP 429")), m2(HONDA, NET))
         raised = False
-    except m4_agent.AgentUnavailable:
+    except m4_checks.AgentUnavailable:
         raised = True
     check("no model: the run stops (AgentUnavailable)", raised)
-    m4_agent.AGENT_DOWN = "keep"
+    m4_checks.AGENT_DOWN = "keep"
     case = run(scripted(RuntimeError("groq: HTTP 429")), m2(HONDA, NET))
-    m4_agent.AGENT_DOWN = "stop"
+    m4_checks.AGENT_DOWN = "stop"
     check("AGENT_DOWN = 'keep': the case is ranked as it stands",
           case["route"] == before["route"]
           and case["score"] == before["score"])
@@ -243,20 +243,12 @@ def main():
             h=hooks(recheck_out={"verdicts": [], "steps": 0,
                                  "stop_reason": "model unavailable: 429"}))
         raised = False
-    except m4_agent.AgentUnavailable:
+    except m4_checks.AgentUnavailable:
         raised = True
     check("M2's agent without a model stops the run too", raised)
 
-    # ---- fixed order, no model
-    h = hooks({"Honda": "f", "Net": "a"})
-    case = m4_agent.coordinate("t-1", M1, m2(HONDA, NET), copy.deepcopy(M3),
-                               h, mode="fixed", use_graph=False)
-    check("mode 'fixed': every follow-up, in order, no model",
-          [x[0] for x in h.log] == ["recheck", "spellings", "winner_awards"]
-          and case["route"] == "alert")
-
     # ---- graph = loop
-    if m4_agent.agent_loop.StateGraph is None:
+    if mc.agent_loop.StateGraph is None:
         print("skip langgraph not installed - graph vs loop not compared")
     else:
         out = []
@@ -268,13 +260,6 @@ def main():
                         [f["text"] for f in c["followups"]]))
         check("LangGraph and the plain loop give the same case",
               out[0] == out[1])
-
-    try:
-        import m2_agent
-        check("M4's letters are M2's letters",
-              m4_agent.LETTERS == m2_agent.LETTERS)
-    except Exception as e:
-        print(f"skip m2_agent not importable ({e})")
 
     print(f"\n{FAILS} failure(s)")
     sys.exit(1 if FAILS else 0)

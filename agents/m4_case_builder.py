@@ -184,7 +184,7 @@ def _brand_matches(brand, supplier):
 
 
 def build_case(m1, m2, m3, followups=None):
-    """followups: what the M4 agent checked again (m4_agent.py); shown on
+    """followups: what M4 checked again (m4_checks.py); shown on
     the case page, never scored."""
     ref = (m1 or {}).get("reference") or (m2 or {}).get("reference")
     claims = []

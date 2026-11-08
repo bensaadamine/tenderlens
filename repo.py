@@ -13,7 +13,7 @@ import os
 import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-for _d in ("agents", "tools", "prepare", "tests", ""):
+for _d in ("agents", "tools", "prepare", "tests", "experiments", ""):
     _p = os.path.join(ROOT, _d)
     if _p not in sys.path:
         sys.path.insert(0, _p)

@@ -64,14 +64,14 @@ def main():
                                        m4_mode=None if mode == "off"
                                        else mode)
                 route = c["route"]
-                steps = (c.get("m4_agent") or {}).get("steps", 0)
+                steps = (c.get("m4_checks") or {}).get("checks", 0)
                 checks = "; ".join(f["text"][:80]
                                    for f in c.get("followups", []))
             except tenderlens.AGENT_DOWN as e:
                 route, steps, checks = "agent did not run", 0, str(e)[:120]
             rows.append({"mode": mode, "reference": ref,
                          "labelled_lock_in": "f" in want[ref],
-                         "route": route, "m4_steps": steps,
+                         "route": route, "m4_checks": steps,
                          "followups": checks})
             print(f"  {mode:5} {ref:28} {route:6} (lock-in labelled: "
                   f"{'f' in want[ref]})")

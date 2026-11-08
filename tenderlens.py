@@ -45,8 +45,8 @@ import level2
 import m1_screener
 import m2_spec_auditor
 import m3_investigator
-import m4_agent
 import m4_case_builder
+import m4_checks
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -100,14 +100,15 @@ def no_contract_reason(row):
 # the next run resumes from that tender.
 AGENT_DOWN = (m2_spec_auditor.AgentUnavailable,
               m3_investigator.AgentUnavailable,
-              m4_agent.AgentUnavailable)
+              m4_checks.AgentUnavailable)
 
 
 def run_one(ref, shared, online=False, agent=False, m3_agent=False,
             m4_mode=None):
-    """The four agents on one tender. m4_mode: None (M4 rules only),
-    "model" or "fixed" (the M4 agent re-checks cases with a brand finding,
-    agents/m4_agent.py)."""
+    """The four components on one tender. m4_mode: None (M4 rules only),
+    "fixed" (M4's checks before ranking a case with a brand finding,
+    agents/m4_checks.py) or "model" (a model chooses those checks - the
+    measured experiment, experiments/m4_model_coordinator.py)."""
     notices, wstats, rows, graph = shared
     m1 = m1_screener.screen(ref, notices, wstats)
     why_none = no_contract_reason(notices.get(ref))
@@ -124,9 +125,13 @@ def run_one(ref, shared, online=False, agent=False, m3_agent=False,
         m3 = m3_investigator.investigate(ref, notices.get(ref), graph,
                                          agent=m3_agent)
     if m4_mode and not why_none:
-        hooks = m4_agent.default_hooks(ref, notices.get(ref), graph, m3,
-                                       online)
-        case = m4_agent.coordinate(ref, m1, m2, m3, hooks, mode=m4_mode)
+        hooks = m4_checks.default_hooks(ref, notices.get(ref), graph, m3,
+                                        online)
+        if m4_mode == "model":
+            import m4_model_coordinator
+            case = m4_model_coordinator.coordinate(ref, m1, m2, m3, hooks)
+        else:
+            case = m4_checks.check_case(ref, m1, m2, m3, hooks)
     else:
         case = m4_case_builder.build_case(m1, m2, m3)
     case["m1_route"] = m1.get("route")
@@ -309,13 +314,13 @@ def main():
     ap.add_argument("--m3-agent", action="store_true",
                     help="let the M3 agent decide which other spellings of "
                          "the winner are the same supplier (LLM, Windows)")
-    ap.add_argument("--m4-agent", nargs="?", const="fixed",
+    ap.add_argument("--m4-checks", nargs="?", const="fixed",
                     choices=["fixed", "model"],
-                    help="let M4 re-check cases with a brand finding before "
-                         "ranking them (LLM, Windows): the M2 agent re-reads "
-                         "each finding, the M3 agent checks the winner's "
-                         "spellings. 'fixed' (default) runs every check; "
-                         "'model' lets the model choose (measured worse)")
+                    help="before ranking a case with a brand finding, M4 "
+                         "sends the finding back to the M2 agent and the "
+                         "winner's spellings to the M3 agent (LLM, Windows). "
+                         "'model': a model chooses the checks (experiment, "
+                         "measured worse)")
     ap.add_argument("--l2-level", type=int, choices=[6, 8], default=8,
                     help="UNSPSC digits for level-2 peer groups (default 8; "
                          "6 restores the old grouping)")
@@ -325,7 +330,7 @@ def main():
     brands.apply_l1_args(a)
 
     c = run_one(a.tender, load_shared(), online=a.online, agent=a.agent,
-                m3_agent=a.m3_agent, m4_mode=a.m4_agent)
+                m3_agent=a.m3_agent, m4_mode=a.m4_checks)
     print(f"\n{c['reference']}  ->  {c['route'].upper()}  "
           f"(score {c['score']}, M1 {c['m1_route']})\n")
     print(c["narrative"])

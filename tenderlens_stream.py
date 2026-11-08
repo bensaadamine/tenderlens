@@ -343,7 +343,7 @@ def run(a):
             case = tenderlens.run_one(ref, (notices, wstats, peers, graph),
                                       online=a.online, agent=a.agent,
                                       m3_agent=a.m3_agent,
-                                      m4_mode=a.m4_agent)
+                                      m4_mode=a.m4_checks)
         except tenderlens.AGENT_DOWN as e:
             # Nothing written for this tender: the next run starts here.
             # Answers already given are cached, so nothing is paid twice.
@@ -383,7 +383,7 @@ def run(a):
     meta = {"scope": f"UNSPSC-4 {a.group}, incremental batch {stamp}",
             "generated": time.strftime("%Y-%m-%d %H:%M"),
             "tenders": len(cases), "awards": graph is not None,
-            "agent": a.agent, "m4_agent": a.m4_agent,
+            "agent": a.agent, "m4_checks": a.m4_checks,
             "weights": m4_case_builder.WEIGHTS,
             "alert_at": m4_case_builder.ALERT,
             "watch_at": m4_case_builder.WATCH}
@@ -531,13 +531,13 @@ def main():
     ap.add_argument("--m3-agent", action="store_true",
                     help="let the M3 agent decide which other spellings of "
                          "the winner are the same supplier (LLM, Windows)")
-    ap.add_argument("--m4-agent", nargs="?", const="fixed",
+    ap.add_argument("--m4-checks", nargs="?", const="fixed",
                     choices=["fixed", "model"],
-                    help="let M4 re-check cases with a brand finding before "
-                         "ranking them (LLM, Windows): the M2 agent re-reads "
-                         "each finding, the M3 agent checks the winner's "
-                         "spellings. 'fixed' (default) runs every check; "
-                         "'model' lets the model choose (measured worse)")
+                    help="before ranking a case with a brand finding, M4 "
+                         "sends the finding back to the M2 agent and the "
+                         "winner's spellings to the M3 agent (LLM, Windows). "
+                         "'model': a model chooses the checks (experiment, "
+                         "measured worse)")
     ap.add_argument("--online", action="store_true")
     ap.add_argument("--l2-level", type=int, choices=[6, 8], default=8)
     ap.add_argument("--kb-root", default="reports/kb",
