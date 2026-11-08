@@ -124,7 +124,7 @@ STANDARDS = {
     "csa", "ulc", "ansi", "astm", "nfpa", "iec", "din", "nema", "sae", "mil",
     "ieee", "nist", "cgsb", "iso", "en", "ul", "api", "awwa", "aashto", "cga",
     "tssa", "bifma", "ansi/bifma", "cmvss", "fmvss", "epa", "nsf", "fcc",
-    # added 2026-10-17 when table cells became candidates
+    # met once table cells are read as candidates
     "ppp", "unece", "ece", "cfps", "aap", "stanag", "dnd", "nato",
 }
 
@@ -168,8 +168,8 @@ STRUCTURAL = {
     "colonel", "sacc", "trafficking", "source", "act", "authority",
     "material", "customs", "tariff", "income", "insurance", "liability",
     "indemnity", "arbitration", "nscm", "cage", "ncage", "daat", "rdims",
-    # added 2026-10-17 when table cells and field values became candidates:
-    # words that open a line before a number without naming a product
+    # met once table cells and field values are read as candidates: words
+    # that open a line before a number without naming a product
     "bldg", "building", "amendement", "modification", "tables", "see",
     "figure", "valid", "process", "testing", "fees", "draft", "index",
     "package", "method", "notes", "contact", "officer", "courriel", "email",
@@ -476,10 +476,9 @@ def _in_make_list(lines, line_no):
 #    and the purchase must work with, not what it buys. One such mention in
 #    the same sentence clears the brand (as one "or equivalent" does).
 # A name not confirmed as a brand still goes through the text clearances
-# ("or equivalent", the clauses, buyer's equipment, make list) - before
-# 2026-10-22 it went straight to "unresolved", so the M2 agent was asked
-# about "a trailer for transporting a Fat Truck" and called it a lock-in.
-# Cleared that way it is "ok" with brand_unconfirmed=True.
+# ("or equivalent", the clauses, buyer's equipment, make list); sent straight
+# to the M2 agent, "a trailer for transporting a Fat Truck" was called a
+# lock-in. Cleared that way it is "ok" with brand_unconfirmed=True.
 # An operating system or web browser names the computer the purchase must
 # run on - the buyer's environment, not a product it locks in ("software
 # must run on Windows 10", "Internet Explorer 11"). Measured 2026-11-01:
@@ -555,7 +554,7 @@ CLEARED_BY = {
 def _text_clearance(docs, name, hits, lines_of, window, window_before,
                     blanket, equiv_clause):
     """The first thing in the text that clears this name, as row fields
-    ({"status": ...}), else None. Same order as before 2026-10-22."""
+    ({"status": ...}), else None."""
     qualified = _qualified_anywhere(docs, name, window, window_before)
     if qualified:
         # The tender allows an equivalent for this product somewhere.

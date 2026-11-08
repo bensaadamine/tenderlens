@@ -10,7 +10,7 @@ TenderLens never says "fraud". Every case is a hypothesis with a source a person
 
 ## How it works
 
-Four agents look at one tender at a time, each from a different angle, and the last one writes the case:
+A **hybrid multi-agent workflow**: four components look at one tender at a time, each from a different angle, and the last one writes the case. Two of them are **agents** — a model chooses its own tools and steps, inside its specialty, where judgement is needed: is this name a brand the bidder must supply? are these two spellings the same company? The rest are **rules**, where exactness matters: what the notice declares, whether a quote is really in the document, scoring and routing. Every choice between the two was measured (`docs/agents/`).
 
 ```
  tender notice ──► M1 Screener ──┐
@@ -18,12 +18,14 @@ Four agents look at one tender at a time, each from a different angle, and the l
  award notices ──► M3 Investigator ┘
 ```
 
-| Agent | Looks at | Finds | Doc |
-|---|---|---|---|
-| **M1 Screener** | the notice | what the buyer declared: advance award notice, limited tendering, short bidding window | [docs/agents/M1_screener.md](docs/agents/M1_screener.md) |
-| **M2 Spec Auditor** | the specification | a brand required without "or equivalent"; requirements tighter than similar tenders | [docs/agents/M2_spec_auditor.md](docs/agents/M2_spec_auditor.md) |
-| **M3 Investigator** | award history | who won, and whether this buyer keeps choosing the same supplier | [docs/agents/M3_investigator.md](docs/agents/M3_investigator.md) |
-| **M4 Case Builder** | M1 + M2 + M3 | checks every claim has a source, scores it, decides alert / watch / close | [docs/agents/M4_case_builder.md](docs/agents/M4_case_builder.md) |
+| Component | Kind | Looks at | Finds | Doc |
+|---|---|---|---|---|
+| **M1 Screener** | rules | the notice | what the buyer declared: advance award notice, limited tendering, short bidding window | [docs/agents/M1_screener.md](docs/agents/M1_screener.md) |
+| **M2 Spec Auditor** | rules + **agent** (`--agent`) | the specification | a brand required without "or equivalent" — the rules find the names and settle what the text decides exactly; the agent letters the rest a–f with a checked quote | [docs/agents/M2_spec_auditor.md](docs/agents/M2_spec_auditor.md) |
+| **M3 Investigator** | rules + **agent** (`--m3-agent`) | award history | who won, whether this buyer keeps choosing the same supplier — the agent decides which spellings are the same company | [docs/agents/M3_investigator.md](docs/agents/M3_investigator.md) |
+| **M4 Case Builder** | rules + fixed checks (`--m4-checks`) | M1 + M2 + M3 | checks every claim has a source, scores it, decides alert / watch / close; before ranking a brand case it sends the finding back to the M2 agent and the winner's spellings to the M3 agent | [docs/agents/M4_case_builder.md](docs/agents/M4_case_builder.md) |
+
+M4's checks run in a fixed order: a version where a model chose them was measured and not chosen (0 false alarms with the fixed order, 2 with the model choosing, on 73 labelled tenders) — it is kept in `experiments/`. What M2 and M3 hand to M4 is defined once, in `agents/evidence.py`.
 
 **Routing in one line:** only something found **in the documents** can raise an **alert**; what the buyer **declared** on the notice only ranks a case; award history is **context**.
 
@@ -126,14 +128,16 @@ One line per case in `feedback.csv` (`reference,verdict,note,reviewer,date`), th
 
 ---
 
-## Where things stand (2026-11-02)
+## Where things stand (2026-11-08)
 
 | category | tenders | alert | watch | note |
 |---|---|---|---|---|
 | 2510 motor vehicles | 613 (193 with documents) | 0 | 3 | offline, rules only |
 | 4110 lab equipment | 957 | 2 | 10 | offline, rules only; to audit |
 
-- **M2 on the 40 held-out names** (never used for tuning): rules alone find **1 of 8** real lock-ins; with the M2 agent, **6 of 7** (precision 6 of 10). 3 of its 4 false findings were the buyer's own equipment described elsewhere in the tender; since 2026-11-04 the agent is shown those sentences and what the tender buys before its first step (re-measure pending).
+- **M2 on the 37 held-out names** (never used for tuning): rules alone find **1 of 8** real lock-ins; with the M2 agent **8 of 8**, 8 of its 9 findings real, 36 of 37 names right.
+- **M4's checks on 73 labelled tenders** (M2 on rules): 7 false alarms without them, 0 with them (both real lock-ins kept).
+- **The demo** shows each on chosen cases: the rules' false alarm cleared by the re-check (Hitachi/JEOL), a lock-in only the agent finds (Gamry), the real lock-ins kept.
 - **Synthetic test (2510):** of 160 rigged copies, the brand is found in 64 offline; 17 reach alert; 0 of 120 clean copies are flagged.
 - **Peer comparison (level 2)** stays dormant: few product groups have 8 comparable tenders yet. It runs by default; `--no-level2` skips it (same routes on the demo and on 120 tenders of 2510).
 

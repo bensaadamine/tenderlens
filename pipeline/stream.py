@@ -16,7 +16,7 @@ HOW A RUN WORKS
   They are processed in PUBLICATION-DATE order. For each one:
     1. extract its numeric requirements (prepare/census.py's own steps: section
        scoping, number parsing, band collapse, unit conversion, restatements)
-    2. run the four agents, with the BASE as level 2's peers - so a tender
+    2. run the four components, with the BASE as level 2's peers - so a tender
        is compared only with tenders processed before it
     3. alert or watch -> QUARANTINE (kept, never used as peers)
        close          -> BASE (becomes a peer for every later tender)
@@ -91,11 +91,9 @@ REG_COLS = ["at", "reference", "run_id", "pub_date", "event", "status",
             "pile", "score", "observations", "note"]
 FB_COLS = ["reference", "verdict", "note", "reviewer", "date"]
 QUARANTINE_ROUTES = {"alert", "watch"}
-# Audit finding 2026-11-01: cases were written only at the end of a batch,
-# while each tender was registered as processed as soon as it was done - a
-# crash left those tenders skipped on the next run with no case anywhere.
-# Each case now goes to cases.jsonl before its register event. False
-# restores the old behaviour (no case log).
+# Each case goes to cases.jsonl BEFORE its register event, so a crash never
+# leaves a tender registered as done with no case anywhere (the next run
+# would skip it). False: no case log.
 CASE_LOG = True
 
 
@@ -270,9 +268,8 @@ def todo_list(notices, group, state, until=None):
 
 
 def reprocess_list(kb, notices, group, state, which):
-    """Tenders to run again (audit finding 2026-11-01: a tender processed
-    before its award notice existed, or under older rules or without the
-    agents, was never looked at again). which: tender references, or
+    """Tenders to run again - one processed before its award notice
+    existed, under older rules, or without the agents. which: references, or
     "quarantine" / "all". A tender the auditor has judged keeps the
     auditor's verdict and is not re-run."""
     judged = set()
@@ -326,8 +323,7 @@ def run(a):
 
     stamp = time.strftime("%Y%m%d-%H%M%S")
     # The batch's settings, written before any tender: every case and event
-    # carries the stamp, so what produced it can always be told (audit
-    # finding 2026-11-01).
+    # carries the stamp, so what produced it can always be told.
     with io.open(os.path.join(kb.batches, f"{stamp}_settings.json"), "w",
                  encoding="utf-8") as f:
         json.dump({"stamp": stamp, "argv": sys.argv[1:],

@@ -41,9 +41,8 @@ import urllib.request
 CACHE_PATH = "reports/llm_cache.json"
 USAGE_PATH = "reports/llm_usage.csv"
 # Every failed call, one row: when, which provider and model, what went wrong
-# and the server's own message. Added 2026-10-22: a 46-minute silent gap in
-# the first M2 agent run could not be explained because failures were never
-# written anywhere.
+# and the server's own message - without it, a silent 46-minute gap in an
+# agent run could not be explained.
 ERRORS_PATH = "reports/llm_errors.csv"
 
 # Tokens per minute each provider may take, a little under its free tier: a
@@ -55,12 +54,12 @@ _last_call = {}       # provider -> unix_time
 _down_until = {}      # provider -> unix_time; a provider that errored rests
 DOWN_FOR = 60         # seconds
 DAY_OUT = 6 * 3600    # seconds a provider is skipped after "quota per day"
-# Groq first; Gemini only when Groq fails (2026-11-08). Sharing every call
+# Groq first; Gemini only when Groq fails. Sharing every call
 # between the two (user decision 2026-10-19) made verdicts differ between
 # runs - two models answer differently. TENDERLENS_SHARE=1 restores sharing:
 # twice the calls a minute, for a first run of a whole category.
 SHARE = os.environ.get("TENDERLENS_SHARE") == "1"
-# Native tool calling (2026-11-01): the request carries a schema per tool and
+# Native tool calling: the request carries a schema per tool and
 # the model's tool call comes back as {"thought", "action", "args"} - the
 # shape the agents read, so a JSON reply still works. Measured before it:
 # about half the agent steps were lost on tools that don't exist or wrong
@@ -69,7 +68,7 @@ SHARE = os.environ.get("TENDERLENS_SHARE") == "1"
 NATIVE_TOOLS = os.environ.get("TENDERLENS_NATIVE_TOOLS", "on")
 _no_tools = set()     # providers that rejected a tools request this run
 
-# THE MODELS, pinned (2026-11-08): the same model gives the same verdicts,
+# THE MODELS, pinned: the same model gives the same verdicts,
 # and every measurement in MEASUREMENT_LOG was made with these. They are the
 # models the cache was filled with, so cached answers keep working. A model
 # the provider has retired (HTTP 400/404) is replaced, for this run, by the

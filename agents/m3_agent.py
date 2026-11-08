@@ -132,16 +132,14 @@ class AwardIndex:
         return "\n".join(lines) + (f"\n... {more} more" if more > 0 else "")
 
 
-# 2026-11-01 (audit of the M3 agent): a postal code shared with an ACCEPTED
-# spelling used to be enough, so merges could chain - A shares a code with
-# B, B with C, so C became A without sharing anything with it. Now a merge
-# must share a postal code with the winner itself (or have the same name
-# once generic words are dropped). True restores the chain rule.
+# A merge must share a postal code with the WINNER ITSELF (or have the same
+# name once generic words are dropped). Sharing one with an accepted
+# spelling is not enough: merges would chain - A shares a code with B, B with
+# C, and C becomes A without sharing anything with it. True: chains allowed.
 CHAIN = False
-# 2026-11-01: a decision was stored per winner, so a spelling merged into
-# FISHER SCIENTIFIC was asked again from scratch the day it won a tender
-# itself. Decisions now apply to the whole group of spellings judged the
-# same company. False restores per-winner decisions.
+# A decision applies to the whole group of spellings judged the same
+# company, so a spelling merged into FISHER SCIENTIFIC is not asked again
+# from scratch the day it wins a tender itself. False: per-winner decisions.
 GROUPS = True
 
 
@@ -239,7 +237,7 @@ Reply with ONE JSON object and nothing else:
 
 
 def _tools():
-    """Native tool schemas (llm.tool, 2026-11-01); same tools as the prompt."""
+    """Native tool schemas (llm.tool); same tools as the prompt."""
     from tools import llm
     t = llm.tool
     names = {"type": "array", "items": {"type": "string"}}

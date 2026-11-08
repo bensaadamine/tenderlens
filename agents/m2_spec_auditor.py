@@ -36,6 +36,7 @@ import re
 import json
 import sys
 
+from agents.evidence import Evidence, Finding
 from tools import level2
 from agents import m2_agent
 from tools import brands
@@ -44,10 +45,10 @@ from tools import documents
 # Rule results the agent looks at again: the rules' own findings, the names
 # they could not settle, and the rule clearances listed here. Clearances
 # backed by the text ("or equivalent", the general equivalence clause) stay
-# with the rules. Buyer's equipment was in the list until 2026-10-22: the
-# agent turned 3 correct clearances (Sellick, Fat Truck x2: "a trailer for
-# transporting a Fat Truck") into false findings. Add "OK_BUYER_EQUIPMENT"
-# back to restore.
+# with the rules, and so does the buyer's own equipment: re-checked by the
+# agent, 3 correct clearances (Sellick, Fat Truck x2: "a trailer for
+# transporting a Fat Truck") became false findings. Add "OK_BUYER_EQUIPMENT"
+# to let the agent re-check them.
 AGENT_RECHECK = {"OK_MAKE_LIST"}
 # For the exam only (tests/m2_eval.py): a test (reference, name) -> bool
 # choosing which candidates the agent sees; the others keep the rules'
@@ -60,7 +61,7 @@ AGENT_ONLY = None
 # down): "stop" raises AgentUnavailable, so a run stops cleanly and the
 # tenders not yet done are picked up by the next run - a free daily quota
 # then spreads one category over several days. "keep" falls back to the
-# rules' result, as before 2026-10-23 (the eval and the synthetic test).
+# rules' result (the eval and the synthetic test use it).
 AGENT_DOWN = "stop"
 
 
@@ -197,11 +198,11 @@ def _agent_pass(reference, l1, online, trace, title=""):
 
 
 # One brand written several ways in a tender ("Formlabs", "FormLabs Form")
-# was counted as several brands - two brands make an alert (demo, 2026-11-08:
-# Formlabs reached alert alone). Findings whose names share their first word
-# are now one finding. The error this rule can make (two companies sharing a
-# first word, both required) costs an alert, never adds one. None restores
-# one finding per spelling.
+# is one finding: findings whose names share their first word are merged.
+# Counted apart, two spellings made two brands and an alert (Formlabs, demo
+# 2026-11-08). The error the rule can make (two companies sharing a first
+# word, both required) costs an alert, never adds one. None: one finding
+# per spelling.
 SAME_BRAND = "first word"
 
 
@@ -248,7 +249,7 @@ def names_checked(l1):
 
 def _check_sources(findings, docs, trace):
     """Mark each finding's source checked or not (M4 scores only checked
-    ones - audit finding 2026-11-01)."""
+    ones)."""
     bad = 0
     for f in findings:
         s = f["source"]
@@ -288,57 +289,53 @@ def _finish(reference, rows, l1, trace, docs=None):
     for f in l1["findings"]:
         src = _l1_source(f)
         also = f.get("also_written") or []
-        findings.append({
-            "level": 1, "kind": "brand_without_equivalent",
-            "confidence": "high" if f.get("llm_reason") else "medium",
-            "claim": f"Names '{f['brand']}'"
-                     + (f" (also written {', '.join(repr(n) for n in also)})"
-                        if also else "")
-                     + f" without accepting an equivalent product "
-                       f"({f.get('occurrences', 1)} mention(s))",
-            "brand": f["brand"],
-            "also_written": also,
-            "decided_by": f.get("decided_by", ""),
-            "detail": f.get("llm_reason") or "",
-            "source": src,
-            # for the M4 agent, which can hand the finding back to the M2
-            # agent: where it is, and whether that agent already lettered it
-            "line_no": f.get("line_no"),
-            "agent_letter": f.get("agent_letter"),
-        })
+        findings.append(Finding(
+            kind="brand_without_equivalent", level=1,
+            confidence="high" if f.get("llm_reason") else "medium",
+            claim=f"Names '{f['brand']}'"
+                  + (f" (also written {', '.join(repr(n) for n in also)})"
+                     if also else "")
+                  + f" without accepting an equivalent product "
+                    f"({f.get('occurrences', 1)} mention(s))",
+            brand=f["brand"], also_written=also,
+            decided_by=f.get("decided_by", ""),
+            detail=f.get("llm_reason") or "",
+            source=src,
+            # for M4's re-read: where it is, whether the agent lettered it
+            line_no=f.get("line_no"), agent_letter=f.get("agent_letter"),
+        ).to_dict())
 
     for f in (l2.get("findings") or []):
-        findings.append({
-            "level": 2, "kind": f["kind"], "confidence": "low",
-            "claim": f"'{f['attribute']}' set at {f.get('stated')} against "
-                     f"a peer median of {f['peer_median']} {f.get('unit','')} "
-                     f"(n={f['peer_n']})",
-            "detail": f"Peer group is UNSPSC-{level2.LEVEL[0]}"
-                      + ("; it mixes vehicle classes" if level2.LEVEL[0] < 8
-                         else "") + " - check the peers are the same kind "
-                      "of product.",
-            "source": {"file": f.get("file"), "where": f.get("section"),
-                       "line": f.get("source_line"),
-                       "context": f.get("context")},
-        })
+        findings.append(Finding(
+            kind=f["kind"], level=2, confidence="low",
+            claim=f"'{f['attribute']}' set at {f.get('stated')} against "
+                  f"a peer median of {f['peer_median']} {f.get('unit','')} "
+                  f"(n={f['peer_n']})",
+            detail=f"Peer group is UNSPSC-{level2.LEVEL[0]}"
+                   + ("; it mixes vehicle classes" if level2.LEVEL[0] < 8
+                      else "") + " - check the peers are the same kind "
+                   "of product.",
+            source=Evidence(file=f.get("file"), where=f.get("section"),
+                            line=f.get("source_line"),
+                            context=f.get("context")),
+        ).to_dict())
 
     wd = (l2 or {}).get("within_document") or {}
     if wd.get("requirements", 0) >= WDOC_MIN_REQS and \
             wd.get("share", 0) >= WDOC_SHARE:
-        findings.append({
-            "level": 2, "kind": "within_document_bands", "confidence": "low",
-            "claim": f"{wd['two_sided']} of {wd['requirements']} numeric "
-                     f"requirements are two-sided bands ({wd['share']:.0%}); "
-                     f"most tenders state none",
-            "detail": "Needs no peers. Rare by construction - 2 of 133 "
-                      "tenders in 2510 exceed 50%.",
+        findings.append(Finding(
+            kind="within_document_bands", level=2, confidence="low",
+            claim=f"{wd['two_sided']} of {wd['requirements']} numeric "
+                  f"requirements are two-sided bands ({wd['share']:.0%}); "
+                  f"most tenders state none",
+            detail="Needs no peers. Rare by construction - 2 of 133 "
+                   "tenders in 2510 exceed 50%.",
             # A count over the whole tender has no single line to cite.
             # M4 treats a finding without a document line as unsourced and
             # will not let it raise a case on its own - which is right for
             # a statistic about the document rather than a quote from it.
-            "source": {"file": None, "where": "whole tender",
-                       "line": None, "context": None},
-        })
+            source=Evidence(file=None, where="whole tender", line=None),
+        ).to_dict())
 
     if docs is None:
         docs = documents.tender_documents(reference)
@@ -361,11 +358,11 @@ def _l1_source(f):
     row): `document`, `page`, `line_no`, `evidence` is the line itself, and
     `locations` lists every other place the brand appears.
     """
-    return {"file": f.get("document"),
-            "where": f"page {f.get('page')}, line {f.get('line_no')}",
-            "line": f.get("evidence"),
-            "context": f.get("llm_quote") or None,
-            "also_at": (f.get("locations") or [])[1:6]}
+    return Evidence(file=f.get("document"),
+                    where=f"page {f.get('page')}, line {f.get('line_no')}",
+                    line=f.get("evidence"),
+                    context=f.get("llm_quote") or None,
+                    also_at=(f.get("locations") or [])[1:6])
 
 
 def _slim_l1(l1):

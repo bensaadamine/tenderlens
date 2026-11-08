@@ -69,8 +69,8 @@ READ_RADIUS = 6        # lines either side for the read tool
 SEARCH_HITS = 8        # hits returned by the search tool
 QUOTE_WINDOW = 3       # look for the quote here first, then in the document
 OBS_CHARS = 1500       # longest observation kept in the prompt
-HISTORY_KEPT = MAX_STEPS   # steps shown to the model: all of them (was 6;
-                           # 2026-10-22 the model forgot and searched again)
+HISTORY_KEPT = MAX_STEPS   # steps shown to the model: all of them (shown
+                           # fewer, it forgot what it read and searched again)
 
 
 # ------------------------------------------------------------ the tender text

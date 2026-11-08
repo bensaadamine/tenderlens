@@ -24,7 +24,7 @@ So every tender with documents gets M2.
 
 The agent works per tender (CLAUDE.md); batching belongs to the tools, so
 the shared data - notices, observations, awards - is loaded once here and
-handed to each agent.
+handed to each component.
 """
 
 

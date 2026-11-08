@@ -1,10 +1,11 @@
 """
-Does the M4 agent earn its cost? Runs the labelled tenders (tests/m2_labels.csv
+Do M4's checks earn their cost, and does a model choosing them do better?
+Runs the labelled tenders (tests/m2_labels.csv
 and tests/m2_holdout.csv) three ways and compares the routes:
 
     off     M4 rules only
     fixed   every M4 follow-up, in a fixed order, no model choosing
-    model   the M4 agent chooses the follow-ups
+    model   a model chooses the follow-ups (experiments/)
 
 M2 runs on rules only, so M4's follow-ups (re-reading a finding, the
 winner's spellings) are what changes a case. A tender counts as "should be

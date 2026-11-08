@@ -21,11 +21,9 @@ CACHE_PATH = "reports/brand_cache.json"
 WD_API = "https://www.wikidata.org/w/api.php"
 UA = "TenderLens/0.1 (academic research)"
 
-# Measured 2026-10-19: Wikidata knows "Bendix" (like "Allison") only as a
-# family name, so the verdict was "not a brand" and the name never reached
-# the LLM. Makers are often named after people. A name whose only exact
-# matches are personal names is now UNKNOWN (left to the M2 agent), not
-# "not a brand".
+# A name whose only exact matches are personal names is UNKNOWN (left to the
+# M2 agent), not "not a brand": makers are often named after people, and
+# Wikidata knows "Bendix" and "Allison" only as family names.
 RE_PERSON_NAME = re.compile(
     r"\b(?:given name|surname|family name|male given name|female given name)\b",
     re.I)
@@ -79,13 +77,11 @@ def save_cache(cache, path=CACHE_PATH):
 # nor a person or place - stays unknown. A person's name does not block:
 # "Cummins" is a family name and a company, and verifies.
 VERIFY_VERSION = 6
-# v6 (2026-10-19): ordinary word only by the entry's own label, not an alias.
-# Only undecided entries are re-queried (brand / not-brand verdicts stay).
-# v5 (2026-10-17): with no company among the exact matches, an ordinary-word
-# entry (lowercase label) is what gets cached - "pannier" (a bag) rather than
-# "Pannier" (a family name) - so it stays undecided.
-# Only UNDECIDED v4 entries are re-queried; v4 brand / not-brand verdicts
-# are unchanged by v5 and stay fresh.
+# Each cached verdict carries the version that wrote it. An entry from an
+# older version is asked again only if it was undecided; brand / not-brand
+# verdicts stay. (v5: with no company among the exact matches, the ordinary-
+# word entry is cached - "pannier" the bag, not "Pannier" the family name.
+# v6: an ordinary word only by the entry's own label, never an alias.)
 
 
 # Measured 2026-10-19: "Axis" (Axis Communications, a real lock-in) was cached

@@ -221,6 +221,21 @@ def main():
     check("ACAN + no trade agreement -> CLOSE (context only)",
           c8["route"] == "close" and c8["score"] == 3)
 
+    # ---- what M2 and M3 hand to M4 (agents/evidence.py)
+    from agents.evidence import Evidence, Finding
+    d = Finding(kind="brand_without_equivalent", level=1, claim="c",
+                source=Evidence(file="01_rfp.pdf", where="p1", line="x"),
+                brand="Honda").to_dict()
+    check("a finding travels as a plain dict; empty fields left out",
+          d["source"] == {"file": "01_rfp.pdf", "where": "p1", "line": "x"}
+          and "agent_letter" not in d and d["brand"] == "Honda")
+    try:
+        Finding(kind="k", level=1, claim="c", source=None, brnad="typo")
+        typo = False
+    except TypeError:
+        typo = True
+    check("a misspelt field fails at once", typo)
+
     # ---- M2: one brand written several ways is one finding
     from agents import m2_spec_auditor as m2s
     rows = [{"brand": "FormLabs Form", "occurrences": 1, "agent_letter": "f",

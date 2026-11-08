@@ -53,6 +53,8 @@ import re
 import sys
 import urllib.request
 
+from agents.evidence import Evidence, Finding
+
 csv.field_size_limit(10_000_000)
 
 try:
@@ -67,12 +69,10 @@ AWARDS_URL = ("https://canadabuys.canada.ca/opendata/pub/"
 C_SOL_TENDER = "solicitationNumber-numeroSollicitation"
 C_UNSPSC_TENDER = "unspsc"
 
-# Audit finding 2026-11-01: the first matching award row was taken as THE
-# award, so the winner depended on the order of the CSV (two rows swapped =
-# another winner). Now the newest award is taken (ties: supplier name), and
-# every distinct supplier of the tender is listed in award["winners"] - a
-# standing offer or a split award has several. "first" restores the old
-# rule: the first row, and only its supplier.
+# The award is the NEWEST award row (ties: supplier name), and every
+# distinct supplier of the tender is listed in award["winners"] - a standing
+# offer or a split award has several. Taking the first matching row made the
+# winner depend on the CSV's row order. "first" restores that rule.
 AWARD_PICK = "latest"
 
 REPEAT_SHARE = 0.5   # this buyer gave at least half its awards in the
@@ -173,7 +173,7 @@ def detect_columns(header):
         "date": pick(lambda s: "contractawarddate" in s,
                      lambda s: "awarddate" in s),
         "unspsc": pick(lambda s: s.strip('"﻿') == "unspsc"),
-        # for the M3 agent (2026-10-26): where a supplier is, and what it won
+        # for the M3 agent: where a supplier is, and what it won
         "postal": pick(lambda s: "supplier" in s and "postalcode" in s),
         "city": pick(lambda s: "supplier" in s and "city" in s),
         "title": pick(lambda s: s.startswith("title")),
@@ -269,7 +269,7 @@ class AgentUnavailable(RuntimeError):
 
 # When the agent was asked for but no model answers: "stop" raises
 # AgentUnavailable so the run stops and resumes later (as for M2); "keep"
-# counts the winner's spelling alone, as before 2026-10-26.
+# counts the winner's spelling alone.
 AGENT_DOWN = "stop"
 
 
@@ -394,20 +394,18 @@ def investigate(reference, notice_row=None, graph=None, agent=False,
         merged_note = (f"; counting {len(same)} other spelling(s) of the "
                        f"supplier: " + "; ".join(award["other_spellings"])
                        if same else "")
-        findings.append({
-            "level": 3, "kind": kind, "weight": "context",
-            "confidence": "medium",
-            "claim": (f"{a['buyer_name']} awarded {mine} of {total} "
-                      f"contracts in this category to {a['supplier_name']}"
-                      + (f", which draws {dep:.0%} of its awards from this "
-                         f"buyer" if kind == "dependent_supplier" else "")),
-            "source": {"file": "award notices (CanadaBuys)",
-                       "where": f"{mine} of {total} awards, group {grp}"
-                                + merged_note,
-                       "line": f"{a['supplier_name']} <- {a['buyer_name']}",
-                       "context": None, "checked": True,
-                       "checked_how": "built from the award records"},
-        })
+        findings.append(Finding(
+            kind=kind, level=3, weight="context", confidence="medium",
+            claim=(f"{a['buyer_name']} awarded {mine} of {total} "
+                   f"contracts in this category to {a['supplier_name']}"
+                   + (f", which draws {dep:.0%} of its awards from this "
+                      f"buyer" if kind == "dependent_supplier" else "")),
+            source=Evidence(
+                file="award notices (CanadaBuys)",
+                where=f"{mine} of {total} awards, group {grp}" + merged_note,
+                line=f"{a['supplier_name']} <- {a['buyer_name']}",
+                checked=True, checked_how="built from the award records"),
+        ).to_dict())
     else:
         trace.append("depth 2 skipped - no recurring winner at depth 1")
 

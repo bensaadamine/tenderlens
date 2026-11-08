@@ -1,5 +1,6 @@
 """
-THE AGENT LOOP - the one loop the three agents run (M2, M3, M4).
+THE AGENT LOOP - the one loop the agents run (M2, M3; and the M4 experiment,
+experiments/m4_model_coordinator.py).
 
 Each agent supplies two steps:
     decide(state)  asks the model for ONE action: a tool and its arguments

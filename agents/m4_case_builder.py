@@ -82,13 +82,13 @@ DECLARED = {"acan", "limited_tendering_method", "limited_tendering_reason"}
 # naming brands does not apply. User decision 2026-10-19: it no longer lifts
 # declared signals into WATCH on its own.
 CONTEXT_ONLY = {"no_trade_agreement"}
-# Brand vs winner (2026-11-01, M4 agent): the brand is also checked against
+# Brand vs winner: the brand is also checked against
 # the winner's other spellings that M3 accepted as the same company - a
 # winner written "BENDIX CVS" whose award notices also say "BENDIX
 # COMMERCIAL VEHICLE SYSTEMS". Same whole-word test on each name. False
 # restores the check against the winner's own name only.
 BRAND_VS_SPELLINGS = True
-# Wording of the case page (2026-10-19): one sentence per reason, each
+# Wording of the case page: one sentence per reason, each
 # marked declared / found in the documents / context; no internal codes.
 NATURE = {
     "acan": "Declared by the buyer",
@@ -140,12 +140,11 @@ def plain_text(c, award=None):
                 + (f" (settled by {by})" if by else "") + ".")
     return c.get("claim", "")
 WATCH = 2
-# Audit finding 2026-11-01: "verified" meant only that a source was attached
-# (an origin and some words); nothing here checked that the words are really
-# in it. Each source now says whether they were checked (source["checked"]):
-# M2 against the document text, M1 and M3 by the code that copied them from
-# the notice field / award record, the M2 and M4 agents by their quote test.
-# Only checked claims score. "attached" restores the old rule.
+# A claim scores only if its words were CHECKED against its source
+# (source["checked"]), not merely attached: M2 found them in the document
+# text, M1 and M3 copied them by code from the notice field / award record,
+# the M2 agent and M4's re-read passed their quote test. "attached" restores
+# the weaker rule: an origin and some words are enough.
 VERIFY = "checked"
 
 LEVEL2_KINDS = {"narrow_band", "extreme_threshold", "within_document_bands"}
@@ -295,11 +294,11 @@ def build_case(m1, m2, m3, followups=None):
                     and c["kind"] not in DECLARED
                     and c["kind"] not in CONTEXT_ONLY
                     for c in claims)
-    # Measured 2026-10-19: one brand (3) + an ACAN (2) + no trade agreement
-    # (1) = 6 reached ALERT, against the routing rule - notice signals are
-    # what the buyer declared, so they can rank a case, never make it an
-    # alert. An alert now needs ALERT points from document findings alone
-    # (two brands, or a brand that is the winner).
+    # An alert needs ALERT points from document findings alone (two brands,
+    # or a brand that is the winner): notice signals are what the buyer
+    # declared - they rank a case, never make it an alert. Counted together,
+    # one brand + an ACAN + no trade agreement reached ALERT (2026-10-19,
+    # the buyer's own two vans being repaired).
     doc_score = sum(c.get("points") or 0 for c in claims
                     if c.get("agent") in ("M2", "M4")
                     and c["kind"] not in LEVEL2_KINDS)
