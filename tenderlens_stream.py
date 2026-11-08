@@ -202,8 +202,11 @@ def notice_meta(row):
 
 
 def extract_tender(ref, row, group, run_id):
-    """Raw observations for one tender, through prepare/04_census.py's own steps."""
+    """Raw observations for one tender, through prepare/04_census.py's own
+    steps. Level 2 off: the documents only, no observation."""
     docs = documents.tender_documents(ref)
+    if not level2.ON[0]:
+        return docs, []
     rows = []
     for d in docs:
         got = census.extract(d["text"])
@@ -241,6 +244,8 @@ def comparable(rows, amap):
 
 
 def base_rows(kb, state, amap):
+    if not level2.ON[0]:
+        return []
     rows = []
     for ref, rs in kb.observations(state, "base").items():
         rows.extend(comparable(rs, amap))
@@ -299,6 +304,7 @@ def reprocess_list(kb, notices, group, state, which):
 def run(a):
     kb = KB(a.group, a.kb_root)
     level2.LEVEL[0] = a.l2_level
+    level2.ON[0] = not a.no_level2
     amap = load_map()
     notices, wstats, _, graph = tenderlens.load_shared()
     state = kb.state()
@@ -540,6 +546,10 @@ def main():
                          "measured worse)")
     ap.add_argument("--online", action="store_true")
     ap.add_argument("--l2-level", type=int, choices=[6, 8], default=8)
+    ap.add_argument("--no-level2", action="store_true",
+                    help="skip level 2: no numbers extracted, no peers "
+                         "compared. Tenders run this way add no observation "
+                         "to the base; --reprocess with level 2 on adds them")
     ap.add_argument("--kb-root", default="reports/kb",
                     help="where knowledge bases live (one folder per group)")
     ap.add_argument("--status", action="store_true")

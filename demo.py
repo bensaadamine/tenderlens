@@ -25,6 +25,7 @@ import io
 import os
 import time
 
+import level2
 import llm
 import tenderlens
 
@@ -53,10 +54,13 @@ def main():
     ap.add_argument("--offline", action="store_true",
                     help="no network: Wikidata and model answers from the "
                          "caches only")
+    ap.add_argument("--no-level2", action="store_true",
+                    help="skip level 2 (dormant: numbers against peers)")
     ap.add_argument("--setups", nargs="+", choices=list(SETUPS),
                     default=list(SETUPS))
     a = ap.parse_args()
     online = not a.offline
+    level2.ON[0] = not a.no_level2
 
     shared = tenderlens.load_shared(verbose=False)
     stamp = time.strftime("%Y%m%d-%H%M%S")

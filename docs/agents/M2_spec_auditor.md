@@ -27,7 +27,7 @@ Find, with a quoted line, a departure from the trade-agreement rule: *a specific
    | **f** | **brand required, no equivalent → the only letter that becomes a finding** |
 
    It runs a loop (LangGraph): **decide** (the LLM picks a tool) → **act** (the tool runs) → decide… until every candidate has a letter, it says `finish`, or 8 steps are used.
-3. **Level 2** compares numeric requirements with the same product group (8-digit code); it speaks only when an attribute has 8 comparable tenders.
+3. **Level 2** compares numeric requirements with the same product group (8-digit code); it speaks only when an attribute has 8 comparable tenders. Dormant today (finds nothing usable); `--no-level2` skips it everywhere — no numbers extracted, no peers compared — and changes no route.
 
 ## Tools the agent chooses from
 | Tool | Gives |

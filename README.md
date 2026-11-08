@@ -96,6 +96,7 @@ Open `reports/kb/2510/batches/<date>_queue.html`.
 | `--reprocess REF… / quarantine / all` | run tenders again with today's code (auditor-judged tenders are kept) |
 | `--queue [STAMP]` | rebuild a queue from the case log |
 | `--until YYYY-MM-DD` | only tenders published up to that date |
+| `--no-level2` | skip level 2 (numbers compared with peer tenders): dormant today, never changes a route. Also on `tenderlens.py` and `demo.py` |
 | `--status` | what is in the knowledge base |
 | `--feedback` | apply the auditor's verdicts from `reports/kb/<group>/feedback.csv` |
 
@@ -134,7 +135,7 @@ One line per case in `feedback.csv` (`reference,verdict,note,reviewer,date`), th
 
 - **M2 on the 40 held-out names** (never used for tuning): rules alone find **1 of 8** real lock-ins; with the M2 agent, **6 of 7** (precision 6 of 10). 3 of its 4 false findings were the buyer's own equipment described elsewhere in the tender; since 2026-11-04 the agent is shown those sentences and what the tender buys before its first step (re-measure pending).
 - **Synthetic test (2510):** of 160 rigged copies, the brand is found in 64 offline; 17 reach alert; 0 of 120 clean copies are flagged.
-- **Peer comparison (level 2)** stays dormant: few product groups have 8 comparable tenders yet.
+- **Peer comparison (level 2)** stays dormant: few product groups have 8 comparable tenders yet. It runs by default; `--no-level2` skips it (same routes on the demo and on 120 tenders of 2510).
 
 ---
 

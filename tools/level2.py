@@ -37,6 +37,10 @@ POSITION_Z = 3.0
 CONJUNCTION = 2
 
 LEVEL = [8]
+# One switch for all of level 2 (decision 42): False skips it everywhere - no
+# numbers extracted per tender, no peers compared, no level-2 claim. True is
+# the behaviour before the switch. Set by --no-level2.
+ON = [True]
 SIGNALS = {"band", "position"}
 
 

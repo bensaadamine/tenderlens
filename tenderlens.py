@@ -63,7 +63,7 @@ def load_shared(verbose=True):
     if verbose:
         print(f"notices: {len(notices):,} ({time.time()-t:.0f}s)")
     try:
-        rows = level2.load_observations()
+        rows = level2.load_observations() if level2.ON[0] else []
     except SystemExit as e:
         print(f"level 2 knowledge base unavailable: {e}")
         rows = []
@@ -324,9 +324,13 @@ def main():
     ap.add_argument("--l2-level", type=int, choices=[6, 8], default=8,
                     help="UNSPSC digits for level-2 peer groups (default 8; "
                          "6 restores the old grouping)")
+    ap.add_argument("--no-level2", action="store_true",
+                    help="skip level 2 (numbers compared with peer tenders; "
+                         "dormant, finds nothing usable today)")
     brands.add_l1_args(ap)
     a = ap.parse_args()
     level2.LEVEL[0] = a.l2_level
+    level2.ON[0] = not a.no_level2
     brands.apply_l1_args(a)
 
     c = run_one(a.tender, load_shared(), online=a.online, agent=a.agent,

@@ -219,10 +219,16 @@ def _check_sources(findings, docs, trace):
 def _finish(reference, rows, l1, trace, docs=None):
     """Level 2, then every finding normalised with its source."""
     # ------------------------------------------------------------ level 2
-    if rows is None:
-        rows = level2.load_observations()
-    l2 = level2.tight_requirements(reference, _rows=rows)
-    if l2.get("error"):
+    if not level2.ON[0]:
+        l2 = {"off": True}
+        trace.append("level 2: off (--no-level2)")
+    else:
+        if rows is None:
+            rows = level2.load_observations()
+        l2 = level2.tight_requirements(reference, _rows=rows)
+    if l2.get("off"):
+        pass
+    elif l2.get("error"):
         trace.append(f"level 2: {l2['error']}")
     else:
         trace.append(f"level 2: {l2['score']} tight attribute(s) against "
@@ -310,6 +316,8 @@ def _slim_l1(l1):
 
 
 def _slim_l2(l2):
+    if (l2 or {}).get("off"):
+        return {"off": True}
     if not l2 or l2.get("error"):
         return {"error": (l2 or {}).get("error")}
     return {"score": l2["score"], "verdict": l2["verdict"],
