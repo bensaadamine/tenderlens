@@ -14,6 +14,9 @@ TENDERLENS - the one command. Every part of the system starts here.
                                                    data preparation, in that order
     python tenderlens.py llm [--usage]             the pinned models; tokens spent
 
+    python tenderlens.py --offline <command> ...   model answers from the cache only:
+                                                   a missing one is reported, never paid
+
 Add -h after any command for its options. A single module also runs on its
 own from the repository root: python -m tools.brands --tender <ref>
 
@@ -68,6 +71,9 @@ def main(argv=None):
     if not argv or argv[0] in ("-h", "--help", "help"):
         print(__doc__)
         return 0
+    if argv[0] == "--offline":
+        os.environ["TENDERLENS_OFFLINE"] = "1"
+        argv = argv[1:]
     cmd, rest = argv[0], argv[1:]
     if cmd == "test":
         return run_tests()

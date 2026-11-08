@@ -239,6 +239,8 @@ def main():
     # ---- M2: one brand written several ways is one finding
     from agents import m2_spec_auditor as m2s
     rows = [{"brand": "FormLabs Form", "occurrences": 1, "agent_letter": "f",
+             "document": "01_rfp.pdf", "page": 9, "line_no": 2642,
+             "evidence": "DFS - Formlabs form - 3D Resin printer",
              "decided_by": "the M2 agent: brand required, no equivalent"},
             {"brand": "Formlabs", "occurrences": 1, "agent_letter": "f",
              "decided_by": "the M2 agent: brand required, no equivalent"},
@@ -249,10 +251,17 @@ def main():
           [r["brand"] for r in merged] == ["Formlabs", "Bendix"]
           and merged[0]["also_written"] == ["FormLabs Form"]
           and merged[0]["occurrences"] == 2)
+    check("a merged spelling keeps its own place and words",
+          any("l.2642" in x and "FormLabs Form" in x
+              for x in merged[0]["locations"]))
+    ge = m2s.merge_spellings([{"brand": "General Electric"},
+                              {"brand": "General Motors"}])
+    check("two companies sharing a first word stay two findings",
+          [r["brand"] for r in ge] == ["General Electric", "General Motors"])
     m2s.SAME_BRAND = None
     check("SAME_BRAND = None restores one finding per spelling",
           len(m2s.merge_spellings(rows)) == 3)
-    m2s.SAME_BRAND = "first word"
+    m2s.SAME_BRAND = "prefix"
     names = m2s.names_checked({"findings": merged, "ok": [],
                                "unresolved": [], "dropped": [
                                    {"brand": "RFSA", "decided_by":

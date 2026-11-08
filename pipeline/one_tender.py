@@ -177,8 +177,12 @@ def main():
     level2.ON[0] = not a.no_level2
     brands.apply_l1_args(a)
 
-    c = run_one(a.tender, load_shared(), online=a.online, agent=a.agent,
-                m3_agent=a.m3_agent, m4_mode=a.m4_checks)
+    try:
+        c = run_one(a.tender, load_shared(), online=a.online, agent=a.agent,
+                    m3_agent=a.m3_agent, m4_mode=a.m4_checks)
+    except AGENT_DOWN as e:
+        print(f"\nstopped: {e}")
+        return 1
     print(f"\n{c['reference']}  ->  {c['route'].upper()}  "
           f"(score {c['score']}, M1 {c['m1_route']})\n")
     print(c["narrative"])

@@ -459,13 +459,11 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
     tools: [llm.tool(...)] for native tool calling; a tool call comes back
     as JSON text {"thought", "action", "args"}.
 
-    Raises NoProvider if no key is set, or RuntimeError if every provider
-    failed - the caller decides what to do, because a silent empty answer
-    would look like "no findings".
+    Raises NotCached offline (TENDERLENS_OFFLINE=1) when the answer is not
+    in the cache, NoProvider if no key is set, or RuntimeError if every
+    provider failed - the caller decides what to do, because a silent empty
+    answer would look like "no findings".
     """
-    provs = available()
-    if not provs:
-        raise NoProvider("set GROQ_API_KEY (free at console.groq.com)")
     if NATIVE_TOOLS != "on":
         tools = None
     # the tool list is part of the question: same prompt, other tools,
@@ -475,9 +473,9 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
 
     cache = _load_cache()
     errors = []
-    # A saved answer is reused whichever provider gave it - otherwise sharing
-    # the load would re-ask, on the other provider, questions already paid for.
-    for p in provs:
+    # A saved answer is reused whichever pinned model gave it, key or no key:
+    # a replay needs no account, and an answer already paid is never re-asked.
+    for p in PROVIDERS:
         fast, strg = models_for(p, verbose=verbose)
         model = (strg if strong else fast)
         if not model:
@@ -489,6 +487,11 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
         if ck in cache and cache[ck].get("answer", "").strip():
             _log_usage(tag, p["name"], model, {}, True, 0)
             return cache[ck]["answer"]
+    if offline():
+        raise NotCached(f"not in the cache (offline replay, {tag or 'llm'})")
+    provs = available()
+    if not provs:
+        raise NoProvider("set GROQ_API_KEY (free at console.groq.com)")
     est = _estimate(system + user) + max_tokens // 4
     for p in _order(provs, est):
         if _down_until.get(p["name"], 0) - time.time() > DOWN_FOR:
@@ -594,6 +597,17 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
     if any(e.endswith("empty answer") for e in errors):
         raise EmptyAnswer(msg)
     raise RuntimeError(msg)
+
+
+class NotCached(RuntimeError):
+    """Offline, and this question was never answered: nothing is sent. The
+    agents stop on it as on an outage, so a replay never pays silently."""
+
+
+def offline():
+    """TENDERLENS_OFFLINE=1: answers come from the cache only, never a
+    provider (python tenderlens.py --offline <command>, demo --offline)."""
+    return os.environ.get("TENDERLENS_OFFLINE") == "1"
 
 
 class EmptyAnswer(RuntimeError):

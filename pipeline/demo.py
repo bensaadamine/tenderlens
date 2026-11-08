@@ -53,13 +53,16 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--offline", action="store_true",
                     help="no network: Wikidata and model answers from the "
-                         "caches only")
+                         "caches only; a missing answer is reported, never "
+                         "paid")
     ap.add_argument("--no-level2", action="store_true",
                     help="skip level 2 (dormant: numbers against peers)")
     ap.add_argument("--setups", nargs="+", choices=list(SETUPS),
                     default=list(SETUPS))
     a = ap.parse_args()
     online = not a.offline
+    if a.offline:                     # model answers from the cache only
+        os.environ["TENDERLENS_OFFLINE"] = "1"
     level2.ON[0] = not a.no_level2
 
     shared = one_tender.load_shared(verbose=False)

@@ -108,6 +108,32 @@ def test_llm():
     finally:
         llm.USAGE_PATH, llm.ERRORS_PATH = saved_paths
 
+    # offline: a cached answer is served with no key; a missing one is
+    # reported, never sent
+    saved = {k: getattr(llm, k) for k in ("_post", "_load_cache", "_log_usage",
+                                          "available")}
+    sent = []
+    model = llm.PROVIDERS[0]["strong"]
+    llm._load_cache = lambda path=None: {llm._key(model, "s", "cached"):
+                                         {"answer": "yes"}}
+    llm._log_usage = lambda *a, **k: None
+    llm.available = lambda: []                       # no key at all
+    llm._post = lambda *a, **k: sent.append(a) or ("paid", {})
+    os.environ["TENDERLENS_OFFLINE"] = "1"
+    try:
+        hit = llm.ask("s", "cached", strong=True)
+        try:
+            llm.ask("s", "never asked", strong=True)
+            missed = False
+        except llm.NotCached:
+            missed = True
+        check("offline: a cached answer needs no key; a miss is reported, "
+              "nothing sent", hit == "yes" and missed and not sent)
+    finally:
+        os.environ.pop("TENDERLENS_OFFLINE", None)
+        for k, v in saved.items():
+            setattr(llm, k, v)
+
     groq, gemini = llm.PROVIDERS
     check("the pinned models are the ones the cache was filled with",
           llm.models_for(groq) == ("openai/gpt-oss-20b",

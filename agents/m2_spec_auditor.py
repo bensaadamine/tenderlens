@@ -84,7 +84,7 @@ WDOC_MIN_REQS = 5
 def _llm_available():
     try:
         from tools import llm
-        return bool(llm.available())
+        return bool(llm.available()) or llm.offline()   # offline: the cache answers
     except Exception:
         return False
 
@@ -197,39 +197,43 @@ def _agent_pass(reference, l1, online, trace, title=""):
                 agent={k: out[k] for k in ("steps", "stop_reason", "engine")})
 
 
-# One brand written several ways in a tender ("Formlabs", "FormLabs Form")
-# is one finding: findings whose names share their first word are merged.
-# Counted apart, two spellings made two brands and an alert (Formlabs, demo
-# 2026-11-08). The error the rule can make (two companies sharing a first
-# word, both required) costs an alert, never adds one. None: one finding
-# per spelling.
-SAME_BRAND = "first word"
+# One brand written several ways in a tender is one finding: a spelling
+# joins a SHORTER finding whose words it begins with - "FormLabs Form" and
+# "FormLabs From" join "Formlabs". Counted apart, they made two brands and an
+# alert (Formlabs, demo 2026-11-08). "General Electric" and "General Motors"
+# stay two findings: neither begins with the other. A merged spelling keeps
+# its own place and words in the finding's evidence. None: one finding per
+# spelling.
+SAME_BRAND = "prefix"
 
 
-def _first_word(name):
-    words = re.findall(r"[a-z0-9]+", (name or "").lower())
-    return words[0] if words else (name or "").lower()
+def _words(name):
+    return re.findall(r"[a-z0-9]+", (name or "").lower())
 
 
 def merge_spellings(findings):
-    """Level-1 findings -> one per brand. The kept row: lettered by the
-    agent first, then the shortest name (the plainest spelling: "Formlabs",
-    not "FormLabs Form"); the others go in also_written."""
+    """Level-1 findings -> one per brand (see SAME_BRAND). The kept row is
+    the shortest spelling; the others go in also_written, and their
+    locations and words first in its list of other locations."""
     if SAME_BRAND is None:
         return findings
-    groups = {}
-    for f in findings:
-        groups.setdefault(_first_word(f["brand"]), []).append(f)
-    out = []
-    for fs in groups.values():
-        fs = sorted(fs, key=lambda f: (f.get("agent_letter") != "f",
-                                       len(f["brand"])))
-        main = dict(fs[0])
-        if fs[1:]:
-            main["also_written"] = [f["brand"] for f in fs[1:]]
-            main["occurrences"] = sum(f.get("occurrences", 1) for f in fs)
-        out.append(main)
-    return out
+    hosts = []                         # (words, row), shortest names first
+    for f in sorted(findings, key=lambda f: len(_words(f["brand"]))):
+        w = _words(f["brand"])
+        host = next((h for hw, h in hosts if w[:len(hw)] == hw), None)
+        if host is None:
+            hosts.append((w, dict(f)))
+            continue
+        host["also_written"] = host.get("also_written", []) + [f["brand"]]
+        host["occurrences"] = (host.get("occurrences", 1)
+                               + f.get("occurrences", 1))
+        here = (f"{f.get('document')} p.{f.get('page')} l.{f.get('line_no')}"
+                f" ('{f['brand']}': {str(f.get('evidence') or '')[:100]})")
+        locs = host.get("locations") or [""]
+        host["locations"] = locs[:1] + [here] + locs[1:]
+    rows = [h for _w, h in hosts]
+    order = {f["brand"]: i for i, f in enumerate(findings)}
+    return sorted(rows, key=lambda r: order[r["brand"]])
 
 
 def names_checked(l1):
