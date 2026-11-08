@@ -2,11 +2,11 @@
 The M2 exam: run level 1 on every case judged by hand and compare the letter
 it gives with the auditor's.
 
-    python tests/m2_eval.py                    # rules only (the baseline)
-    python tests/m2_eval.py --agent --online   # with the M2 agent (Windows)
-    python tests/m2_eval.py --split holdout    # one set only
-    python tests/m2_eval.py --only cb-425-92729935      # a partial run
-    python tests/m2_eval.py --sample           # build the held-out set to label
+    python tenderlens.py eval m2                    # rules only (the baseline)
+    python tenderlens.py eval m2 --agent --online   # with the M2 agent (Windows)
+    python tenderlens.py eval m2 --split holdout    # one set only
+    python tenderlens.py eval m2 --only cb-425-92729935      # a partial run
+    python tenderlens.py eval m2 --sample           # build the held-out set to label
 
 Letters are the auditor's grid: a not a brand, b bidder speaking, c buyer's
 equipment, d list of brands, e equivalent accepted, f required with no
@@ -33,10 +33,6 @@ would measure the rules again (it did, on 2026-10-22). Such tenders are
 listed apart; after STOP_AFTER of them in a row the run stops.
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import argparse
 import collections
@@ -49,11 +45,10 @@ import random
 import subprocess
 import time
 
-import m2_spec_auditor
+from agents import m2_spec_auditor
 
-m2_spec_auditor.AGENT_DOWN = "keep"   # tenders the agent missed are listed apart
-import brands
-import documents
+from tools import brands
+from tools import documents
 
 LABELS = os.path.join("tests", "m2_labels.csv")
 HOLDOUT = os.path.join("tests", "m2_holdout.csv")
@@ -316,6 +311,10 @@ def _row(ref, r, source):
 
 # ------------------------------------------------------------------ main
 def main():
+    # Tenders the agent could not run on are listed apart, not a stop. Set
+    # here, not at import: importing this module must not change how the
+    # agents behave for the caller (2026-11-08).
+    m2_spec_auditor.AGENT_DOWN = "keep"
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--agent", action="store_true")
     ap.add_argument("--online", action="store_true")
@@ -365,7 +364,7 @@ def main():
         m2_spec_auditor.AGENT_ONLY = only
     titles = {}
     if a.agent:                     # what each tender buys, shown to the agent
-        import m1_screener
+        from agents import m1_screener
         notices = m1_screener.load_notices()
         titles = {r: (notices.get(r) or {}).get(m1_screener.C_TITLE, "")
                   for r in by_ref}

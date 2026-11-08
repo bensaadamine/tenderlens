@@ -14,17 +14,12 @@ Answers:
 
 Run:
     pip install requests
-    python prepare/01_profile_tenders.py
+    python tenderlens.py prepare profile
 
 It reuses data/tenders.csv if present, otherwise downloads it (185 MB).
 If you already have it from the spike, copy it in first:
     copy ..\\canada\\canada_spike\\all_tenders.csv data\\tenders.csv
 """
-
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import argparse

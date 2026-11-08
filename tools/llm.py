@@ -23,14 +23,9 @@ the delay the server asks for.
 Every answer is cached in reports/llm_cache.json, keyed by the model and a
 hash of the prompt, so a re-run costs nothing and gives the same verdicts.
 
-    python tools/llm.py           # which models, and one test call
-    python tools/llm.py --usage   # tokens spent, by caller
+    python tenderlens.py llm           # which models, and one test call
+    python tenderlens.py llm --usage   # tokens spent, by caller
 """
-
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import csv
@@ -627,13 +622,13 @@ def ask_json(system, user, **kw):
 
 
 # ---------------------------------------------------------------------- main
-if __name__ == "__main__":
+def main():
     provs = available()
     if not provs:
         print("No LLM provider configured.")
         print("Free key: https://console.groq.com  then put this in .env:")
         print("  GROQ_API_KEY=gsk_...")
-        sys.exit(1)
+        return 1
 
     if "--usage" in sys.argv:
         calls, cached, total, by_tag = usage_summary()
@@ -643,7 +638,7 @@ if __name__ == "__main__":
         for t, d in sorted(by_tag.items(), key=lambda x: -x[1]["tok"]):
             print(f"  {(t or '(none)'):24s} {d['calls']:6d} "
                   f"{d['cached']:7d} {d['tok']:9,}")
-        sys.exit(0)
+        return 0
 
     print("configured, in fallback order"
           + (" (sharing calls: TENDERLENS_SHARE=1)" if SHARE else "") + ":")
@@ -660,5 +655,10 @@ if __name__ == "__main__":
         print("  ->", r)
     except Exception as e:
         print(f"  failed: {type(e).__name__}: {e}")
-        sys.exit(1)
+        return 1
     print("\nOK")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -14,15 +14,14 @@ cb-952-81230837 Johnson Controls), and their false alarms stayed. Kept so
 the comparison can be re-run; the main path does not import it.
 """
 
-import repo  # noqa: F401  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import json
 from typing import TypedDict
 
-import agent_loop
-import m4_case_builder as m4
-import m4_checks as checks
-from m4_checks import _brand_findings
+from agents import agent_loop
+from agents import m4_case_builder as m4
+from agents import m4_checks as checks
+from agents.m4_checks import _brand_findings
 
 MAX_STEPS = 4
 
@@ -70,7 +69,7 @@ Reply with ONE JSON object and nothing else:
 
 def _tools():
     """Native tool schemas (llm.tool); same tools as the prompt."""
-    import llm
+    from tools import llm
     t = llm.tool
     return [
         t("recheck", "The spec agent re-reads these brand findings in the "
@@ -243,7 +242,7 @@ def coordinate(reference, m1, m2, m3, hooks, ask=None, use_graph=True):
     if not available(state, hooks):
         return checks.mark(case, "model", [], "nothing to check")
     if ask is None:
-        import llm
+        from tools import llm
         ask = lambda system, user: llm.ask_json(
             system, user, strong=True, max_tokens=1500, tag="m4_agent",
             tools=_tools())

@@ -31,14 +31,10 @@ What stays in CODE, never left to the model:
     reason; a row the auditor writes (decided_by = auditor) wins, and a
     pair already decided is never asked again.
 
-    from m3_agent import aliases_for
+    from agents.m3_agent import aliases_for
     out = aliases_for("AGILENT TECHNOLOGIES", graph)   # -> {"same": [...]}
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import csv
 import io
@@ -48,7 +44,7 @@ import re
 import time
 from typing import TypedDict
 
-import agent_loop
+from agents import agent_loop
 
 ALIASES = os.path.join("reports", "supplier_aliases.csv")
 ALIAS_COLS = ["winner", "name", "verdict", "reason", "decided_by", "date"]
@@ -244,7 +240,7 @@ Reply with ONE JSON object and nothing else:
 
 def _tools():
     """Native tool schemas (llm.tool, 2026-11-01); same tools as the prompt."""
-    import llm
+    from tools import llm
     t = llm.tool
     names = {"type": "array", "items": {"type": "string"}}
     return [
@@ -423,7 +419,7 @@ def aliases_for(winner, graph, ask=None, use_graph=True, path=None,
         return out
 
     if ask is None:
-        import llm
+        from tools import llm
         ask = lambda system, user: llm.ask_json(
             system, user, strong=True, max_tokens=2000, tag="m3_agent",
             tools=None if system == FINAL_SYSTEM else _tools())

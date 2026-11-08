@@ -1,8 +1,8 @@
 """
 THE DEMO - the system on seven chosen tenders, three ways, side by side.
 
-    python demo.py             # Windows: online; the first run fills the caches
-    python demo.py --offline   # anywhere: replays from the caches, no network
+    python tenderlens.py demo             # Windows: online; the first run fills the caches
+    python tenderlens.py demo --offline   # anywhere: replays from the caches, no network
 
 Each tender is here for one reason (TENDERS below). The three setups:
 
@@ -18,16 +18,16 @@ Writes reports/demo/<stamp>/: summary.txt (the table below) and, per setup,
 <setup>_queue.html / .csv / .json - the case pages an auditor would open.
 """
 
-import repo  # noqa: F401  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import argparse
 import io
 import os
 import time
 
-import level2
-import llm
-import tenderlens
+from tools import level2
+from tools import llm
+from tools import report
+from pipeline import one_tender
 
 TENDERS = [
     ("cb-484-58375289", "real lock-in: SUSS Microtec required, no equivalent"),
@@ -62,7 +62,7 @@ def main():
     online = not a.offline
     level2.ON[0] = not a.no_level2
 
-    shared = tenderlens.load_shared(verbose=False)
+    shared = one_tender.load_shared(verbose=False)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     out_dir = os.path.join("reports", "demo", stamp)
     os.makedirs(out_dir, exist_ok=True)
@@ -73,18 +73,18 @@ def main():
         cases = []
         for ref, _why in TENDERS:
             try:
-                c = tenderlens.run_one(ref, shared, online=online,
+                c = one_tender.run_one(ref, shared, online=online,
                                        **SETUPS[name])
                 routes[name, ref] = f"{c['route']} {c['score']}"
                 cases.append(c)
-            except tenderlens.AGENT_DOWN as e:
+            except one_tender.AGENT_DOWN as e:
                 routes[name, ref] = ("not in cache" if a.offline
                                      else "no model")
                 print(f"  {name} {ref}: {str(e)[:120]}")
             print(f"  {name:8} {ref:18} {routes[name, ref]}")
         tokens[name] = llm.agent_tokens(llm.usage_rows()[start:])
         if cases:
-            tenderlens.write_outputs(cases, {
+            report.write_outputs(cases, {
                 "scope": f"demo, setup '{name}'"
                          f"{' (replayed offline)' if a.offline else ''}",
                 "generated": time.strftime("%Y-%m-%d %H:%M"),

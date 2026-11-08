@@ -7,11 +7,6 @@ two-sided bands, which needs no peers. Measured on 2510: peer comparison
 finds nothing usable (see MEASUREMENT_LOG), so results are low confidence.
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
-
 
 import argparse
 import collections
@@ -55,7 +50,7 @@ def mad(values, med=None):
 def load_observations(census=CENSUS):
     """Load the mapped census; key each row by (family, dimension, attribute)."""
     if not os.path.exists(census):
-        raise SystemExit(f"missing {census} - run prepare/04_census.py --map first")
+        raise SystemExit(f"missing {census} - run prepare/census.py --map first")
     with io.open(census, encoding="utf-8", errors="replace", newline="") as f:
         return prepare(csv.DictReader(f))
 
@@ -64,7 +59,7 @@ def prepare(rows):
     """Keep rows with a converted value; add _v, _lo, _hi and the peer key.
 
     Shared by the batch census and the incremental knowledge base
-    (tenderlens_stream.py), so both compare tenders the same way.
+    (pipeline/stream.py), so both compare tenders the same way.
     """
     out = []
     for r in rows:

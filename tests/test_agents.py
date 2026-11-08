@@ -2,16 +2,11 @@
 Tests for the rules M3 and M4 claim to enforce. No data needed - builds a
 synthetic award file and synthetic agent outputs.
 
-    python tests/test_agents.py
+    python -m tests.test_agents
 
 Each check is one sentence of the design stated as a test. If one fails, the
 module's docstring is lying about what it does.
 """
-
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import csv
@@ -19,8 +14,8 @@ import os
 import sys
 import tempfile
 
-import m3_investigator as m3
-import m4_case_builder as m4
+from agents import m3_investigator as m3
+from agents import m4_case_builder as m4
 
 FAILS = 0
 
@@ -185,7 +180,7 @@ def main():
               and "one of the 2 suppliers" in x["claim"]
               for x in c8["claims"]) and c8["route"] == "alert")
 
-    import documents as m2a
+    from tools import documents as m2a
     docs = [{"document": "rfp.pdf",
              "text": "ANNEX A\nThe crane must be\nPalfinger model PK11001;\n"},
             {"document": "amd.pdf", "text": "Question 1: other text"}]
@@ -227,7 +222,7 @@ def main():
           c8["route"] == "close" and c8["score"] == 3)
 
     # ---- M2: one brand written several ways is one finding
-    import m2_spec_auditor as m2s
+    from agents import m2_spec_auditor as m2s
     rows = [{"brand": "FormLabs Form", "occurrences": 1, "agent_letter": "f",
              "decided_by": "the M2 agent: brand required, no equivalent"},
             {"brand": "Formlabs", "occurrences": 1, "agent_letter": "f",

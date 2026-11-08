@@ -6,20 +6,16 @@ and only when open, a re-read that clears a finding drops the route, a
 spelling that matches the brand raises it, a missing model never changes a
 case silently, and the LangGraph graph and the plain loop agree.
 
-    python tests/test_m4_model_coordinator.py
+    python -m tests.test_m4_model_coordinator
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import copy
 import sys
 
-import m4_case_builder as m4
-import m4_checks
-import m4_model_coordinator as mc
+from agents import m4_case_builder as m4
+from agents import m4_checks
+from experiments import m4_model_coordinator as mc
 
 FAILS = 0
 DOC = "01_rfp.pdf"

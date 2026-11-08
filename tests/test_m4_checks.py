@@ -5,19 +5,15 @@ order and only when open, only code sets the route, a re-read that clears a
 finding drops the route, a spelling that matches the brand raises it, and a
 missing model never changes a case silently.
 
-    python tests/test_m4_checks.py
+    python -m tests.test_m4_checks
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import copy
 import sys
 
-import m4_case_builder as m4
-import m4_checks
+from agents import m4_case_builder as m4
+from agents import m4_checks
 
 FAILS = 0
 DOC = "01_rfp.pdf"
@@ -206,7 +202,7 @@ def main():
           case["route"] == before["route"])
 
     try:
-        import m2_agent
+        from agents import m2_agent
         check("M4's letters are M2's letters",
               m4_checks.LETTERS == m2_agent.LETTERS)
     except Exception as e:

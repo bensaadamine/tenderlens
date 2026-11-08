@@ -4,14 +4,14 @@ M3 INVESTIGATOR.
 Builds the buyer -> supplier graph from CanadaBuys AWARD notices and answers,
 for ONE tender: who won it, and is that a pattern?
 
-    from m3_investigator import investigate
+    from agents.m3_investigator import investigate
     investigate("cb-258-72766150", notices, graph)
 
 Get the data once, ON WINDOWS (canadabuys.canada.ca is blocked from the
 agent's container and from the device shell - CLAUDE.md gotchas):
 
-    python agents/m3_investigator.py --fetch          # -> data/awards.csv
-    python agents/m3_investigator.py --columns        # check what was detected
+    python tenderlens.py awards --fetch          # -> data/awards.csv
+    python tenderlens.py awards --columns        # check what was detected
 
 ---------------------------------------------------------------- the stance
 
@@ -41,11 +41,6 @@ by the person who wrote this module; guessing its column names would be the
 same mistake as guessing a unit (decision 15). If detection fails, the error
 lists every header so the mapping can be fixed in one line.
 """
-
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import argparse
@@ -313,7 +308,7 @@ def investigate(reference, notice_row=None, graph=None, agent=False,
     trace = []
     if graph is None:
         trace.append("no award data (data/awards.csv) - run "
-                     "`python agents/m3_investigator.py --fetch` on Windows")
+                     "`python tenderlens.py awards --fetch` on Windows")
         return {"reference": reference, "available": False,
                 "award": None, "findings": [], "trace": trace}
 
@@ -423,7 +418,7 @@ def investigate(reference, notice_row=None, graph=None, agent=False,
 
 def _agent_aliases(sup, graph, trace, only=None):
     """Spellings the M3 agent judged to be the same supplier."""
-    import m3_agent
+    from agents import m3_agent
     try:
         out = m3_agent.aliases_for(sup, graph, only=only)
     except Exception as e:                 # no key, no provider
@@ -463,7 +458,7 @@ def main():
             print(f"  {k:9} <- {v}")
         return
     if a.tender:
-        import m1_screener
+        from agents import m1_screener
         notices = m1_screener.load_notices()
         print(json.dumps(investigate(a.tender, notices.get(a.tender), g),
                          indent=2, default=str))

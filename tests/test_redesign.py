@@ -11,13 +11,9 @@ The 2026-11-01 changes, tested offline (no data, no network, no tokens):
   * M3: decisions shared by a group of spellings; no chained merges;
   * the incremental run's --reprocess.
 
-    python tests/test_redesign.py
+    python -m tests.test_redesign
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import io
 import json
@@ -27,10 +23,10 @@ import tempfile
 import time
 import urllib.error
 
-import llm
-import m2_agent
-import m3_agent
-import documents
+from tools import llm
+from agents import m2_agent
+from agents import m3_agent
+from tools import documents
 
 FAILS = 0
 
@@ -186,7 +182,7 @@ def test_m2():
 
 # ------------------------------------------------------------------ M3
 def test_m3():
-    import test_m3_agent as fx
+    from tests import test_m3_agent as fx
     tmp = tempfile.mkdtemp()
     g = fx.make_graph(tmp)
     index = m3_agent.AwardIndex(g)
@@ -228,8 +224,8 @@ def test_m3():
 
 # ------------------------------------------------------------------ stream
 def test_reprocess():
-    import m1_screener
-    import tenderlens_stream as ts
+    from agents import m1_screener
+    from pipeline import stream as ts
     kb = ts.KB("9999", tempfile.mkdtemp())
     notices = {r: {m1_screener.C_UNSPSC: "99990000",
                    m1_screener.C_PUB: d}

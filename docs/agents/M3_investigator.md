@@ -40,9 +40,9 @@ The award file writes one company several ways ("Agilent Technologies" / "Agilen
 
 ## Run it alone
 ```bash
-python agents/m3_investigator.py --fetch      # once, on Windows
-python agents/m3_investigator.py --columns    # check the detected columns
-python agents/m3_investigator.py --tender cb-425-92729935
+python tenderlens.py awards --fetch      # once, on Windows
+python tenderlens.py awards --columns    # check the detected columns
+python tenderlens.py awards --tender cb-425-92729935
 ```
 
 ## Rules it must keep

@@ -19,21 +19,18 @@ found in the requirements section (documents.py), outside bidders'
 questions. Whether it is a company: wikidata.py. The clearances read the
 WHOLE tender - an "or equivalent" written over a table covers every row.
 
-    python tools/brands.py --tender PW-23-01022340 [--offline]
+    python -m tools.brands --tender PW-23-01022340 [--offline]
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
+import sys
 import argparse
 import json
 import re
 
-from documents import (amendment_view, is_amendment, question_mask,
+from tools.documents import (amendment_view, is_amendment, question_mask,
                        requirement_view, tender_documents)
-from wikidata import load_cache, verify_brand
+from tools.wikidata import load_cache, verify_brand
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")

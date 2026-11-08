@@ -32,13 +32,13 @@ Four agents look at one tender at a time, each from a different angle, and the l
 ## Folder layout
 
 ```
-repo.py                puts the folders below on the import path (every script imports it)
-tenderlens_stream.py   run a category tender by tender against a growing knowledge base
-tenderlens.py          the four agents on one tender (run_one); --tender prints one case in full
+tenderlens.py          the one command: demo, tender, run, test, eval, awards, prepare, llm
+pipeline/              one_tender.py (the four components on one tender), stream.py (a category,
+                       tender by tender, against its knowledge base), demo.py
 agents/                M1–M4; m4_checks.py = M4's checks; agent_loop.py = the loop the M2 and M3 agents share
 tools/                 documents.py (a tender's text), brands.py (brand rules), wikidata.py,
-                       level2.py (peer comparison), llm.py (LLM access)
-prepare/               data preparation, run in order 01 → 05
+                       level2.py (peer comparison), llm.py (LLM access), report.py (the queue pages)
+prepare/               data preparation, in order: profile → docs → text → census → labels
 tests/                 offline tests (test_*.py), evaluations (m2_eval.py, m4_eval.py), synth_rig.py
 experiments/           measured and not chosen: m4_model_coordinator.py (a model choosing M4's checks)
 docs/agents/           one page per agent
@@ -46,7 +46,7 @@ data/                  not in git: tenders.csv, awards.csv, downloaded documents
 reports/               not in git: extracted text, knowledge bases, audit queues, caches
 ```
 
-Run every command **from the repository root**.
+Everything starts from `python tenderlens.py <command>` (`-h` for the list); it always works from the repository root. Folders are normal Python packages (`from tools import brands`); a single module runs with `python -m tools.brands ...` from the root.
 
 ---
 
@@ -58,9 +58,9 @@ pip install -r requirements.txt     # requests, pdfminer.six, langgraph
 
 No `pandas` (blocked on our Windows machines) — standard library plus those two.
 
-LLM keys go in `.env` (never committed): `GROQ_API_KEY=...`, and optionally `GEMINI_API_KEY=...`. The models are pinned (`tools/llm.py`): Groq's gpt-oss-120b answers every agent call; Gemini is used only when Groq fails or its daily quota is spent. `TENDERLENS_SHARE=1` shares calls between the two instead (twice the calls a minute, but verdicts can differ between runs). `python tools/llm.py` shows the models; `--usage` the tokens spent.
+LLM keys go in `.env` (never committed): `GROQ_API_KEY=...`, and optionally `GEMINI_API_KEY=...`. The models are pinned (`tools/llm.py`): Groq's gpt-oss-120b answers every agent call; Gemini is used only when Groq fails or its daily quota is spent. `TENDERLENS_SHARE=1` shares calls between the two instead (twice the calls a minute, but verdicts can differ between runs). `python tenderlens.py llm` shows the models; `--usage` the tokens spent.
 
-**Network is needed only on Windows**: downloads (`prepare/01`, `prepare/02`, `agents/m3_investigator.py --fetch`), Wikidata (`--online`), the LLM (`--agent`, `--m3-agent`, `--m4-checks`, `prepare/05`).
+**Network is needed only on Windows**: downloads (`prepare profile`, `prepare docs`, `awards --fetch`), Wikidata (`--online`), the LLM (`--agent`, `--m3-agent`, `--m4-checks`, `prepare labels`).
 
 ---
 
@@ -69,8 +69,8 @@ LLM keys go in `.env` (never committed): `GROQ_API_KEY=...`, and optionally `GEM
 **The demo** — seven chosen tenders (real lock-ins, false alarms, an ordinary tender), each run three ways side by side: rules only; rules + M4 sending flagged findings back to the M2 agent; every agent.
 
 ```bash
-python demo.py               # Windows, online: the first run fills the caches
-python demo.py --offline     # anywhere: replays from the caches, no network
+python tenderlens.py demo               # Windows, online: the first run fills the caches
+python tenderlens.py demo --offline     # anywhere: replays from the caches, no network
 ```
 
 Writes `reports/demo/<stamp>/summary.txt` (the table) and one queue page per setup.
@@ -78,11 +78,11 @@ Writes `reports/demo/<stamp>/summary.txt` (the table) and one queue page per set
 First time, for one category (example 2510, motor vehicles):
 
 ```bash
-python prepare/01_profile_tenders.py                  # notices feed (reuses data/tenders.csv)
-python prepare/02_fetch_docs.py --only 2510 --per-cat 0
-python prepare/03_inspect_specs.py                    # extract text -> reports/text/
-python agents/m3_investigator.py --fetch              # award notices, once
-python tenderlens_stream.py --group 2510 --online     # the four agents, tender by tender
+python tenderlens.py prepare profile                  # notices feed (reuses data/tenders.csv)
+python tenderlens.py prepare docs --only 2510 --per-cat 0
+python tenderlens.py prepare text                     # extract text -> reports/text/
+python tenderlens.py awards --fetch                   # award notices, once
+python tenderlens.py run --group 2510 --online        # the four components, tender by tender
 ```
 
 Open `reports/kb/2510/batches/<date>_queue.html`.
@@ -96,14 +96,14 @@ Open `reports/kb/2510/batches/<date>_queue.html`.
 | `--reprocess REF… / quarantine / all` | run tenders again with today's code (auditor-judged tenders are kept) |
 | `--queue [STAMP]` | rebuild a queue from the case log |
 | `--until YYYY-MM-DD` | only tenders published up to that date |
-| `--no-level2` | skip level 2 (numbers compared with peer tenders): dormant today, never changes a route. Also on `tenderlens.py` and `demo.py` |
+| `--no-level2` | skip level 2 (numbers compared with peer tenders): dormant today, never changes a route. Also on `tender` and `demo` |
 | `--status` | what is in the knowledge base |
 | `--feedback` | apply the auditor's verdicts from `reports/kb/<group>/feedback.csv` |
 
-One tender, with every agent's reasoning: `python tenderlens.py --tender cb-425-92729935`
+One tender, with every agent's reasoning: `python tenderlens.py tender cb-425-92729935`
 
-Tests (no data, no network): `python tests/test_agents.py`, `test_m2_agent.py`, `test_m3_agent.py`, `test_m4_checks.py`, `test_m4_model_coordinator.py`, `test_stream_cases.py`, `test_m2_eval.py`, `test_redesign.py`.
-Measurements: `python tests/synth_rig.py --run` (synthetic rigged tenders) · `python tests/m2_eval.py [--agent --online] [--split holdout]` (M2 against the labelled names: 36 tuning + 40 held-out) · `python tests/m4_eval.py --online` (M4: no checks / fixed / model).
+Tests (no data, no network): `python tenderlens.py test` runs every `tests/test_*.py`; one alone: `python -m tests.test_agents`.
+Measurements: `python tenderlens.py eval synth --run` (synthetic rigged tenders) · `python tenderlens.py eval m2 [--agent --online] [--split holdout]` (M2 against the labelled names: 36 tuning + 40 held-out) · `python tenderlens.py eval m4 --online` (M4: no checks / fixed / model).
 
 **Long runs** (agents over a whole category) are done **once, at the end of a category** — not after each fix. Fixes are checked offline on the affected tenders and on the synthetic set.
 

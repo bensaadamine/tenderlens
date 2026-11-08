@@ -65,12 +65,12 @@ Points are an ordering, not a probability — there is no ground truth yet to fi
 - `followups` — what M4 checked again; `m4_checks` — mode, number of checks, note
 - `award`, `trace` (with `M4` when the checks ran)
 
-The orchestrators (`tenderlens.py`, `tenderlens_stream.py`) write all cases to `…_queue.html / .csv / .json`.
+The pipeline (`pipeline/one_tender.py`, `pipeline/stream.py`, through `tools/report.py`) writes all cases to `…_queue.html / .csv / .json`.
 
 ## Run it
-Through the orchestrators (`python tenderlens.py --tender <ref>`, `tenderlens_stream.py`). Add `--m4-checks` for the checks (LLM, Windows), or `--m4-checks model` for the experiment. Without the flag, M4 is rules only. No model answering → the run stops and resumes from that tender (`m4_checks.AGENT_DOWN = "keep"` ranks the case as it stands).
+Through the pipeline (`python tenderlens.py tender <ref>`, `python tenderlens.py run --group <code>`). Add `--m4-checks` for the checks (LLM, Windows), or `--m4-checks model` for the experiment. Without the flag, M4 is rules only. No model answering → the run stops and resumes from that tender (`m4_checks.AGENT_DOWN = "keep"` ranks the case as it stands).
 
-Tests (no data, no network): `python tests/test_agents.py` (rules), `python tests/test_m4_checks.py` (the checks, fake M2/M3), `python tests/test_m4_model_coordinator.py` (the experiment, scripted fake model).
+Tests (no data, no network): `python -m tests.test_agents` (rules), `python -m tests.test_m4_checks` (the checks, fake M2/M3), `python -m tests.test_m4_model_coordinator` (the experiment, scripted fake model).
 
 ## Rules it must keep
 - Never writes "fraud". Strongest wording: *"the competition on this contract does not appear to have been genuine, for these reasons, at these locations."*

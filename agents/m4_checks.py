@@ -31,15 +31,14 @@ With the M2 agent on (--agent) every finding is already lettered, so check 1
 has nothing to do: the re-read matters when M2 runs on rules alone (the
 cheap setup).
 
-    from m4_checks import check_case, default_hooks
+    from agents.m4_checks import check_case, default_hooks
     case = check_case(ref, m1, m2, m3, default_hooks(ref, row, graph, m3))
 """
 
-import repo  # noqa: F401  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import copy
 
-import m4_case_builder as m4
+from agents import m4_case_builder as m4
 
 AWARDS_SHOWN = 4
 BRAND = "brand_without_equivalent"
@@ -78,9 +77,9 @@ class Hooks:
 
 def default_hooks(reference, notice_row, graph, m3, online=False):
     """The real follow-ups: the M2 agent, the M3 agent, the award index."""
-    import m1_screener
-    import m2_agent
-    import m3_investigator as m3i
+    from agents import m1_screener
+    from agents import m2_agent
+    from agents import m3_investigator as m3i
     key = ((m3 or {}).get("award") or {}).get("supplier_key")
 
     def recheck(cands):

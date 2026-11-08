@@ -33,19 +33,14 @@ to the attribute map, and the near-duplicates in it ("chamber volume" /
 Reads the text cached by 03 - nothing is re-extracted, nothing downloaded.
 
 Run:
-    python prepare/04_census.py                      # group 4110
-    python prepare/04_census.py --group 2510 --min-peers 8
+    python tenderlens.py prepare census                      # group 4110
+    python tenderlens.py prepare census --group 2510 --min-peers 8
 
 Writes:
     reports/census_<grp>.csv          every extracted tuple, one per row
     reports/census_<grp>_labels.csv   per label: tenders, comparator mix
     reports/census_<grp>.txt          the summary printed below
 """
-
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import argparse
@@ -937,7 +932,7 @@ def main():
                     help="labels to print in the summary")
     ap.add_argument("--map", nargs="?", const="reports/attribute_map.json",
                     default="",
-                    help="apply an attribute map built by prepare/05_attribute_map.py "
+                    help="apply an attribute map built by prepare/attribute_map.py "
                          "before counting, so synonyms count as one attribute "
                          "and labels marked 'unknown' are dropped. Without "
                          "this the census reports RAW labels, which is the "
@@ -948,12 +943,12 @@ def main():
     # tenders.csv join is ~2 minutes, and erroring at the end of that is just
     # two wasted minutes.
     if args.map and not os.path.exists(args.map):
-        sys.exit(f"missing {args.map} - run prepare/05_attribute_map.py first")
+        sys.exit(f"missing {args.map} - run prepare/attribute_map.py first")
 
     tdir = os.path.join(args.text_dir, args.group)
     if not os.path.isdir(tdir):
-        sys.exit(f"missing {tdir} - run prepare/02_fetch_docs.py --only {args.group} "
-                 f"--per-cat 0, then prepare/03_inspect_specs.py")
+        sys.exit(f"missing {tdir} - run prepare/fetch_docs.py --only {args.group} "
+                 f"--per-cat 0, then prepare/extract_text.py")
     files = sorted(f for f in os.listdir(tdir) if f.endswith(".txt"))
     if not files:
         sys.exit(f"no cached text in {tdir}")

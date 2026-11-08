@@ -7,7 +7,7 @@ take each:
     tool 1  brands.brands_without_equivalent       detection level 1
     tool 2  level2.tight_requirements              detection level 2
 
-    from m2_spec_auditor import audit
+    from agents.m2_spec_auditor import audit
     audit("cb-258-72766150", online=True, agent=True)
 
 Every step it takes is written to `trace`, with the reason, so the auditor
@@ -30,21 +30,16 @@ with its peer group attached, and the within-document test is reported
 beside it as the level-2 signal that does not depend on peers.
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
-
 
 import argparse
 import re
 import json
 import sys
 
-import level2
-import m2_agent
-import brands
-import documents
+from tools import level2
+from agents import m2_agent
+from tools import brands
+from tools import documents
 
 # Rule results the agent looks at again: the rules' own findings, the names
 # they could not settle, and the rule clearances listed here. Clearances
@@ -87,7 +82,7 @@ WDOC_MIN_REQS = 5
 
 def _llm_available():
     try:
-        import llm
+        from tools import llm
         return bool(llm.available())
     except Exception:
         return False

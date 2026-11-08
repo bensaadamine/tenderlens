@@ -27,8 +27,8 @@ text is reusable by later steps.
 
 Run:
     pip install pdfminer.six
-    python prepare/03_inspect_specs.py
-    python prepare/03_inspect_specs.py --max-pages 60 --limit 50
+    python tenderlens.py prepare text
+    python tenderlens.py prepare text --max-pages 60 --limit 50
 
 Writes:
     reports/text/<unspsc4>/<reference>__<file>.txt   cached plain text
@@ -36,11 +36,6 @@ Writes:
     reports/spec_inspection_summary.txt              the verdict
     reports/spec_samples.txt                         real requirement lines
 """
-
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import argparse
@@ -402,7 +397,7 @@ def main():
     args = ap.parse_args()
 
     if not os.path.exists(args.manifest):
-        sys.exit(f"missing {args.manifest} - run prepare/02_fetch_docs.py first")
+        sys.exit(f"missing {args.manifest} - run prepare/fetch_docs.py first")
 
     want = {k.strip().lower() for k in args.kinds.split(",") if k.strip()}
     os.makedirs(args.out, exist_ok=True)

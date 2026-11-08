@@ -13,13 +13,11 @@ Every tool that reads a tender goes through here:
                                      Every quote an agent gives is checked here.
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import os
 import re
+
+from prepare import census
 
 TEXT_DIR = "reports/text"
 
@@ -106,7 +104,7 @@ def requirement_mask(lines):
     """(one bool per line: inside the requirements section, "section"), or
     (all True, "whole") when no section is found."""
     try:
-        mask, mode = repo.census().scope_mask(lines)
+        mask, mode = census.scope_mask(lines)
         if mode == "section":
             return list(mask), mode
     except Exception:

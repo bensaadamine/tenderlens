@@ -12,16 +12,12 @@ flagged" when one of its names is labelled f (brand required, no
 equivalent); "flagged" means watch or alert. If `model` gives the same
 routes as `fixed`, keep `fixed`: the model's choices add cost, not value.
 
-    python tests/m4_eval.py --online                 # all three (Windows)
-    python tests/m4_eval.py --modes off              # offline baseline
+    python tenderlens.py eval m4 --online                 # all three (Windows)
+    python tenderlens.py eval m4 --modes off              # offline baseline
 
 Writes reports/m4_eval/<stamp>/cases.csv and summary.txt; never overwrites.
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import argparse
 import collections
@@ -30,9 +26,9 @@ import io
 import os
 import time
 
-import llm
-import m2_eval
-import tenderlens
+from tools import llm
+from tests import m2_eval
+from pipeline import one_tender
 
 OUT_DIR = os.path.join("reports", "m4_eval")
 MODES = ("off", "fixed", "model")
@@ -50,7 +46,7 @@ def main():
     for lab in labels:
         want[lab["reference"]].add(lab["letter"])
     refs = sorted(want)[:a.limit or None]
-    shared = tenderlens.load_shared(verbose=False)
+    shared = one_tender.load_shared(verbose=False)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     out_dir = os.path.join(OUT_DIR, stamp)
     os.makedirs(out_dir, exist_ok=True)
@@ -60,14 +56,14 @@ def main():
         start = len(llm.usage_rows())
         for ref in refs:
             try:
-                c = tenderlens.run_one(ref, shared, online=a.online,
+                c = one_tender.run_one(ref, shared, online=a.online,
                                        m4_mode=None if mode == "off"
                                        else mode)
                 route = c["route"]
                 steps = (c.get("m4_checks") or {}).get("checks", 0)
                 checks = "; ".join(f["text"][:80]
                                    for f in c.get("followups", []))
-            except tenderlens.AGENT_DOWN as e:
+            except one_tender.AGENT_DOWN as e:
                 route, steps, checks = "agent did not run", 0, str(e)[:120]
             rows.append({"mode": mode, "reference": ref,
                          "labelled_lock_in": "f" in want[ref],

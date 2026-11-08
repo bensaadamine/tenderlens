@@ -1,18 +1,14 @@
 """
-The incremental run's case log (tenderlens_stream.py), tested on a
+The incremental run's case log (pipeline/stream.py), tested on a
 temporary knowledge base - no data, no network. Audit finding 2026-11-01:
 a crash after a tender was registered left it skipped on the next run with
 no case anywhere. Checks: a case is written before its register event, a
 line cut by a crash is skipped, and the queue picks the case the register
 points to.
 
-    python tests/test_stream_cases.py
+    python -m tests.test_stream_cases
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import io
 import json
@@ -21,7 +17,7 @@ import sys
 import tempfile
 from types import SimpleNamespace
 
-import tenderlens_stream as ts
+from pipeline import stream as ts
 
 FAILS = 0
 

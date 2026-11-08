@@ -4,7 +4,7 @@ M4 CASE BUILDER.
 Fuses what M1, M2 and M3 found about ONE tender into a case, checks every
 claim has a source, scores it, and decides: alert / watch / close.
 
-    from m4_case_builder import build_case
+    from agents.m4_case_builder import build_case
     case = build_case(m1_result, m2_result, m3_result)
 
 -------------------------------------------------------- what it refuses to do
@@ -43,11 +43,6 @@ They are an ordering, chosen so the logic above holds, and they are in one
 table so that calibrating them later is one edit. Do not quote a score as a
 probability.
 """
-
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import re

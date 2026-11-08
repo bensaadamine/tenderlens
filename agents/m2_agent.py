@@ -41,24 +41,20 @@ Only "f" becomes a finding. What stays in CODE, never left to the model:
 The loop (decide -> act -> back) is agents/agent_loop.py, shared by the
 three agents.
 
-    from m2_agent import classify_tender
+    from agents.m2_agent import classify_tender
     out = classify_tender(ref, candidates)        # candidates from the rules
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import json
 import re
 from typing import TypedDict
 
-import brands
-import documents
-import wikidata
+from tools import brands
+from tools import documents
+from tools import wikidata
 
-import agent_loop
+from agents import agent_loop
 
 LETTERS = {
     "a": "not a brand",
@@ -319,7 +315,7 @@ def render(state):
 
 
 def _tools():
-    import llm
+    from tools import llm
     t = llm.tool
     out = [
         t("search", "Lines of the tender containing a text.",
@@ -502,7 +498,7 @@ def classify_tender(reference, candidates, ask=None, online=False,
              "trace"}.
     """
     if ask is None:
-        import llm
+        from tools import llm
         # native tools on investigating steps; the final call has none
         ask = lambda system, user: llm.ask_json(
             system, user, strong=True, max_tokens=3000, tag="m2_agent",

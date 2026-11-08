@@ -9,7 +9,7 @@ Reads the **specification documents** of one tender and looks for requirements w
 Find, with a quoted line, a departure from the trade-agreement rule: *a specification may name a brand only if it also accepts an equivalent.*
 
 ## Input
-- `reports/text/<group>/<reference>__<document>.txt` — text extracted by `prepare/03_inspect_specs.py`.
+- `reports/text/<group>/<reference>__<document>.txt` — text extracted by `prepare/extract_text.py`.
 - The knowledge base of past tenders (for level 2).
 - The run flags `--online`, `--agent`.
 
@@ -60,14 +60,14 @@ Find, with a quoted line, a departure from the trade-agreement rule: *a specific
 
 ## Run it alone
 ```bash
-python agents/m2_spec_auditor.py --tender cb-425-92729935 --online --agent
-python tools/brands.py --tender cb-425-92729935 --offline          # rules only
+python -m agents.m2_spec_auditor --tender cb-425-92729935 --online --agent
+python -m tools.brands --tender cb-425-92729935 --offline          # rules only
 ```
 
 ## How it is checked
-- `python tests/test_m2_agent.py` — the agent's rules with a scripted fake model (no network).
-- `python tests/m2_eval.py [--agent --online] [--split holdout]` — the labelled names: 36 tuning (`tests/m2_labels.csv`) + 40 held-out (`tests/m2_holdout.csv`). Held-out: rules find 1 of 8 lock-ins; with the agent 6 of 7, precision 6 of 10.
-- `python tests/synth_rig.py --run [--agent]` — synthetic rigged tenders.
+- `python -m tests.test_m2_agent` — the agent's rules with a scripted fake model (no network).
+- `python tenderlens.py eval m2 [--agent --online] [--split holdout]` — the labelled names: 36 tuning (`tests/m2_labels.csv`) + 40 held-out (`tests/m2_holdout.csv`). Held-out (37 names, 2026-11-04): rules find 1 of 8 lock-ins; with the agent 8 of 8, 8 of 9 findings real, 36/37 right.
+- `python tenderlens.py eval synth --run [--agent]` — synthetic rigged tenders.
 
 ## Rules it must keep
 - Every finding quotes its line; no quote, no finding.

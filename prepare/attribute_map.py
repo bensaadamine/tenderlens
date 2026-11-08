@@ -18,7 +18,7 @@ WHAT IT COSTS, and why that is affordable: only labels appearing in >= 2
 tenders can ever form a peer group, so the singletons - 2,101 of 2,848 in
 2510 - are not worth a token. The rest go out in batches of ~60, one batch per
 (product family, physical dimension), which keeps each question small and
-concrete. Measured cost is in reports/llm_usage.csv; `python tools/llm.py --usage`
+concrete. Measured cost is in reports/llm_usage.csv; `python tenderlens.py llm --usage`
 prints it.
 
 THE OUTPUT IS FROZEN ON PURPOSE. reports/attribute_map.json is written once
@@ -29,19 +29,14 @@ by hand - and should, because one wrong merge silently pools two unrelated
 attributes and every finding built on that group is wrong.
 
 Run (on Windows - api.groq.com is blocked from the agent's shells):
-    python prepare/05_attribute_map.py --group 2510
-    python prepare/05_attribute_map.py --group 2510 --dry-run    # cost, no calls
-    python prepare/04_census.py --group 2510 --map               # re-measure with it
+    python tenderlens.py prepare labels --group 2510
+    python tenderlens.py prepare labels --group 2510 --dry-run    # cost, no calls
+    python tenderlens.py prepare census --group 2510 --map               # re-measure with it
 
 Writes:
     reports/attribute_map.json      {raw_label: canonical}, frozen + additive
     reports/attribute_map_report.txt  what merged, what was rejected
 """
-
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import argparse
@@ -185,7 +180,7 @@ def main():
                          "per minute, and a long list also makes the model "
                          "sloppier about rule 2.")
     ap.add_argument("--family", choices=["unspsc8", "unspsc6", "unspsc4"],
-                    default="unspsc6", help="must match prepare/04_census.py")
+                    default="unspsc6", help="must match prepare/census.py")
     ap.add_argument("--strong", action="store_true",
                     help="use the larger model; worth it here, the merge "
                          "decisions are the whole value of this step")
@@ -210,7 +205,7 @@ def main():
 
     census = args.census or f"reports/census_{args.group}.csv"
     if not os.path.exists(census):
-        sys.exit(f"missing {census} - run prepare/04_census.py --group {args.group}")
+        sys.exit(f"missing {census} - run prepare/census.py --group {args.group}")
 
     cut = {"unspsc8": 8, "unspsc6": 6, "unspsc4": 4}[args.family]
 
@@ -415,7 +410,7 @@ def main():
         if v and v != "unknown":
             dim_canon[dim].add(v)
 
-    import llm
+    from tools import llm
 
     # ------------------------------------------------------------- the calls
     added, failed = 0, 0
@@ -665,7 +660,7 @@ def main():
     with io.open(out, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     print(f"\n  report -> {out}")
-    print("  then:  python prepare/04_census.py --group %s --map" % args.group)
+    print("  then:  python tenderlens.py prepare census --group %s --map" % args.group)
 
 
 if __name__ == "__main__":

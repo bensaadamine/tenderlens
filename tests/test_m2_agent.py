@@ -5,20 +5,16 @@ against the text, an "f" must quote the brand, the step budget stops the
 loop, a bad or missing model never produces a finding, and the LangGraph
 graph and the plain loop give the same result.
 
-    python tests/test_m2_agent.py
+    python -m tests.test_m2_agent
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import os
 import sys
 import tempfile
 
-import llm
-import m2_agent
+from tools import llm
+from agents import m2_agent
 
 FAILS = 0
 DOC = "01_rfp.pdf"

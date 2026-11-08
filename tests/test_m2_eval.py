@@ -3,20 +3,16 @@ The M2 exam's bookkeeping, tested offline: held-out rows without a letter
 are not scored, sets are reported apart, precision and recall are counted
 on findings, and a run never overwrites another's evidence.
 
-    python tests/test_m2_eval.py
+    python -m tests.test_m2_eval
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import io
 import os
 import sys
 import tempfile
 
-import m2_eval
+from tests import m2_eval
 
 FAILS = 0
 

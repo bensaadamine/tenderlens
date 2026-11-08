@@ -1,8 +1,8 @@
 """Synthetic rigged tenders: does the system catch a brand lock-in?
 
-    python tests/synth_rig.py              # build the copies, then run them
-    python tests/synth_rig.py --build      # only write the copies
-    python tests/synth_rig.py --run        # only run + report (add --online on Windows)
+    python tenderlens.py eval synth              # build the copies, then run them
+    python tenderlens.py eval synth --build      # only write the copies
+    python tenderlens.py eval synth --run        # only run + report (add --online on Windows)
 
 BASE TENDERS: real 2510 tenders now in the knowledge base (closed, with a
 (--bases no-clause, default) no standard "Equivalent Products" clause, and a
@@ -31,10 +31,6 @@ no model number, and a "Make and model:" field - so they measure blind
 spots. The score is an upper bound until someone writes injections blind.
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import argparse
 import collections
@@ -47,14 +43,15 @@ import re
 import sys
 import time
 
-import m1_screener
-import m2_spec_auditor
+from agents import m1_screener
+from agents import m2_spec_auditor
 
 m2_spec_auditor.AGENT_DOWN = "keep"   # a copy without a model keeps the rules' result
-import m4_case_builder
-import brands
-import documents
-import tenderlens
+from agents import m4_case_builder
+from tools import brands
+from tools import documents
+from tools.report import write_outputs
+from pipeline import one_tender
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -62,8 +59,8 @@ except Exception:
     pass
 
 
-census = repo.census()
-import tenderlens_stream as stream  # noqa: E402
+from prepare import census
+from pipeline import stream  # noqa: E402
 
 GROUP = "2510"
 SYN_TEXT = "reports/text_synth"
@@ -267,7 +264,7 @@ def run(a):
     documents.TEXT_DIR = SYN_TEXT
     m1_screener.TEXT_DIR = SYN_TEXT
 
-    notices, wstats, _, graph = tenderlens.load_shared()
+    notices, wstats, _, graph = one_tender.load_shared()
     kb = stream.KB(GROUP)
     state = kb.state()
     amap = stream.load_map()
@@ -306,9 +303,9 @@ def run(a):
         # A rigged copy stands for an AWARDED contract. Some bases were
         # cancelled or are still open, and since 2026-10-22 such tenders are
         # "not an audit case" - so the copy must not inherit that status.
-        if tenderlens.no_contract_reason(row):
+        if one_tender.no_contract_reason(row):
             row[m1_screener.C_STATUS] = "Expired"
-            if tenderlens.no_contract_reason(row):     # an RFI / RFSA base
+            if one_tender.no_contract_reason(row):     # an RFI / RFSA base
                 row[m1_screener.C_NOTICE] = "Request for Proposal"
         notices[sref] = row
         if m["variant"] == "C" and graph is not None:
@@ -319,7 +316,7 @@ def run(a):
         _, raw = stream.extract_tender(sref, row, GROUP, f"synth-{i:04d}")
         mine = stream.comparable(raw, amap)
         peers = [r for r in base if r["reference"] not in (ref, sref)] + mine
-        case = tenderlens.run_one(sref, (notices, wstats, peers, graph),
+        case = one_tender.run_one(sref, (notices, wstats, peers, graph),
                                   online=a.online, agent=a.agent)
         # M2's own level-1 path again, to see what happened to each injected
         # brand. LLM answers are cached, so repeating it costs nothing.
@@ -351,7 +348,7 @@ def run(a):
             "tenders": len(cases), "awards": graph is not None,
             "agent": a.agent, "weights": m4_case_builder.WEIGHTS,
             "alert_at": m4_case_builder.ALERT, "watch_at": m4_case_builder.WATCH}
-    tenderlens.write_outputs(cases, meta, os.path.join(OUT, "queue"))
+    write_outputs(cases, meta, os.path.join(OUT, "queue"))
     report(results, state, a.online)
 
 

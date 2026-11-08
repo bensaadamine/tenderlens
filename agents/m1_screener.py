@@ -1,7 +1,3 @@
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import argparse
@@ -69,7 +65,7 @@ def parse_date(s):
 def load_notices(path=TENDERS):
     """{reference: row}. One streaming pass, stdlib csv (pandas is blocked)."""
     if not os.path.exists(path):
-        raise SystemExit(f"missing {path} - run prepare/01_profile_tenders.py")
+        raise SystemExit(f"missing {path} - run prepare/profile_tenders.py")
     out = {}
     with io.open(path, encoding="utf-8-sig", errors="replace",
                  newline="") as f:

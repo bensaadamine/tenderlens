@@ -2,13 +2,9 @@
 The M3 agent's rules, tested with a scripted fake model and a small made-up
 award file - no network, no real data.
 
-    python tests/test_m3_agent.py
+    python -m tests.test_m3_agent
 """
 
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import csv
 import io
@@ -16,8 +12,8 @@ import os
 import sys
 import tempfile
 
-import m3_agent
-import m3_investigator
+from agents import m3_agent
+from agents import m3_investigator
 
 FAILS = 0
 HEAD = ["title-titre-eng", "referenceNumber-numeroReference",

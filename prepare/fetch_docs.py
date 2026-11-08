@@ -18,20 +18,15 @@ re-downloaded.
 
 Run:
     pip install requests
-    python prepare/02_fetch_docs.py                  # top 5 groups, 60 tenders each
-    python prepare/02_fetch_docs.py --only 4110 --per-cat 0   # ALL of one group
-    python prepare/02_fetch_docs.py --top 5 --per-cat 0     # everything in top 5
-    python prepare/02_fetch_docs.py --include-zip --jobs 6
+    python tenderlens.py prepare docs                  # top 5 groups, 60 tenders each
+    python tenderlens.py prepare docs --only 4110 --per-cat 0   # ALL of one group
+    python tenderlens.py prepare docs --top 5 --per-cat 0     # everything in top 5
+    python tenderlens.py prepare docs --include-zip --jobs 6
 
 Writes:
     data/docs/<unspsc4>/<reference>/<file>
     reports/docs_manifest.csv      one row per attachment URL
 """
-
-import pathlib
-import sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import repo  # noqa: E402  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 
 import argparse
@@ -428,7 +423,7 @@ def main():
     ap.add_argument("--refs", default="",
                     help="fetch ONLY the tenders listed in this file, one "
                          "reference per line, whatever their category. "
-                         "Written by `tenderlens.py --deep-refs`: the "
+                         "Written by the old `tenderlens.py --deep-refs`: the "
                          "tenders M1 says are worth reading. Selection by "
                          "category depth answers 'what makes a peer group'; "
                          "this answers 'what is worth reading', a different "
@@ -436,7 +431,7 @@ def main():
     args = ap.parse_args()
 
     if not os.path.exists(args.tenders):
-        sys.exit(f"missing {args.tenders} - run prepare/01_profile_tenders.py first")
+        sys.exit(f"missing {args.tenders} - run prepare/profile_tenders.py first")
 
     only = {g.strip() for g in args.only.split(",") if g.strip()}
 
@@ -578,7 +573,7 @@ def main():
             print(f"    {c:6,}  {k}")
     print(f"\n  files    -> {args.out}/<unspsc4>/<reference>/")
     print(f"  manifest -> {args.manifest}")
-    print("\nNext: python prepare/03_inspect_specs.py")
+    print("\nNext: python tenderlens.py prepare text")
 
 
 if __name__ == "__main__":

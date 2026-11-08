@@ -35,8 +35,8 @@ The route only decides **how deep M2 goes**. Every tender with documents is read
 
 ## Run it alone
 ```bash
-python agents/m1_screener.py --tender cb-425-92729935
-python agents/m1_screener.py --all --group 2510 --limit 25
+python -m agents.m1_screener --tender cb-425-92729935
+python -m agents.m1_screener --all --group 2510 --limit 25
 ```
 
 ## Rules it must keep

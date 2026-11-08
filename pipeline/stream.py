@@ -1,20 +1,20 @@
 """TenderLens, incremental: one tender at a time against a growing knowledge base.
 
-    python tenderlens_stream.py --group 2510                 # every new tender
-    python tenderlens_stream.py --group 2510 --until 2024-12-31   # simulate an early batch
-    python tenderlens_stream.py --group 2510 --status
-    python tenderlens_stream.py --group 2510 --feedback      # apply the auditor's verdicts
-    python tenderlens_stream.py --group 2510 --export-labels # raw labels for prepare/05_attribute_map.py
-    python tenderlens_stream.py --group 2510 --queue         # queue of every tender's latest case
-    python tenderlens_stream.py --group 2510 --queue 20261101-103000   # one batch's queue again
+    python tenderlens.py run --group 2510                 # every new tender
+    python tenderlens.py run --group 2510 --until 2024-12-31   # simulate an early batch
+    python tenderlens.py run --group 2510 --status
+    python tenderlens.py run --group 2510 --feedback      # apply the auditor's verdicts
+    python tenderlens.py run --group 2510 --export-labels # raw labels for prepare/attribute_map.py
+    python tenderlens.py run --group 2510 --queue         # queue of every tender's latest case
+    python tenderlens.py run --group 2510 --queue 20261101-103000   # one batch's queue again
 
-The batch run (tenderlens.py) is unchanged and still available.
+One tender alone, every component's reasoning: python tenderlens.py tender <ref>.
 
 HOW A RUN WORKS
   New tenders = notices of the group not yet in the register (plus tenders
   registered without documents whose text has since been extracted).
   They are processed in PUBLICATION-DATE order. For each one:
-    1. extract its numeric requirements (prepare/04_census.py's own steps: section
+    1. extract its numeric requirements (prepare/census.py's own steps: section
        scoping, number parsing, band collapse, unit conversion, restatements)
     2. run the four agents, with the BASE as level 2's peers - so a tender
        is compared only with tenders processed before it
@@ -50,7 +50,6 @@ STORAGE  reports/kb/<group>/  - append-only, so a crash loses at most the
   the base retroactively. Labels not yet in the map are kept as written.
 """
 
-import repo  # noqa: F401  (agents/ tools/ prepare/ tests/ importable; works from the repo root)
 
 import argparse
 import collections
@@ -62,22 +61,23 @@ import re
 import sys
 import time
 
-import level2
-import llm
-import m1_screener
-import m3_investigator
-import m2_spec_auditor
-import m4_case_builder
-import brands
-import documents
-import tenderlens
+from tools import level2
+from tools import llm
+from agents import m1_screener
+from agents import m3_investigator
+from agents import m2_spec_auditor
+from agents import m4_case_builder
+from tools import report
+from tools import brands
+from tools import documents
+from pipeline import one_tender
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception:
     pass
 
-census = repo.census()
+from prepare import census
 
 MAP_PATH = "reports/attribute_map.json"
 OBS_COLS = ["run_id", "reference", "unspsc8", "pub_date", "label",
@@ -203,7 +203,7 @@ def notice_meta(row):
 
 
 def extract_tender(ref, row, group, run_id):
-    """Raw observations for one tender, through prepare/04_census.py's own
+    """Raw observations for one tender, through prepare/census.py's own
     steps. Level 2 off: the documents only, no observation."""
     docs = documents.tender_documents(ref)
     if not level2.ON[0]:
@@ -256,7 +256,7 @@ def base_rows(kb, state, amap):
 # ------------------------------------------------------------------ commands
 def todo_list(notices, group, state, until=None):
     todo = []
-    for ref in tenderlens.select(notices, group):
+    for ref in one_tender.select(notices, group):
         ev = state.get(ref)
         if ev and not ((ev["status"] == "no_documents"
                         and documents.tender_documents(ref))
@@ -288,7 +288,7 @@ def reprocess_list(kb, notices, group, state, which):
         refs = list(which)
     out, skipped, unknown = [], [], []
     for ref in refs:
-        if ref not in notices or tenderlens.select({ref: notices[ref]},
+        if ref not in notices or one_tender.select({ref: notices[ref]},
                                                    group) != [ref]:
             unknown.append(ref)
         elif ref in judged:
@@ -307,7 +307,7 @@ def run(a):
     level2.LEVEL[0] = a.l2_level
     level2.ON[0] = not a.no_level2
     amap = load_map()
-    notices, wstats, _, graph = tenderlens.load_shared()
+    notices, wstats, _, graph = one_tender.load_shared()
     state = kb.state()
     todo = todo_list(notices, a.group, state, a.until)
     if a.reprocess:
@@ -349,11 +349,11 @@ def run(a):
         mine = comparable(raw, amap)
         peers = [r for r in base if r["reference"] != ref] + mine
         try:
-            case = tenderlens.run_one(ref, (notices, wstats, peers, graph),
+            case = one_tender.run_one(ref, (notices, wstats, peers, graph),
                                       online=a.online, agent=a.agent,
                                       m3_agent=a.m3_agent,
                                       m4_mode=a.m4_checks)
-        except tenderlens.AGENT_DOWN as e:
+        except one_tender.AGENT_DOWN as e:
             # Nothing written for this tender: the next run starts here.
             # Answers already given are cached, so nothing is paid twice.
             print(f"\nstopped at {i}/{len(todo)}: the agents have no model "
@@ -397,7 +397,7 @@ def run(a):
             "alert_at": m4_case_builder.ALERT,
             "watch_at": m4_case_builder.WATCH}
     prefix = os.path.join(kb.batches, f"{stamp}_queue")
-    tenderlens.write_outputs(cases, meta, prefix)
+    report.write_outputs(cases, meta, prefix)
     routes = collections.Counter(c["route"] for c in cases)
     print(f"\nbatch {stamp}: {len(cases)} tender(s) - "
           f"{routes['alert']} alert, {routes['watch']} watch, "
@@ -438,7 +438,7 @@ def queue(a):
             "weights": m4_case_builder.WEIGHTS,
             "alert_at": m4_case_builder.ALERT,
             "watch_at": m4_case_builder.WATCH}
-    tenderlens.write_outputs(cases, meta, prefix)
+    report.write_outputs(cases, meta, prefix)
     routes = collections.Counter(c["route"] for c in cases)
     print(f"{len(cases)} case(s): {routes['alert']} alert, "
           f"{routes['watch']} watch, {routes['close']} close")
@@ -512,7 +512,7 @@ def status(a):
 
 
 def export_labels(a):
-    """Raw rows of every registered tender, as prepare/05_attribute_map.py --census reads them."""
+    """Raw rows of every registered tender, as prepare/attribute_map.py --census reads them."""
     kb = KB(a.group, a.kb_root)
     state = kb.state()
     out = os.path.join(kb.dir, "census_raw.csv")
@@ -525,7 +525,7 @@ def export_labels(a):
                 w.writerows(rs)
                 n += len(rs)
     print(f"{n:,} rows -> {out}")
-    print(f"next: python prepare/05_attribute_map.py --group {a.group} --census {out}")
+    print(f"next: python tenderlens.py prepare labels --group {a.group} --census {out}")
 
 
 def main():
