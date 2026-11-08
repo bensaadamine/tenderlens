@@ -129,6 +129,72 @@ def test_llm():
         for k, v in saved.items():
             setattr(llm, k, v)
 
+    # the error paths of one call, with a scripted fake provider
+    saved = {k: getattr(llm, k) for k in ("_post", "_load_cache", "_save_cache",
+                                          "_log_usage", "_log_error",
+                                          "available", "_throttle_p")}
+    saved_sleep, saved_share = time.sleep, llm.SHARE
+    store, script, seen = {}, [], []
+    llm._load_cache = lambda path=None: store
+    llm._save_cache = lambda c, path=None: None
+    llm._log_usage = llm._log_error = lambda *a, **k: None
+    llm._throttle_p = lambda *a, **k: None
+    time.sleep = lambda s: None
+    g, m = llm.PROVIDERS
+    llm.available = lambda: [g, m]
+    llm.SHARE = False                    # fixed order: Groq, then Gemini
+
+    def err(code, body, headers=None):
+        return urllib.error.HTTPError("u", code, "x", headers or {},
+                                      io.BytesIO(body.encode()))
+
+    def fake_post(p, model, system, user, mt, temp, timeout, tools=None):
+        seen.append((p["name"], mt))
+        r = script.pop(0)
+        if isinstance(r, Exception):
+            raise r
+        return r, {}
+    llm._post = fake_post
+    os.environ.pop("TENDERLENS_OFFLINE", None)
+    try:
+        def run(q, *steps):
+            script[:] = list(steps)
+            seen.clear()
+            llm._down_until.clear()
+            try:
+                return llm.ask("s", q, max_tokens=100)
+            except RuntimeError as e:
+                return f"raised: {e}"
+        got = run("q1", "", "ok")
+        check("an empty answer is retried with more room, then cached",
+              got == "ok" and [t for _n, t in seen] == [100, 400]
+              and any(v["answer"] == "ok" for v in store.values()))
+        got = run("q2", err(429, "slow down", {"retry-after": "1"}), "ok2")
+        check("a rate limit is waited out and retried", got == "ok2"
+              and len(seen) == 2)
+        got = run("q3", err(429, "tokens per day exceeded"), "from gemini")
+        check("a daily quota moves on to the next provider",
+              got == "from gemini" and [n for n, _t in seen] == ["groq",
+                                                                 "gemini"])
+        got = run("q4", err(404, "model not found"), err(404, "model not found"))
+        check("a retired model says so, never switches model",
+              "pinned model openai/gpt-oss-20b is not served" in got
+              and "update PROVIDERS" in got and len(seen) == 2)
+        got = run("q5", OSError("down"), OSError("down"))
+        check("a network error on every provider is an error, not an "
+              "empty answer", got.startswith("raised: every provider failed")
+              and "groq: OSError" in got and "gemini: OSError" in got)
+        got = run("q6", "", "", "", "", "", "")
+        check("an answer still empty after the retries is never cached",
+              got.startswith("raised:") and "empty answer" in got
+              and not any(k for k, v in store.items()
+                          if v["answer"] == ""))
+    finally:
+        time.sleep, llm.SHARE = saved_sleep, saved_share
+        llm._down_until.clear()
+        for k, v in saved.items():
+            setattr(llm, k, v)
+
     groq, gemini = llm.PROVIDERS
     check("the pinned models are the ones the cache was filled with",
           llm.models_for(groq) == ("openai/gpt-oss-20b",

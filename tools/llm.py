@@ -419,7 +419,9 @@ def agent_tokens(rows):
 
 def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
         timeout=60, retries=2, verbose=False, tag="", tools=None):
-    """Ask the first working provider. Returns the raw text answer.
+    """Ask the model. Returns the raw text answer: from the cache if this
+    question was answered before, else from the first provider that
+    answers (_ask_one, with its retries).
 
     tools: [llm.tool(...)] for native tool calling; a tool call comes back
     as JSON text {"thought", "action", "args"}.
@@ -433,126 +435,143 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
     # other answer
     sys_key = system if not tools else (
         system + "\x01" + json.dumps(tools, sort_keys=True))
-
-    cache = _load_cache()
-    errors = []
-    # A saved answer is reused whichever pinned model gave it, key or no key:
-    # a replay needs no account, and an answer already paid is never re-asked.
-    for p in PROVIDERS:
-        fast, strg = models_for(p)
-        model = (strg if strong else fast)
-        ck = _key(model, sys_key, user)
-        # An empty cached answer is a truncated reasoning model, not a result.
-        # Caching one poisoned the cache: the next run returned "" instantly
-        # and never retried. Ignore them, and they get overwritten below.
-        if ck in cache and cache[ck].get("answer", "").strip():
-            _log_usage(tag, p["name"], model, {}, True, 0)
-            return cache[ck]["answer"]
+    hit = _from_cache(sys_key, user, strong, tag)
+    if hit is not None:
+        return hit
     if offline():
         raise NotCached(f"not in the cache (offline replay, {tag or 'llm'})")
     provs = available()
     if not provs:
         raise NoProvider("set GROQ_API_KEY (free at console.groq.com)")
     est = _estimate(system + user) + max_tokens // 4
+    errors = []
     for p in _order(provs, est):
         if _down_until.get(p["name"], 0) - time.time() > DOWN_FOR:
             errors.append(f"{p['name']}: daily quota used")
             continue
-        fast, strg = models_for(p)
-        model = (strg if strong else fast)
-        ck = _key(model, sys_key, user)
-        use_tools = tools if p["name"] not in _no_tools else None
-        for attempt in range(retries + 1):
-            try:
-                _throttle_p(p["name"], est, verbose)
-                answer, usage = _post(p, model, system, user, max_tokens,
-                                      temperature, timeout, use_tools)
-                _log_usage(tag, p["name"], model, usage, False,
-                           _estimate(system + user + answer))
-                # Reasoning models (gpt-oss, magistral, o-series) spend the
-                # budget thinking and return an EMPTY message when it runs
-                # out. That is not a refusal, it is truncation, so retry with
-                # more room rather than treating it as "no answer".
-                if not answer.strip() and attempt < retries:
-                    max_tokens = min(max_tokens * 4, 16000)
-                    if verbose:
-                        print(f"    [{p['name']}] empty answer, retrying with "
-                              f"max_tokens={max_tokens}")
-                    continue
-                if not answer.strip():
-                    # Never cache or return an empty answer (it reads as
-                    # "no JSON" upstream); try the next provider instead.
-                    _log_error(tag, p["name"], model, "empty answer",
-                               detail=json.dumps(_last_empty))
-                    errors.append(f"{p['name']}: empty answer")
-                    break
-                cache[ck] = {"provider": p["name"], "model": model,
-                             "answer": answer}
-                _save_cache(cache)
-                if verbose:
-                    print(f"    [{p['name']}/{model}]")
-                return answer
-            except urllib.error.HTTPError as e:
-                body = _http_body(e)
-                _log_error(tag, p["name"], model, f"HTTP {e.code}", e, body)
-                slip = _tool_slip(body) if e.code == 400 else None
-                if (e.code == 400 and use_tools and not slip
-                        and re.search(r"tool|function", body, re.I)):
-                    # this provider/model does not take tools: ask again
-                    # with the prompt alone (the JSON fallback)
-                    _no_tools.add(p["name"])
-                    use_tools = None
-                    if verbose:
-                        print(f"    [{p['name']}] no native tools, "
-                              f"retrying with JSON")
-                    continue
-                if slip:
-                    _log_usage(tag, p["name"], model, {}, False,
-                               _estimate(system + user + slip))
-                    cache[ck] = {"provider": p["name"], "model": model,
-                                 "answer": slip}
-                    _save_cache(cache)
-                    if verbose:
-                        print(f"    [{p['name']}] tool call recovered")
-                    return slip
-                if e.code == 429 and re.search(r"PerDay|per day", body, re.I):
-                    # a daily quota will not come back in a minute: drop the
-                    # provider for this run instead of retrying every call
-                    errors.append(f"{p['name']}: daily quota used")
-                    _down_until[p["name"]] = time.time() + DAY_OUT
-                    break
-                if e.code == 429 and attempt < retries:
-                    # honour Retry-After when the server sends one
-                    wait = e.headers.get("retry-after")
-                    try:
-                        wait = float(wait)
-                    except (TypeError, ValueError):
-                        wait = 8.0 * (attempt + 1)
-                    if verbose:
-                        print(f"    [{p['name']}] rate limited, "
-                              f"waiting {wait:.0f}s")
-                    time.sleep(min(wait, 60))
-                    continue
-                if e.code == 404 or re.search(r"model.{0,40}(decommission|"
-                                              r"not found|does not exist)",
-                                              body, re.I):
-                    errors.append(f"{p['name']}: pinned model {model} is "
-                                  f"not served any more (HTTP {e.code}) - "
-                                  f"update PROVIDERS in tools/llm.py and "
-                                  f"re-run the evals")
-                    break
-                errors.append(f"{p['name']}: HTTP {e.code}")
-                _down_until[p["name"]] = time.time() + DOWN_FOR
-                break
-            except Exception as e:
-                _log_error(tag, p["name"], model, type(e).__name__, e)
-                errors.append(f"{p['name']}: {type(e).__name__}")
-                _down_until[p["name"]] = time.time() + DOWN_FOR
-                break
+        answer, error = _ask_one(p, system, user, sys_key, strong, max_tokens,
+                                 temperature, timeout, retries, verbose, tag,
+                                 tools, est)
+        if answer is not None:
+            return answer
+        if error:
+            errors.append(error)
     msg = "every provider failed -> " + "; ".join(errors)
     if any(e.endswith("empty answer") for e in errors):
         raise EmptyAnswer(msg)
     raise RuntimeError(msg)
+
+
+def _from_cache(sys_key, user, strong, tag):
+    """The saved answer to this question, or None. Looked up under every
+    pinned model, key or no key: a replay needs no account, and an answer
+    already paid is never re-asked."""
+    cache = _load_cache()
+    for p in PROVIDERS:
+        model = models_for(p)[1 if strong else 0]
+        hit = cache.get(_key(model, sys_key, user))
+        # An empty cached answer is a truncated reasoning model, not a result.
+        # Caching one poisoned the cache: the next run returned "" instantly
+        # and never retried. Ignore them, and they get overwritten.
+        if hit and hit.get("answer", "").strip():
+            _log_usage(tag, p["name"], model, {}, True, 0)
+            return hit["answer"]
+    return None
+
+
+def _ask_one(p, system, user, sys_key, strong, max_tokens, temperature,
+             timeout, retries, verbose, tag, tools, est):
+    """One provider, with its retries. (answer, None) - the answer is
+    cached - or (None, why it failed)."""
+    model = models_for(p)[1 if strong else 0]
+    use_tools = tools if p["name"] not in _no_tools else None
+    for attempt in range(retries + 1):
+        try:
+            _throttle_p(p["name"], est, verbose)
+            answer, usage = _post(p, model, system, user, max_tokens,
+                                  temperature, timeout, use_tools)
+        except urllib.error.HTTPError as e:
+            what, value = _http_error(e, p, model, tag, attempt, retries,
+                                      use_tools, verbose)
+            if what == "retry":
+                continue
+            if what == "no_tools":       # ask again with the prompt alone
+                use_tools = None
+                continue
+            if what == "fail":
+                return None, value
+            answer, usage = value, {}    # a tool call recovered from the error
+        except Exception as e:
+            _log_error(tag, p["name"], model, type(e).__name__, e)
+            _down_until[p["name"]] = time.time() + DOWN_FOR
+            return None, f"{p['name']}: {type(e).__name__}"
+        _log_usage(tag, p["name"], model, usage, False,
+                   _estimate(system + user + answer))
+        if not answer.strip():
+            # Reasoning models (gpt-oss, magistral, o-series) spend the
+            # budget thinking and return an EMPTY message when it runs out.
+            # That is truncation, not a refusal: retry with more room.
+            if attempt < retries:
+                max_tokens = min(max_tokens * 4, 16000)
+                if verbose:
+                    print(f"    [{p['name']}] empty answer, retrying with "
+                          f"max_tokens={max_tokens}")
+                continue
+            # Never cache or return an empty answer (it reads as "no JSON"
+            # upstream); the next provider is tried instead.
+            _log_error(tag, p["name"], model, "empty answer",
+                       detail=json.dumps(_last_empty))
+            return None, f"{p['name']}: empty answer"
+        cache = _load_cache()
+        cache[_key(model, sys_key, user)] = {"provider": p["name"],
+                                             "model": model, "answer": answer}
+        _save_cache(cache)
+        if verbose:
+            print(f"    [{p['name']}/{model}]")
+        return answer, None
+    return None, None
+
+
+def _http_error(e, p, model, tag, attempt, retries, use_tools, verbose):
+    """What an HTTP error means for this call: ("retry", None),
+    ("no_tools", None) - this provider does not take tools -, ("answer",
+    text) - the model's tool call, recovered from the error body -, or
+    ("fail", why)."""
+    body = _http_body(e)
+    _log_error(tag, p["name"], model, f"HTTP {e.code}", e, body)
+    slip = _tool_slip(body) if e.code == 400 else None
+    if (e.code == 400 and use_tools and not slip
+            and re.search(r"tool|function", body, re.I)):
+        _no_tools.add(p["name"])
+        if verbose:
+            print(f"    [{p['name']}] no native tools, retrying with JSON")
+        return "no_tools", None
+    if slip:
+        if verbose:
+            print(f"    [{p['name']}] tool call recovered")
+        return "answer", slip
+    if e.code == 429 and re.search(r"PerDay|per day", body, re.I):
+        # a daily quota will not come back in a minute: drop the provider
+        # for this run instead of retrying every call
+        _down_until[p["name"]] = time.time() + DAY_OUT
+        return "fail", f"{p['name']}: daily quota used"
+    if e.code == 429 and attempt < retries:
+        # honour Retry-After when the server sends one
+        try:
+            wait = float(e.headers.get("retry-after"))
+        except (TypeError, ValueError):
+            wait = 8.0 * (attempt + 1)
+        if verbose:
+            print(f"    [{p['name']}] rate limited, waiting {wait:.0f}s")
+        time.sleep(min(wait, 60))
+        return "retry", None
+    if e.code == 404 or re.search(r"model.{0,40}(decommission|not found|"
+                                  r"does not exist)", body, re.I):
+        return "fail", (f"{p['name']}: pinned model {model} is not served "
+                        f"any more (HTTP {e.code}) - update PROVIDERS in "
+                        f"tools/llm.py and re-run the evals")
+    _down_until[p["name"]] = time.time() + DOWN_FOR
+    return "fail", f"{p['name']}: HTTP {e.code}"
 
 
 class NotCached(RuntimeError):
