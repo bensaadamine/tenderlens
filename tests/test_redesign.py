@@ -24,6 +24,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import urllib.error
 
 import llm
@@ -111,18 +112,23 @@ def test_llm():
     finally:
         llm.USAGE_PATH, llm.ERRORS_PATH = saved_paths
 
-    os.environ["TENDERLENS_LOCAL_MODEL"] = "gemma4:e4b"
-    os.environ.pop("TENDERLENS_LOCAL_SHARE", None)
+    groq, gemini = llm.PROVIDERS
+    check("the pinned models are the ones the cache was filled with",
+          llm.models_for(groq) == ("openai/gpt-oss-20b",
+                                   "openai/gpt-oss-120b")
+          and llm.models_for(gemini)[1] == "models/gemini-3-flash-preview")
+    saved_win = dict(llm._windows)
+    llm._windows["groq"] = [(time.time(), 10 ** 6)]     # Groq's minute is full
     try:
-        check("the local model stays out of the shared pool",
-              all(not p.get("local") for p in llm.available()))
-        loc = llm.available("ollama")
-        check("...but is there when asked for, with the user's model",
-              len(loc) == 1 and llm.models_for(loc[0])
-              == ("gemma4:e4b", "gemma4:e4b")
-              and llm._base(loc[0]).endswith(":11434/v1"))
+        check("Groq first even when busy: Gemini is only a fallback",
+              llm._order([groq, gemini], 100) == [groq, gemini])
+        llm.SHARE = True
+        check("TENDERLENS_SHARE=1 restores sharing: the free one first",
+              llm._order([groq, gemini], 100) == [gemini, groq])
     finally:
-        os.environ.pop("TENDERLENS_LOCAL_MODEL", None)
+        llm.SHARE = False
+        llm._windows.clear()
+        llm._windows.update(saved_win)
 
 
 # ------------------------------------------------------------------ M2

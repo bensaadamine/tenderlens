@@ -58,7 +58,7 @@ pip install -r requirements.txt     # requests, pdfminer.six, langgraph
 
 No `pandas` (blocked on our Windows machines) — standard library plus those two.
 
-LLM keys go in `.env` (never committed): `GROQ_API_KEY=...`, `GEMINI_API_KEY=...`. With two keys the calls are shared between providers. A local model (Ollama) can be added with `TENDERLENS_LOCAL_MODEL=gemma4:e4b`; it is used only when a script asks for it.
+LLM keys go in `.env` (never committed): `GROQ_API_KEY=...`, and optionally `GEMINI_API_KEY=...`. The models are pinned (`tools/llm.py`): Groq's gpt-oss-120b answers every agent call; Gemini is used only when Groq fails or its daily quota is spent. `TENDERLENS_SHARE=1` shares calls between the two instead (twice the calls a minute, but verdicts can differ between runs). `python tools/llm.py` shows the models; `--usage` the tokens spent.
 
 **Network is needed only on Windows**: downloads (`prepare/01`, `prepare/02`, `agents/m3_investigator.py --fetch`), Wikidata (`--online`), the LLM (`--agent`, `--m3-agent`, `--m4-checks`, `prepare/05`).
 

@@ -27,6 +27,6 @@ Not changing: M1 (rules only), routing and weights, the knowledge base.
 |---|---|
 | `TENDERLENS_NATIVE_TOOLS=off` | tools described in the prompt only |
 | `--l1-scope all` | brand names looked for everywhere |
-| `TENDERLENS_LOCAL_MODEL=gemma4:e4b` | (enables the local model; unset = none) |
+| ~~`TENDERLENS_LOCAL_MODEL=gemma4:e4b`~~ | local model removed 2026-11-08 (no caller) |
 | `m3_agent.CHAIN = True` / `GROUPS = False` | chained merges / per-winner decisions |
 | `--reprocess REF… / quarantine / all` | (new option) |

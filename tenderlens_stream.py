@@ -63,6 +63,7 @@ import sys
 import time
 
 import level2
+import llm
 import m1_screener
 import m3_investigator
 import m2_spec_auditor
@@ -336,7 +337,9 @@ def run(a):
                    "reprocessed": list(a.reprocess or []),
                    "native_tools": os.environ.get("TENDERLENS_NATIVE_TOOLS",
                                                   "on"),
-                   "local_model": os.environ.get("TENDERLENS_LOCAL_MODEL")},
+                   "models": {p["name"]: llm.models_for(p)
+                              for p in llm.PROVIDERS},
+                   "share": llm.SHARE},
                   f, indent=1)
     cases, piles = [], collections.Counter()
     for i, ref in enumerate(todo, 1):

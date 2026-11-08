@@ -1,32 +1,30 @@
 """
-LLM access for TenderLens, with a provider fallback chain.
+LLM access for TenderLens: one pinned model, one fallback.
 
-Groq first - it is free, fast, and allows commercial use. If its key is
-missing, rate-limited or erroring, the next configured provider is tried.
-Every provider here speaks the OpenAI chat-completions format, including
-Gemini through its compatibility endpoint, so there is one code path and no
-SDK to install: urllib only, which also means nothing for Windows Application
-Control to block.
+Groq's gpt-oss-120b answers every agent call ("strong"); gpt-oss-20b the
+label map's quick calls ("fast"). Gemini is used only when Groq fails or its
+daily quota is spent. Both speak the OpenAI chat-completions format (Gemini
+through its compatibility endpoint), so there is one code path and no SDK to
+install: urllib only, nothing for Windows Application Control to block.
 
-Set whichever keys you have as environment variables:
+Keys go in .env (never committed):
 
-    setx GROQ_API_KEY       gsk_...     (free: console.groq.com)
-    setx CEREBRAS_API_KEY   csk-...     (free, but a volatile model catalog)
-    setx MISTRAL_API_KEY    ...         (free developer tier)
-    setx GEMINI_API_KEY     ...         (free quota on flash models)
+    GROQ_API_KEY=gsk_...      (free: console.groq.com)
+    GEMINI_API_KEY=...        (optional fallback, small free quota)
 
 With no key at all, ask() raises NoProvider and the caller falls back to its
-rules. The pipeline must never silently stop producing findings because a key
-expired.
+rules: the pipeline must never silently stop producing findings.
 
-Groq's free tier is capped at about 6,000 tokens PER MINUTE, which is the real
-constraint on design: it is far cheaper to ask one question about forty
-candidates than forty questions about one. Callers should batch. ask_json()
-retries on 429 with the delay the server asks for.
+Groq's free tier is about 6,000 tokens PER MINUTE and 200,000 per day - the
+real constraint on design: one question about forty candidates is far
+cheaper than forty questions about one. Callers batch; 429s are retried with
+the delay the server asks for.
 
-Every answer is cached in reports/llm_cache.json, keyed by a hash of the
-prompt, so a re-run costs nothing and the team gets identical results. Commit
-that file.
+Every answer is cached in reports/llm_cache.json, keyed by the model and a
+hash of the prompt, so a re-run costs nothing and gives the same verdicts.
+
+    python tools/llm.py           # which models, and one test call
+    python tools/llm.py --usage   # tokens spent, by caller
 """
 
 import pathlib
@@ -53,81 +51,58 @@ USAGE_PATH = "reports/llm_usage.csv"
 # written anywhere.
 ERRORS_PATH = "reports/llm_errors.csv"
 
-# LOAD SHARING (user decision 2026-10-19). With two or more keys, each call
-# goes to the provider with the most free capacity in ITS OWN 60-second
-# window; a provider that errors falls back to the next. Budgets (tokens per
-# minute) stay a little under each free tier - a 429 costs the Retry-After
-# wait plus a round trip, and the retry spends the tokens again:
-#   groq ~6,000 tokens/min -> 5,500; others unknown -> 5,500
-TPM_BUDGET = 5500
-BUDGETS = {"groq": 5500, "cerebras": 5500, "gemini": 5500, "ollama": 10 ** 9}
+# Tokens per minute each provider may take, a little under its free tier: a
+# 429 costs the Retry-After wait plus a round trip, and the retry spends the
+# tokens again.
+BUDGETS = {"groq": 5500, "gemini": 5500}
 _windows = {}         # provider -> [(unix_time, tokens)]
 _last_call = {}       # provider -> unix_time
 _down_until = {}      # provider -> unix_time; a provider that errored rests
 DOWN_FOR = 60         # seconds
-# Groq's gpt-oss sometimes answers a plain prompt with a native tool call
-# ("Tool choice is none, but model called a tool", HTTP 400). The call it
-# meant is in the error body; it is returned as the answer so the caller
-# can read it.
 DAY_OUT = 6 * 3600    # seconds a provider is skipped after "quota per day"
-# Native tool calling (2026-11-01). The agents used to describe their tools in
-# the prompt and parse a JSON reply; measured in the 4110 traces, about half
-# the steps were lost on tools that don't exist ("open_file", "run") or wrong
-# argument names. With tools= the request now carries a schema per tool and
+# Groq first; Gemini only when Groq fails (2026-11-08). Sharing every call
+# between the two (user decision 2026-10-19) made verdicts differ between
+# runs - two models answer differently. TENDERLENS_SHARE=1 restores sharing:
+# twice the calls a minute, for a first run of a whole category.
+SHARE = os.environ.get("TENDERLENS_SHARE") == "1"
+# Native tool calling (2026-11-01): the request carries a schema per tool and
 # the model's tool call comes back as {"thought", "action", "args"} - the
-# shape the agents already read, so a JSON reply still works as a fallback.
-# A provider that rejects tools is asked again without them. "off" restores
-# the prompt-only behaviour (and the old cache keys).
+# shape the agents read, so a JSON reply still works. Measured before it:
+# about half the agent steps were lost on tools that don't exist or wrong
+# argument names. A provider that rejects tools is asked again without them.
+# "off" restores the prompt-only behaviour (and the old cache keys).
 NATIVE_TOOLS = os.environ.get("TENDERLENS_NATIVE_TOOLS", "on")
 _no_tools = set()     # providers that rejected a tools request this run
-# Local model (decision 34, 2026-11-01): Ollama on the user's machine, free,
-# no daily limit. Enabled by naming the model in TENDERLENS_LOCAL_MODEL (e.g.
-# gemma4:e4b); OLLAMA_HOST if not on localhost:11434. Used only by callers
-# that ask for it (provider="ollama") until the eval shows it is close
-# enough to the cloud model; TENDERLENS_LOCAL_SHARE=1 also lets it take
-# ordinary calls.
-LOCAL_TIMEOUT = 600   # seconds: a small GPU can be slow on a long prompt
 
-# Order matters: first with a key present wins, and the rest are fallbacks.
-# model is the cheap/fast one for triage; model_strong for judgement calls.
+# THE MODELS, pinned (2026-11-08): the same model gives the same verdicts,
+# and every measurement in MEASUREMENT_LOG was made with these. They are the
+# models the cache was filled with, so cached answers keep working. A model
+# the provider has retired (HTTP 400/404) is replaced, for this run, by the
+# first match of PREFER_* in the provider's own list - with a warning,
+# because verdicts may change.
 PROVIDERS = [
-    {
-        "name": "groq",
-        "env": "GROQ_API_KEY",
-        "base": "https://api.groq.com/openai/v1",
-    },
-    {
-        "name": "cerebras",
-        "env": "CEREBRAS_API_KEY",
-        "base": "https://api.cerebras.ai/v1",
-    },
-    {
-        "name": "gemini",
-        "env": "GEMINI_API_KEY",
-        "base": "https://generativelanguage.googleapis.com/v1beta/openai",
-    },
-    {
-        "name": "ollama",
-        "env": "TENDERLENS_LOCAL_MODEL",   # the model name enables it
-        "base": None,                      # from OLLAMA_HOST, read at call time
-        "local": True,
-    },
+    {"name": "groq", "env": "GROQ_API_KEY",
+     "base": "https://api.groq.com/openai/v1",
+     "fast": "openai/gpt-oss-20b", "strong": "openai/gpt-oss-120b"},
+    {"name": "gemini", "env": "GEMINI_API_KEY",
+     "base": "https://generativelanguage.googleapis.com/v1beta/openai",
+     "fast": "models/gemini-2.5-flash",
+     "strong": "models/gemini-3-flash-preview"},
 ]
-
-
-def _base(provider):
-    if provider.get("local"):
-        host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-        if not host.startswith("http"):
-            host = "http://" + host
-        return host.rstrip("/") + "/v1"
-    return provider["base"]
+PREFER_FAST = [r"gpt-oss-20b", r"llama.*8b.*instant",
+               r"gemini-[3-9][\w.-]*flash-lite", r"flash"]
+# Gemini Pro left the free tier in 2026: the strong Gemini is a non-lite Flash.
+PREFER_STRONG = [r"gpt-oss-120b", r"llama.*70b",
+                 r"gemini-[3-9][\d.]*-flash(?!-lite)", r"flash(?!-lite)"]
+# Never pick these for text: speech, embedding, vision-only, moderation.
+EXCLUDE_MODELS = re.compile(
+    r"whisper|tts|embed|guard|moderation|vision|image|audio|rerank|ocr",
+    re.I)
+_replaced = {}        # provider -> {"fast", "strong"} found this run
 
 
 def _auth(provider):
-    # Ollama ignores the key; the others need theirs.
-    return "Bearer " + ("ollama" if provider.get("local")
-                        else os.environ[provider["env"]])
+    return "Bearer " + os.environ[provider["env"]]
 
 
 def tool(name, description, properties=None, required=None):
@@ -137,33 +112,6 @@ def tool(name, description, properties=None, required=None):
             "parameters": {"type": "object",
                            "properties": properties or {},
                            "required": list(required or [])}}
-
-# Model IDs are not stable. Groq retires them, and Cerebras once went from a
-# dozen models to two without notice. So nothing is hardcoded: the catalogue is
-# read from each provider's /models endpoint and the first pattern that matches
-# wins. Add a pattern rather than an ID when a new model appears.
-PREFER_FAST = [
-    r"llama.*8b.*instant", r"llama.*3\.1.*8b", r"gpt-oss-20b",
-    r"qwen3-32b", r"llama.*scout", r"mistral-small",
-    # Gemini 2.5 Flash has a tiny free quota (about 20 requests a day); prefer 3.x.
-    r"gemini-[3-9][\w.-]*flash-lite", r"gemini-[3-9][\w.-]*flash", r"gemini.*flash",
-    r"8b", r"small", r"mini", r"instant", r"flash",
-]
-PREFER_STRONG = [
-    r"llama.*3\.3.*70b", r"llama.*70b", r"gpt-oss-120b", r"zai-glm",
-    r"llama.*maverick", r"qwen3-32b", r"mistral-large", r"magistral",
-    # Gemini Pro left the free tier in 2026: the strong Gemini is the newest
-    # non-lite Flash. Picking a paid-only model just errors and rests the
-    # provider, which defeats load sharing.
-    r"gemini-[3-9][\d.]*-flash(?!-lite)", r"gemini.*flash(?!-lite)",
-    r"120b", r"70b", r"large",
-]
-# Never pick these for text: speech, embedding, vision-only, moderation.
-EXCLUDE_MODELS = re.compile(
-    r"whisper|tts|embed|guard|moderation|vision|image|audio|rerank|ocr",
-    re.I)
-
-MODELS_CACHE = "reports/llm_models.json"
 
 
 class NoProvider(Exception):
@@ -217,61 +165,41 @@ def _key(model, system, user):
 
 
 # -------------------------------------------------------------- the one call
-def available(provider=None):
-    """Providers that have a key set, in fallback order. provider: only
-    that one. The local model joins the shared pool only when
-    TENDERLENS_LOCAL_SHARE=1."""
-    provs = [p for p in PROVIDERS if os.environ.get(p["env"])]
-    if provider:
-        return [p for p in provs if p["name"] == provider]
-    if os.environ.get("TENDERLENS_LOCAL_SHARE") != "1":
-        provs = [p for p in provs if not p.get("local")]
-    return provs
-
-
-def list_models(provider, timeout=30):
-    """Ask the provider what it actually serves today."""
-    req = urllib.request.Request(
-        _base(provider) + "/models",
-        headers={"Authorization": _auth(provider),
-                 "User-Agent": "TenderLens/0.1"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        data = json.load(r)
-    ids = [m.get("id", "") for m in data.get("data", [])]
-    return sorted(i for i in ids if i and not EXCLUDE_MODELS.search(i))
-
-
-def _choose(ids, prefer):
-    for pat in prefer:
-        for i in ids:
-            if re.search(pat, i, re.I):
-                return i
-    return ids[0] if ids else None
+def available():
+    """Providers that have a key set, in fallback order."""
+    return [p for p in PROVIDERS if os.environ.get(p["env"])]
 
 
 def models_for(provider, refresh=False, verbose=False):
-    """(fast, strong) model IDs for this provider, discovered and cached."""
-    if provider.get("local"):           # the user picked the model
-        m = os.environ.get(provider["env"])
-        return m, m
-    cache = _load_cache(MODELS_CACHE)
+    """(fast, strong) model IDs for this provider: the pinned ones, or with
+    `refresh` (the pinned one was rejected) the provider's own best match."""
     name = provider["name"]
-    if not refresh and name in cache:
-        c = cache[name]
-        return c.get("fast"), c.get("strong")
-    try:
-        ids = list_models(provider)
-    except Exception as e:
-        if verbose:
-            print(f"    [{name}] could not list models: {type(e).__name__}")
-        return None, None
-    fast = _choose(ids, PREFER_FAST)
-    strong = _choose(ids, PREFER_STRONG) or fast
-    cache[name] = {"fast": fast, "strong": strong, "all": ids}
-    _save_cache(cache, MODELS_CACHE)
-    if verbose:
-        print(f"    [{name}] {len(ids)} models | fast={fast} strong={strong}")
-    return fast, strong
+    if refresh:
+        try:
+            req = urllib.request.Request(
+                provider["base"] + "/models",
+                headers={"Authorization": _auth(provider),
+                         "User-Agent": "TenderLens/0.1"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                ids = sorted(m.get("id", "") for m in json.load(r)
+                             .get("data", []) if m.get("id")
+                             and not EXCLUDE_MODELS.search(m["id"]))
+        except Exception as e:
+            if verbose:
+                print(f"    [{name}] could not list models: "
+                      f"{type(e).__name__}")
+            ids = []
+        pick = lambda prefer: next((i for pat in prefer for i in ids
+                                    if re.search(pat, i, re.I)), None)
+        fast, strong = pick(PREFER_FAST), pick(PREFER_STRONG)
+        if fast or strong:
+            _replaced[name] = {"fast": fast or strong,
+                               "strong": strong or fast}
+            print(f"    WARNING [{name}] pinned model rejected; using "
+                  f"{_replaced[name]} for this run - verdicts may differ "
+                  f"from the measurements")
+    m = _replaced.get(name) or provider
+    return m["fast"], m["strong"]
 
 
 def _post(provider, model, system, user, max_tokens, temperature, timeout,
@@ -288,7 +216,7 @@ def _post(provider, model, system, user, max_tokens, temperature, timeout,
                              for t in tools]
     body = json.dumps(req_body).encode("utf-8")
     req = urllib.request.Request(
-        _base(provider) + "/chat/completions", data=body,
+        provider["base"] + "/chat/completions", data=body,
         headers={"Authorization": _auth(provider),
                  "Content-Type": "application/json",
                  "User-Agent": "TenderLens/0.1"})
@@ -368,7 +296,7 @@ def _wait_needed(name, est, now=None):
     now = time.time() if now is None else now
     win = _windows.setdefault(name, [])
     win[:] = [(t, n) for t, n in win if now - t < 60]
-    budget = BUDGETS.get(name, TPM_BUDGET)
+    budget = BUDGETS.get(name, 5500)
     wait = 0.0
     spent = sum(n for _t, n in win)
     if spent + est > budget and win:
@@ -377,8 +305,9 @@ def _wait_needed(name, est, now=None):
 
 
 def _order(provs, est):
-    """Providers sorted by how soon they can take this call (share mode)."""
-    if len(provs) < 2:
+    """Fallback order; with SHARE, the provider that can take this call
+    soonest first."""
+    if not SHARE or len(provs) < 2:
         return provs
     now = time.time()
     return sorted(provs, key=lambda p: (_down_until.get(p["name"], 0) > now,
@@ -530,22 +459,19 @@ def agent_tokens(rows):
 
 
 def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
-        timeout=60, retries=2, verbose=False, tag="", tools=None,
-        provider=None):
+        timeout=60, retries=2, verbose=False, tag="", tools=None):
     """Ask the first working provider. Returns the raw text answer.
 
     tools: [llm.tool(...)] for native tool calling; a tool call comes back
-    as JSON text {"thought", "action", "args"}. provider: only this one
-    (e.g. "ollama" for the local model).
+    as JSON text {"thought", "action", "args"}.
 
     Raises NoProvider if no key is set, or RuntimeError if every provider
     failed - the caller decides what to do, because a silent empty answer
     would look like "no findings".
     """
-    provs = available(provider)
+    provs = available()
     if not provs:
-        raise NoProvider(f"provider '{provider}' not configured" if provider
-                         else "set GROQ_API_KEY (free at console.groq.com)")
+        raise NoProvider("set GROQ_API_KEY (free at console.groq.com)")
     if NATIVE_TOOLS != "on":
         tools = None
     # the tool list is part of the question: same prompt, other tools,
@@ -581,12 +507,11 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
             continue
         ck = _key(model, sys_key, user)
         use_tools = tools if p["name"] not in _no_tools else None
-        wait_for = max(timeout, LOCAL_TIMEOUT) if p.get("local") else timeout
         for attempt in range(retries + 1):
             try:
                 _throttle_p(p["name"], est, verbose)
                 answer, usage = _post(p, model, system, user, max_tokens,
-                                      temperature, wait_for, use_tools)
+                                      temperature, timeout, use_tools)
                 _log_usage(tag, p["name"], model, usage, False,
                            _estimate(system + user + answer))
                 # Reasoning models (gpt-oss, magistral, o-series) spend the
@@ -720,18 +645,11 @@ if __name__ == "__main__":
                   f"{d['cached']:7d} {d['tok']:9,}")
         sys.exit(0)
 
-    refresh = "--refresh" in sys.argv
-    show_all = "--list" in sys.argv
-    print("configured, in fallback order:")
+    print("configured, in fallback order"
+          + (" (sharing calls: TENDERLENS_SHARE=1)" if SHARE else "") + ":")
     for p in provs:
-        fast, strong = models_for(p, refresh=refresh)
+        fast, strong = models_for(p)
         print(f"  {p['name']:10s} fast={fast}  strong={strong}")
-        if show_all:
-            cat = _load_cache(MODELS_CACHE).get(p["name"], {}).get("all", [])
-            for i in cat:
-                print(f"      {i}")
-    if show_all:
-        sys.exit(0)
 
     print("\ntesting the first one ...")
     try:
