@@ -177,12 +177,44 @@ def _brand_matches(brand, supplier):
 
 
 def build_case(m1, m2, m3, followups=None):
-    """followups: what M4 checked again (m4_checks.py); shown on
-    the case page, never scored."""
-    ref = (m1 or {}).get("reference") or (m2 or {}).get("reference")
-    claims = []
+    """One tender's case from what M1, M2 and M3 found. followups: what
+    M4 checked again (m4_checks.py); shown on the case page, never scored.
 
-    # ---- M1: notice signals. Their source is the notice field itself.
+    The steps, each below: collect the claims -> add brand = winner ->
+    check each source -> score -> route -> write the case page."""
+    award = (m3 or {}).get("award") or {}
+    claims = collect_claims(m1, m2, m3)
+    claims += winner_claims(m2, award)
+    for c in claims:
+        c["source_attached"] = _attached(c.get("source"))
+        c["verified"] = _verified(c.get("source"))
+    score, breakdown = score_claims(claims)
+    route = decide_route(claims, score)
+    return {
+        "reference": (m1 or {}).get("reference") or (m2 or {}).get("reference"),
+        "title": (m1 or {}).get("title", ""),
+        "entity": (m1 or {}).get("entity", ""),
+        "method": (m1 or {}).get("method", ""),
+        "published": (m1 or {}).get("published", ""),
+        "route": route,
+        "score": score,
+        "breakdown": breakdown,
+        "claims": claims,
+        "narrative": narrative_plain(route, claims, award, m2, followups),
+        "followups": list(followups or []),
+        "readable": bool((m2 or {}).get("readable")),
+        "award": award or None,
+        "trace": {"M1": f"route={(m1 or {}).get('route')}",
+                  "M2": (m2 or {}).get("trace", []),
+                  "M3": (m3 or {}).get("trace", [])},
+    }
+
+
+def collect_claims(m1, m2, m3):
+    """Every claim the three components make, each marked with its
+    component: M1's notice signals (their source is the notice field
+    itself), M2's document findings, M3's award history."""
+    claims = []
     for s in (m1 or {}).get("signals", []):
         if s["weight"] == "info":
             continue
@@ -196,62 +228,58 @@ def build_case(m1, m2, m3, followups=None):
                        "context": None, "checked": True,
                        "checked_how": "copied from the notice field by M1"},
         })
+    for agent, result in (("M2", m2), ("M3", m3)):
+        claims += [dict(f, agent=agent)
+                   for f in (result or {}).get("findings", [])]
+    return claims
 
-    # ---- M2: documents
-    for f in (m2 or {}).get("findings", []):
-        c = dict(f)
-        c["agent"] = "M2"
-        claims.append(c)
 
-    # ---- M3: awards
-    for f in (m3 or {}).get("findings", []):
-        c = dict(f)
-        c["agent"] = "M3"
-        claims.append(c)
-
-    # ---- cross-check: is the brand the spec locks in the one that won?
-    award = (m3 or {}).get("award") or {}
+def winner_claims(m2, award):
+    """M4's own check: is a brand the specification requires the company
+    that won - under its name, another spelling M3 accepted, or as one of
+    several winners? One claim per matching, verified brand finding."""
     winner = award.get("supplier")
-    if winner:
-        # (name, how it is tied to the contract); the winner first
-        others = [w for w in (award.get("winners") or []) if w != winner]
-        names = [(winner, "")]
-        names += [(n, f" (also written {n} in the award notices)")
-                  for n in award.get("other_spellings") or []]
-        names += [(n, f"; {n} is one of the {len(others) + 1} suppliers "
-                      f"it was awarded to") for n in others]
-        for f in (m2 or {}).get("findings", []):
-            hit = next((h for h in names
-                        if _brand_matches(f.get("brand"), h[0])), None)
-            if f.get("kind") == "brand_without_equivalent" and hit and \
-                    _verified(f.get("source")):
-                via = hit[1]
-                claims.append({
-                    "agent": "M4", "kind": "brand_matches_winner", "level": 1,
-                    "confidence": "high",
-                    "claim": f"The specification names '{f['brand']}' "
-                             f"without accepting an equivalent, and the "
-                             f"contract was awarded to {winner}{via}.",
-                    "source": {"file": f["source"].get("file"),
-                               "where": f["source"].get("where"),
-                               "line": f["source"].get("line"),
-                               "context": f"award: {winner} "
-                                          f"{award.get('date', '')}",
-                               "checked": f["source"].get("checked"),
-                               "checked_how": f["source"].get(
-                                   "checked_how")},
-                })
+    if not winner:
+        return []
+    # (name, how it is tied to the contract); the winner first
+    others = [w for w in (award.get("winners") or []) if w != winner]
+    names = [(winner, "")]
+    names += [(n, f" (also written {n} in the award notices)")
+              for n in award.get("other_spellings") or []]
+    names += [(n, f"; {n} is one of the {len(others) + 1} suppliers "
+                  f"it was awarded to") for n in others]
+    out = []
+    for f in (m2 or {}).get("findings", []):
+        hit = next((h for h in names
+                    if _brand_matches(f.get("brand"), h[0])), None)
+        if f.get("kind") == "brand_without_equivalent" and hit and \
+                _verified(f.get("source")):
+            out.append({
+                "agent": "M4", "kind": "brand_matches_winner", "level": 1,
+                "confidence": "high",
+                "claim": f"The specification names '{f['brand']}' "
+                         f"without accepting an equivalent, and the "
+                         f"contract was awarded to {winner}{hit[1]}.",
+                "source": {"file": f["source"].get("file"),
+                           "where": f["source"].get("where"),
+                           "line": f["source"].get("line"),
+                           "context": f"award: {winner} "
+                                      f"{award.get('date', '')}",
+                           "checked": f["source"].get("checked"),
+                           "checked_how": f["source"].get("checked_how")},
+            })
+    return out
 
-    for c in claims:
-        c["source_attached"] = _attached(c.get("source"))
-        c["verified"] = _verified(c.get("source"))
 
-    # ---- score
+def score_claims(claims):
+    """Points for each claim (written on it: points, not_scored_because),
+    and the case's total. A claim scores nothing when its source was not
+    checked, when it is context with no document finding to attach to, or
+    past its cap (repetition is not corroboration)."""
     has_doc_evidence = any(c["verified"] and c.get("agent") in ("M2", "M4")
                            and c["kind"] not in LEVEL2_KINDS for c in claims)
     used = {"brand_without_equivalent": 0, "level2": 0}
-    breakdown = []
-    score = 0
+    breakdown, score = [], 0
     for c in claims:
         k = c["kind"]
         w = WEIGHTS.get(k, 0)
@@ -275,7 +303,11 @@ def build_case(m1, m2, m3, followups=None):
             c["not_scored_because"] = why
         score += w
         breakdown.append((k, w))
+    return score, breakdown
 
+
+def decide_route(claims, score):
+    """alert / watch / close (decision 27)."""
     can_alert = any(c["verified"] and c["kind"] in
                     ("brand_without_equivalent", "brand_matches_winner")
                     for c in claims)
@@ -297,30 +329,10 @@ def build_case(m1, m2, m3, followups=None):
                     if c.get("agent") in ("M2", "M4")
                     and c["kind"] not in LEVEL2_KINDS)
     if doc_score >= ALERT and can_alert:
-        route = "alert"
-    elif score >= WATCH and has_other:
-        route = "watch"
-    else:
-        route = "close"
-
-    return {
-        "reference": ref,
-        "title": (m1 or {}).get("title", ""),
-        "entity": (m1 or {}).get("entity", ""),
-        "method": (m1 or {}).get("method", ""),
-        "published": (m1 or {}).get("published", ""),
-        "route": route,
-        "score": score,
-        "breakdown": breakdown,
-        "claims": claims,
-        "narrative": narrative_plain(route, claims, award, m2, followups),
-        "followups": list(followups or []),
-        "readable": bool((m2 or {}).get("readable")),
-        "award": award or None,
-        "trace": {"M1": f"route={(m1 or {}).get('route')}",
-                  "M2": (m2 or {}).get("trace", []),
-                  "M3": (m3 or {}).get("trace", [])},
-    }
+        return "alert"
+    if score >= WATCH and has_other:
+        return "watch"
+    return "close"
 
 
 # Case page, "Brand names checked": every name the documents raised and who

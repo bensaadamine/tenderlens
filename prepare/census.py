@@ -910,7 +910,16 @@ def tender_meta(tenders_path, refs):
     return meta
 
 
-def main():
+CENSUS_COLS = ["reference", "unspsc8", "pub_date", "label", "raw_label",
+               "label_src", "comparator", "comp_src", "value", "value_text",
+               "unit", "unit_resolved", "dimension",
+               "base_value", "base_unit", "value_lo", "value_hi", "base_lo",
+               "base_hi", "band_width", "restated", "also_stated_as",
+               "soft_unit", "part_number_line", "scope", "file", "line_no",
+               "section", "source_line", "context"]
+
+
+def parse_args():
     ap = argparse.ArgumentParser()
     ap.add_argument("--group", default="4110")
     ap.add_argument("--text-dir", default="reports/text")
@@ -937,26 +946,73 @@ def main():
                          "and labels marked 'unknown' are dropped. Without "
                          "this the census reports RAW labels, which is the "
                          "honest pre-map floor.")
-    args = ap.parse_args()
+    return ap.parse_args()
 
+
+def main():
+    """The census of one category, step by step:
+    read the text -> extract every numeric requirement -> clean (bands,
+    units, restatements) -> join the notices (family, date) -> apply the
+    label map -> one observation per tender -> write the rows -> group by
+    attribute -> write the label table -> write the summary."""
+    args = parse_args()
     # Fail before the expensive work, not after it: extraction plus the
     # tenders.csv join is ~2 minutes, and erroring at the end of that is just
     # two wasted minutes.
     if args.map and not os.path.exists(args.map):
         sys.exit(f"missing {args.map} - run prepare/attribute_map.py first")
 
-    tdir = os.path.join(args.text_dir, args.group)
+    tdir, files = text_files(args.text_dir, args.group)
+    rows = extract_documents(tdir, files)
+    rows = clean_rows(rows)
+    refs = {r["reference"] for r in rows}
+    print(f"\n{len(rows):,} candidates from {len(refs):,} tenders")
+    family_of = join_notices(rows, args.tenders, args.group)
+    if args.map:
+        rows = apply_map(rows, args.map)
+    cut = {"unspsc8": 8, "unspsc6": 6, "unspsc4": 4}[args.family]
+    # The same value restated in an amendment is not a second observation
+    # (decision 22).
+    before = len(rows)
+    rows = dedup(rows, cut)
+    print(f"dedup: {before:,} -> {len(rows):,} observations "
+          f"({before - len(rows):,} restatements folded)")
+
+    sfx = "_mapped" if args.map else ""
+    full = os.path.join(args.out, f"census_{args.group}{sfx}.csv")
+    write_rows(rows, full)
+    groups = group_by_attribute(rows, cut, args.group)
+    lab_path = os.path.join(args.out, f"census_{args.group}{sfx}_labels.csv")
+    write_label_table(groups, lab_path)
+    lines = summary(args, files, refs, rows, groups, family_of, cut)
+    out_txt = os.path.join(args.out, f"census_{args.group}{sfx}.txt")
+    with io.open(out_txt, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+
+    print(f"\n  every candidate -> {full}")
+    print(f"  per label       -> {lab_path}   <- read this one")
+    print(f"  summary         -> {out_txt}")
+
+
+# ------------------------------------------------------------ the steps
+def text_files(text_dir, group):
+    """(folder, the category's extracted .txt files) - or exit saying
+    which preparation step is missing."""
+    tdir = os.path.join(text_dir, group)
     if not os.path.isdir(tdir):
-        sys.exit(f"missing {tdir} - run prepare/fetch_docs.py --only {args.group} "
+        sys.exit(f"missing {tdir} - run prepare/fetch_docs.py --only {group} "
                  f"--per-cat 0, then prepare/extract_text.py")
     files = sorted(f for f in os.listdir(tdir) if f.endswith(".txt"))
     if not files:
         sys.exit(f"no cached text in {tdir}")
     print(f"{len(files):,} cached documents in {tdir}")
+    return tdir, files
 
-    # ---------------------------------------------------------- extraction
+
+def extract_documents(tdir, files):
+    """Every numeric requirement of every document (extract), tagged with
+    its tender and file."""
     rows = []
-    per_doc = {}
     for n, fn in enumerate(files, 1):
         ref = fn.split("__", 1)[0]
         try:
@@ -971,148 +1027,151 @@ def main():
             r["reference"] = ref
             r["file"] = fn
         rows.extend(got)
-        per_doc[fn] = (ref, Counter(r["comparator"] for r in got))
         if n % 100 == 0:
             print(f"  {n:5d}/{len(files)} ...")
-
     if not rows:
         sys.exit("no candidates extracted - check the text cache")
+    return rows
 
-    # A two-sided band is one observation (value_lo, value_hi, band_width).
-    rows, _nb = collapse_bands(rows)
-    print(f"  {_nb:,} two-sided bands collapsed to one observation each")
-    # One base unit per dimension; ambiguous units left as they are (15).
-    _nc = convert_units(rows)
-    print(f"  {_nc:,}/{len(rows):,} converted to a base unit "
-          f"({len(rows)-_nc:,} left unconverted - ambiguous unit, "
+
+def clean_rows(rows):
+    """A two-sided band is one observation (value_lo, value_hi,
+    band_width); one base unit per dimension, ambiguous units left as they
+    are (decision 15); a metric/imperial restatement is one requirement."""
+    rows, nb = collapse_bands(rows)
+    print(f"  {nb:,} two-sided bands collapsed to one observation each")
+    nc = convert_units(rows)
+    print(f"  {nc:,}/{len(rows):,} converted to a base unit "
+          f"({len(rows)-nc:,} left unconverted - ambiguous unit, "
           f"decision 15)")
-    rows, _nf = fold_restatements(rows)
-    print(f"  {_nf:,} metric/imperial restatements of one requirement "
+    rows, nf = fold_restatements(rows)
+    print(f"  {nf:,} metric/imperial restatements of one requirement "
           f"folded")
+    return rows
 
-    refs = {r["reference"] for r in rows}
-    print(f"\n{len(rows):,} candidates from {len(refs):,} tenders")
-    print(f"joining {args.tenders} for the 8-digit family and date ...")
-    meta = tender_meta(args.tenders, refs)
+
+def join_notices(rows, tenders_path, group):
+    """Each row gets its tender's 8-digit UNSPSC family and publication
+    date from the notices file. Returns {reference: family}."""
+    print(f"joining {tenders_path} for the 8-digit family and date ...")
+    meta = tender_meta(tenders_path, {r["reference"] for r in rows})
     for r in rows:
         u8, date = meta.get(r["reference"], ("", ""))
-        r["unspsc8"] = u8 or args.group
+        r["unspsc8"] = u8 or group
         r["pub_date"] = date
-    family_of = {r["reference"]: r["unspsc8"] for r in rows}
+    return {r["reference"]: r["unspsc8"] for r in rows}
 
-    # Applied BEFORE the per-row CSV is written, so census_<grp>_mapped.csv
-    # really holds canonical labels. The raw_label column survives either
-    # way, so a wrong merge stays traceable to what the tender actually
-    # said, and the unmapped census_<grp>.csv is kept beside it.
-    # in census_<grp>.csv. The map is a frozen judgement that may be wrong,
-    # and a wrong merge must stay traceable back to what the tender said.
-    if args.map:
-        with io.open(args.map, encoding="utf-8") as f:
-            _m = json.load(f)
-        _m = _m.get("map", _m)
-        _unknown = _kept = _renamed = 0
-        _out = []
-        for r in rows:
-            canon = _m.get(r["label"])
-            if canon == "unknown":
-                _unknown += 1
-                continue
-            if canon and canon != r["label"]:
-                r["label"] = canon
-                _renamed += 1
-            _kept += 1
-            _out.append(r)
-        rows = _out
-        print(f"map applied: {_renamed:,} rows renamed, {_unknown:,} dropped "
-              f"as boilerplate, {_kept:,} kept")
-        if not rows:
-            sys.exit("the map dropped every row - check it by hand")
 
-    _cut = {"unspsc8": 8, "unspsc6": 6, "unspsc4": 4}[args.family]
-    # The same value restated in an amendment is not a second observation
-    # (decision 22).
-    _before = len(rows)
-    rows = dedup(rows, _cut)
-    print(f"dedup: {_before:,} -> {len(rows):,} observations "
-          f"({_before - len(rows):,} restatements folded)")
+def apply_map(rows, map_path):
+    """Labels -> canonical attributes (prepare/attribute_map.py); rows
+    mapped to 'unknown' (boilerplate) are dropped. Applied BEFORE the rows
+    are written, so census_<grp>_mapped.csv really holds canonical labels;
+    raw_label survives, so a wrong merge - the map is a frozen judgement
+    that may be wrong - stays traceable to what the tender said."""
+    with io.open(map_path, encoding="utf-8") as f:
+        m = json.load(f)
+    m = m.get("map", m)
+    unknown = kept = renamed = 0
+    out = []
+    for r in rows:
+        canon = m.get(r["label"])
+        if canon == "unknown":
+            unknown += 1
+            continue
+        if canon and canon != r["label"]:
+            r["label"] = canon
+            renamed += 1
+        kept += 1
+        out.append(r)
+    print(f"map applied: {renamed:,} rows renamed, {unknown:,} dropped "
+          f"as boilerplate, {kept:,} kept")
+    if not out:
+        sys.exit("the map dropped every row - check it by hand")
+    return out
 
-    # ------------------------------------------------------------- per-row
-    _sfx = "_mapped" if args.map else ""
-    full = os.path.join(args.out, f"census_{args.group}{_sfx}.csv")
-    cols = ["reference", "unspsc8", "pub_date", "label", "raw_label",
-            "label_src", "comparator", "comp_src", "value", "value_text",
-            "unit", "unit_resolved", "dimension",
-            "base_value", "base_unit", "value_lo", "value_hi", "base_lo",
-            "base_hi", "band_width", "restated", "also_stated_as",
-            "soft_unit", "part_number_line", "scope", "file", "line_no",
-            "section", "source_line", "context"]
-    with io.open(full, "w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
+
+def write_rows(rows, path):
+    with io.open(path, "w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=CENSUS_COLS, extrasaction="ignore")
         w.writeheader()
         for r in rows:
             w.writerow(r)
 
-    # -------------------------------------------------------- the grouping
-    # One tender counts ONCE per attribute. Departments reuse templates and
-    # repeat the same requirement across lots; counting every repetition
-    # would fabricate the denominator and make the test lie in our favour.
-    key_of = lambda r: (r["unspsc8"][:_cut] or args.group,
-                        r["dimension"], r["label"])
 
-    tenders_per_key = defaultdict(set)
-    comp_per_key = defaultdict(Counter)
-    src_per_key = defaultdict(Counter)
-    vals_per_key = defaultdict(list)
-    raws_per_key = defaultdict(Counter)
-    dates_per_key = defaultdict(list)
+def group_by_attribute(rows, cut, group):
+    """Per attribute - (family at `cut` digits, dimension, label) - the
+    tenders that state it, its comparators, where its labels came from,
+    its converted values, raw spellings and dates. One tender counts ONCE
+    per attribute: departments reuse templates and repeat a requirement
+    across lots, and counting every repetition would fabricate the
+    denominator and make the test lie in our favour."""
+    g = {"tenders": defaultdict(set), "comp": defaultdict(Counter),
+         "src": defaultdict(Counter), "vals": defaultdict(list),
+         "raws": defaultdict(Counter), "dates": defaultdict(list)}
     for r in rows:
-        k = key_of(r)
-        tenders_per_key[k].add(r["reference"])
-        comp_per_key[k][r["comparator"]] += 1
-        src_per_key[k][r["label_src"]] += 1
-        raws_per_key[k][r["raw_label"]] += 1
+        k = (r["unspsc8"][:cut] or group, r["dimension"], r["label"])
+        g["tenders"][k].add(r["reference"])
+        g["comp"][k][r["comparator"]] += 1
+        g["src"][k][r["label_src"]] += 1
+        g["raws"][k][r["raw_label"]] += 1
         if r["pub_date"]:
-            dates_per_key[k].append(r["pub_date"])
+            g["dates"][k].append(r["pub_date"])
         # ONLY converted values. A median over a column holding millimetres,
         # inches and metres at once is the number that made `overall width`
         # read as 37 - decision 15's whole point.
         if r.get("base_value") != "":
             try:
-                vals_per_key[k].append(float(r["base_value"]))
+                g["vals"][k].append(float(r["base_value"]))
             except (TypeError, ValueError):
                 pass
+    return g
 
-    lab_path = os.path.join(args.out,
-                            f"census_{args.group}{_sfx}_labels.csv")
-    with io.open(lab_path, "w", encoding="utf-8", newline="") as f:
+
+def write_label_table(g, path):
+    """One line per attribute, most tenders first - the file to read."""
+    with io.open(path, "w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
         w.writerow(["unspsc8", "dimension", "label", "tenders", "obs",
                     "GE", "LE", "RANGE", "EQ", "NONE", "label_src_above",
                     "base_unit", "n_converted", "median_base",
                     "date_min", "date_max", "variants"])
-        for k in sorted(tenders_per_key,
-                        key=lambda x: -len(tenders_per_key[x])):
+        for k in sorted(g["tenders"], key=lambda x: -len(g["tenders"][x])):
             u8, dim, lab = k
-            c = comp_per_key[k]
-            v = vals_per_key[k]
-            d = sorted(dates_per_key[k])
+            c = g["comp"][k]
+            v = g["vals"][k]
+            d = sorted(g["dates"][k])
             w.writerow([
-                u8, dim, lab, len(tenders_per_key[k]), sum(c.values()),
+                u8, dim, lab, len(g["tenders"][k]), sum(c.values()),
                 c["GE"], c["LE"], c["RANGE"], c["EQ"], c["NONE"],
-                src_per_key[k]["above"],
+                g["src"][k]["above"],
                 BASE.get(dim, ""), len(v),
                 round(statistics.median(v), 3) if v else "",
                 d[0] if d else "", d[-1] if d else "",
-                " | ".join(x for x, _ in raws_per_key[k].most_common(4)),
+                " | ".join(x for x, _ in g["raws"][k].most_common(4)),
             ])
 
-    # ----------------------------------------------------------- summary
+
+# ----------------------------------------------------------- the summary
+def summary(args, files, refs, rows, g, family_of, cut):
+    """The census report, printed and returned as lines: what was read,
+    peer depth, the top labels, extraction hygiene, dates, and the
+    within-document baseline."""
     lines = []
 
     def say(s=""):
         print(s)
         lines.append(s)
 
+    _say_overview(say, args, files, refs, rows, g, family_of, cut)
+    _say_peer_depth(say, g, refs, args.min_peers)
+    _say_top_labels(say, g, args.top)
+    _say_hygiene(say, rows, args.group)
+    _say_dates(say, rows)
+    _say_within_document(say, rows)
+    return lines
+
+
+def _say_overview(say, args, files, refs, rows, g, family_of, cut):
     say("=" * 74)
     say(f"VOCABULARY CENSUS - {args.group}   "
         f"(peers grouped at {args.family}"
@@ -1122,9 +1181,9 @@ def main():
     say(f"\n  documents ............ {len(files):,}")
     say(f"  tenders .............. {len(refs):,}")
     say(f"  candidates extracted . {len(rows):,}")
-    say(f"  distinct labels ...... {len(tenders_per_key):,}")
+    say(f"  distinct labels ...... {len(g['tenders']):,}")
 
-    fams = Counter(v[:_cut] for v in family_of.values())
+    fams = Counter(v[:cut] for v in family_of.values())
     say(f"\n  product families (UNSPSC-8) in this category: {len(fams)}")
     for fam, c in fams.most_common(12):
         say(f"    {fam:10s} {c:4,} tenders")
@@ -1134,12 +1193,14 @@ def main():
         "\n  it is also what costs peers. The count above is how fine the"
         "\n  split can go before the n >= %d floor bites." % args.min_peers)
 
-    # -------------------------------------------- THE question: peer depth
+
+def _say_peer_depth(say, g, refs, min_peers):
+    """THE question: does an attribute reach n >= min_peers tenders?"""
+    tenders_per_key = g["tenders"]
     sizes = sorted((len(v) for v in tenders_per_key.values()), reverse=True)
-    reach = [k for k, v in tenders_per_key.items()
-             if len(v) >= args.min_peers]
+    reach = [k for k, v in tenders_per_key.items() if len(v) >= min_peers]
     say("\n" + "=" * 74)
-    say(f"PEER DEPTH - does an attribute reach n >= {args.min_peers} tenders?")
+    say(f"PEER DEPTH - does an attribute reach n >= {min_peers} tenders?")
     say("=" * 74)
     say("")
     for thr in (2, 4, 6, 8, 12, 20, 30):
@@ -1161,23 +1222,25 @@ def main():
         "\n  tender with no attribute above the floor can only be judged by"
         "\n  the within-document test below.")
 
-    # ------------------------------------------------------- what they are
+
+def _say_top_labels(say, g, top):
     say("\n" + "=" * 74)
-    say(f"TOP {args.top} LABELS BY TENDER COUNT")
+    say(f"TOP {top} LABELS BY TENDER COUNT")
     say("=" * 74)
     say("\n  The near-duplicates here are the finding, not the noise - they")
     say("  are what the attribute map has to merge, and merging them is what")
     say("  pushes labels above the floor.\n")
     say(f"  {'n':>4} {'fam':>8} {'dim':12s} {'GE/LE':>7} {'EQ':>4} "
         f"{'RNG':>4}  label")
-    for k in sorted(tenders_per_key,
-                    key=lambda x: -len(tenders_per_key[x]))[:args.top]:
+    for k in sorted(g["tenders"], key=lambda x: -len(g["tenders"][x]))[:top]:
         u8, dim, lab = k
-        c = comp_per_key[k]
-        say(f"  {len(tenders_per_key[k]):4d} {u8:>8} {dim:12s} "
+        c = g["comp"][k]
+        say(f"  {len(g['tenders'][k]):4d} {u8:>8} {dim:12s} "
             f"{c['GE']+c['LE']:7d} {c['EQ']:4d} {c['RANGE']:4d}  {lab[:38]}")
 
-    # ------------------------------------------------------------- hygiene
+
+def _say_hygiene(say, rows, group):
+    """How much of the extraction is trustworthy."""
     say("\n" + "=" * 74)
     say("EXTRACTION HYGIENE - how much of this is trustworthy?")
     say("=" * 74)
@@ -1210,12 +1273,13 @@ def main():
     say("\n  'taken from above' is the number to watch. Those labels were"
         "\n  inferred from a neighbouring line, and a wrong one silently"
         "\n  merges two unrelated attributes. Spot-check them in"
-        f"\n  census_{args.group}.csv before trusting any group built on them.")
+        f"\n  census_{group}.csv before trusting any group built on them.")
     say("\n  unit distribution:")
     for u, c in Counter(r["unit"] for r in rows).most_common(15):
         say(f"    {u:6s} {c:6,}  {DIMENSION.get(u,'?')}")
 
-    # --------------------------------------------------------------- dates
+
+def _say_dates(say, rows):
     dates = sorted(d for d in (r["pub_date"] for r in rows) if d)
     say("\n" + "=" * 74)
     say("DATE SPREAD")
@@ -1231,7 +1295,9 @@ def main():
     else:
         say("\n  no dates joined (is data/tenders.csv present?)")
 
-    # ------------------------------------------- the no-peer baseline
+
+def _say_within_document(say, rows):
+    """The detector that needs no peers: the share of exact values."""
     say("\n" + "=" * 74)
     say("WITHIN-DOCUMENT BASELINE - the detector that needs no peers")
     say("=" * 74)
@@ -1266,14 +1332,6 @@ def main():
     say("\n  This is the number the peer model has to beat. It needs no"
         "\n  attribute map, no unit conversion and no peers, and it works on"
         "\n  the thin categories too.")
-
-    out_txt = os.path.join(args.out, f"census_{args.group}{_sfx}.txt")
-    with io.open(out_txt, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
-
-    print(f"\n  every candidate -> {full}")
-    print(f"  per label       -> {lab_path}   <- read this one")
-    print(f"  summary         -> {out_txt}")
 
 
 if __name__ == "__main__":
