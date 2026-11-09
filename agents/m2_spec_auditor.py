@@ -247,14 +247,16 @@ def merge_spellings(findings):
 
 def names_checked(l1):
     """Every brand name the tender raised and who settled it, for the case
-    page: [{"name", "result", "decided_by"}]."""
+    page: [{"name", "result", "status", "decided_by"}]."""
     out = []
     for key, result in (("findings", "finding"), ("unresolved", "open"),
                         ("ok", "cleared"), ("dropped", "dropped")):
         for r in l1.get(key) or []:
             out.append({"name": r["brand"], "result": result,
+                        "status": r.get("status", ""),
                         "decided_by": r.get("decided_by", "")})
             out += [{"name": n, "result": "finding",
+                     "status": r.get("status", ""),
                      "decided_by": f"counted once with '{r['brand']}'"}
                     for n in r.get("also_written") or []]
     return out
@@ -380,7 +382,26 @@ def _slim_l1(l1):
     return {"findings": len(l1.get("findings", [])),
             "ok": len(l1.get("ok", [])),
             "unresolved": len(l1.get("unresolved", [])),
-            "blanket_clause": l1.get("blanket_clause")}
+            "blanket_clause": l1.get("blanket_clause"),
+            "agent": l1.get("agent")}
+
+
+def agent_status(agent, trace):
+    """Did the M2 agent really judge this tender? From its result
+    (level 1's "agent") and M2's trace: "ran", "incomplete: ...", "did not
+    run: ..." (the rules' result was kept), "ran (nothing to check)" or
+    "ran (rules cleared everything)"."""
+    if agent:
+        stop = agent.get("stop_reason", "")
+        return "incomplete: " + stop if stop.startswith("model") else "ran"
+    for t in trace or []:
+        if t.startswith("agent could not start"):
+            return "did not run: " + t.split("(", 1)[-1].split(")")[0][:80]
+        if t.startswith("agent: nothing"):
+            return "ran (nothing to check)"
+        if t.startswith("--agent asked but no LLM key"):
+            return "did not run: no LLM key"
+    return "ran (rules cleared everything)"
 
 
 def _slim_l2(l2):

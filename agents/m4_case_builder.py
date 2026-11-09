@@ -204,6 +204,10 @@ def build_case(m1, m2, m3, followups=None):
         "narrative": narrative_plain(route, claims, award, m2, followups),
         "followups": list(followups or []),
         "readable": bool((m2 or {}).get("readable")),
+        # what M2 settled for every brand name, and whether its agent ran -
+        # from the M2 result this case was scored on (the evals read it)
+        "m2": {"names": (m2 or {}).get("names", []),
+               "agent": ((m2 or {}).get("level1") or {}).get("agent")},
         "award": award or None,
         "trace": {"M1": f"route={(m1 or {}).get('route')}",
                   "M2": (m2 or {}).get("trace", []),

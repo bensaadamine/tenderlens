@@ -3,6 +3,7 @@
     python tenderlens.py eval synth              # build the copies, then run them
     python tenderlens.py eval synth --build      # only write the copies
     python tenderlens.py eval synth --run        # only run + report (add --online on Windows)
+    python tenderlens.py eval synth --review     # list the bases' "equivalent" lines to check by hand
 
 BASE TENDERS: real 2510 tenders now in the knowledge base (closed, with a
 (--bases no-clause, default) no standard "Equivalent Products" clause, and a
@@ -21,9 +22,22 @@ INJECTION VARIES ON PURPOSE: 7 wording styles (English and French), brands
 the offline brand cache already confirms (Honda, Michelin, Palfinger) and
 brands only an --online run can confirm (Cummins, Allison, ...).
 
-NOTHING TOUCHES REAL DATA: copies live in reports/text_synth/2510/, results
-in reports/synth/2510/. Each copy is compared with the real knowledge base
-(reports/kb/2510) minus its own original, as a tender of a new batch would be.
+NOTHING TOUCHES REAL DATA: copies live in reports/text_synth/2510/. Each
+run writes its own folder, reports/synth/2510/runs/<stamp>/ (results.csv,
+summary.txt, the queue, settings.json: options, models that answered, and
+fingerprints of the manifest and copies); a run never overwrites another.
+Each copy is compared with the real knowledge base (reports/kb/2510) minus
+its own original, as a tender of a new batch would be.
+
+ONE INVESTIGATION PER COPY: what happened to each injected brand is read from
+the case itself (case["m2"]: every name M2 raised, its result, who settled
+it), so the route and the brand outcome come from the same M2 run.
+
+EXPECTED LABELS: whether a base already accepts equivalents for every brand
+(then a brand added there is legal: expect close) is decided by the
+detector's own clause patterns - a shared blind spot. --review lists every
+"equivalent" line of the bases in reports/synth/2510/equivalent_review.csv;
+a base marked there by hand (allows = yes / no) uses that verdict instead.
 
 HONEST LIMIT: the same team wrote the injections and the detector. Two
 styles are included BECAUSE the rules are known to miss them - a brand with
@@ -35,6 +49,7 @@ spots. The score is an upper bound until someone writes injections blind.
 import argparse
 import collections
 import csv
+import hashlib
 import io
 import json
 import os
@@ -48,6 +63,9 @@ from agents import m2_spec_auditor
 from agents import m4_case_builder
 from tools import brands
 from tools import documents
+from tools import llm
+from tools import names
+from tools import wikidata
 from tools.report import write_outputs
 from pipeline import one_tender
 from pipeline.settings import Settings
@@ -65,8 +83,16 @@ GROUP = "2510"
 SYN_TEXT = "reports/text_synth"
 OUT = os.path.join("reports", "synth", GROUP)
 MANIFEST = os.path.join(OUT, "manifest.csv")
+REVIEW = os.path.join(OUT, "equivalent_review.csv")
+RE_ANY_EQUIV = re.compile(r"[ée]quivalen", re.I)   # broad on purpose
+# Federal boilerplate about climate pledges, never about products: left out
+# of the review list so a person reads only the lines that can matter.
+RE_NOT_PRODUCTS = re.compile(r"net.zero|race to zero|science based targets",
+                             re.I)
 
-# name, model, part (en), part (fr), maker's company name, in offline cache
+# name, model, part (en), part (fr), maker's company name, and whether the
+# brand cache confirmed it when the set was written (unused: the run reads
+# the cache itself - section 5)
 BRANDS = [
     ("Honda", "GX390", "engine", "moteur", "Honda Canada Inc.", True),
     ("Cummins", "ISB6.7", "engine", "moteur", "Cummins Eastern Canada LP", False),
@@ -207,15 +233,14 @@ def build(n, seed, bases="no-clause"):
                 with io.open(os.path.join(gdir, f"{sref}__99_synth_{tag}.txt"),
                              "w", encoding="utf-8") as f:
                     f.write(extra)
-            brands = ([b1] if v in ("A", "C", "D", "E", "G")
-                      else [b1, b2] if v == "B" else [])
+            added = ([b1] if v in ("A", "C", "D", "E", "G")
+                     else [b1, b2] if v == "B" else [])
             rows.append({
                 "sref": sref, "base": ref, "variant": v,
                 "expected": VARIANTS[v], "style": style,
                 "lang": "fr" if style == "french" else "en",
-                "brands": "|".join(b[0] for b in brands),
-                "models": "|".join(b[1] for b in brands),
-                "in_cache": "|".join(str(b[5]) for b in brands),
+                "brands": "|".join(b[0] for b in added),
+                "models": "|".join(b[1] for b in added),
                 "winner": b1[4] if v == "C" else "",
                 "document": primary["document"], "line_no": at + 2,
                 "injected": " / ".join(inject) if inject else (extra or "").replace("\n", " ")[:200],
@@ -229,28 +254,83 @@ def build(n, seed, bases="no-clause"):
 
 
 # ------------------------------------------------------------------- run
-def brand_outcome(l1, brand):
-    """Where the brand checker filed this injected brand."""
-    key = brand.lower()
-    def hit(rows):
-        return next((r for r in rows if r["brand"].lower().split()[0] == key
-                     or r["brand"].lower().startswith(key)), None)
-    if hit(l1.get("findings", [])):
+OUTCOME = {"OK": "or_equivalent_nearby", "OK_BLANKET_CLAUSE": "blanket_clause",
+           "OK_MAKE_LIST": "make_list",
+           "OK_EQUIV_PRODUCTS_CLAUSE": "equiv_products_clause",
+           "AGENT_A": "agent_a_not_a_brand", "AGENT_B": "agent_b_bidder",
+           "AGENT_C": "agent_c_buyer_equipment",
+           "AGENT_D": "agent_d_list_of_brands",
+           "AGENT_E": "agent_e_equivalent_accepted"}
+
+
+def brand_outcome(checked, brand):
+    """Where M2 filed this injected brand, from its list of names (the
+    case's m2.names): found / cleared_<why> / brand_not_confirmed /
+    not_picked_up. A name counts when it begins with the brand's words
+    (tools/names.py): "Honda GX390" is Honda."""
+    rows = [n for n in checked if names.begins_with(n["name"], brand)]
+    by = {n["result"]: n for n in rows}
+    if "finding" in by:
         return "found"
-    r = hit(l1.get("ok", []))
-    if r:
-        return "cleared_" + {"OK": "or_equivalent_nearby",
-                             "OK_BLANKET_CLAUSE": "blanket_clause",
-                             "OK_MAKE_LIST": "make_list",
-                             "OK_EQUIV_PRODUCTS_CLAUSE": "equiv_products_clause",
-                             "AGENT_A": "agent_a_not_a_brand",
-                             "AGENT_B": "agent_b_bidder",
-                             "AGENT_C": "agent_c_buyer_equipment",
-                             "AGENT_D": "agent_d_list_of_brands",
-                             "AGENT_E": "agent_e_equivalent_accepted"}.get(r["status"], r["status"])
-    if hit(l1.get("unresolved", [])):
+    if "cleared" in by:
+        st = by["cleared"].get("status", "")
+        return "cleared_" + OUTCOME.get(st, st)
+    if "open" in by:
         return "brand_not_confirmed"
     return "not_picked_up"
+
+
+def review_equivalents():
+    """Write every line of the bases containing "equivalent" (broad, not
+    the detector's pattern), one row per base, for a person to mark
+    allows = yes (a clause accepts equivalents for EVERY brand) or no."""
+    with io.open(MANIFEST, encoding="utf-8", newline="") as f:
+        bases = sorted({m["base"] for m in csv.DictReader(f)})
+    rows = []
+    for ref in bases:
+        hits = []
+        for d in documents.tender_documents(ref, "reports/text"):
+            for n, line in enumerate(d["text"].split("\n"), 1):
+                if RE_ANY_EQUIV.search(line) and \
+                        not RE_NOT_PRODUCTS.search(line):
+                    hits.append(f"{d['document']} l.{n}: {line.strip()[:160]}")
+        if hits:
+            rows.append({"base": ref, "lines": len(hits),
+                         "detector_says": allows_equivalents(
+                             documents.tender_documents(ref, "reports/text")),
+                         "first_lines": " || ".join(hits[:4]), "allows": ""})
+    with io.open(REVIEW, "w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["base", "lines", "detector_says",
+                                          "first_lines", "allows"])
+        w.writeheader()
+        w.writerows(rows)
+    print(f"{len(rows)} of {len(bases)} bases mention 'equivalent' -> "
+          f"{REVIEW}\nfill 'allows' with yes / no (all the lines: "
+          f"reports/text/2510/<base>__*.txt); the next run uses it")
+
+
+def reviewed_allows():
+    """{base: True/False} for the bases a person marked in REVIEW."""
+    if not os.path.exists(REVIEW):
+        return {}
+    with io.open(REVIEW, encoding="utf-8", newline="") as f:
+        return {r["base"]: r["allows"].strip().lower() == "yes"
+                for r in csv.DictReader(f)
+                if r["allows"].strip().lower() in ("yes", "no")}
+
+
+def _fingerprint(paths):
+    h = hashlib.sha1()
+    for p in sorted(paths):
+        with open(p, "rb") as f:
+            h.update(f.read())
+    return h.hexdigest()[:12]
+
+
+def _cache_status(cache, brand):
+    """What the brand cache says about this brand when the run starts."""
+    v = (cache.get(brand.lower()) or {}).get("brand")
+    return {True: "confirmed", False: "not a brand"}.get(v, "unknown")
 
 
 def run(a):
@@ -280,6 +360,10 @@ def run(a):
     for ref in {m["base"] for m in man}:
         docs = documents.tender_documents(ref, "reports/text")
         allows[ref] = allows_equivalents(docs)
+    reviewed = reviewed_allows()        # a person's verdict wins
+    allows.update(reviewed)
+    cache = wikidata.load_cache()       # what the brand cache says TODAY
+    log_start = len(llm.usage_rows())
 
     if a.variants:
         keep = set(a.variants.upper().split(","))
@@ -319,18 +403,22 @@ def run(a):
         case = one_tender.run_one(sref, (notices, wstats, peers, graph),
                                   Settings(online=a.online, agent=a.agent,
                                            on_outage="keep"))
-        # M2's own level-1 path again, to see what happened to each injected
-        # brand. LLM answers are cached, so repeating it costs nothing.
-        l1 = m2_spec_auditor.run_level1(sref, online=a.online,
-                                        agent=a.agent, on_outage="keep")
-        outs = [brand_outcome(l1, b) for b in m["brands"].split("|") if b]
+        # what happened to each injected brand: from THIS run's M2
+        checked = case["m2"]["names"]
+        added = [b for b in m["brands"].split("|") if b]
+        found = [n["name"] for n in checked if n["result"] == "finding"]
         res = dict(m)
         res.update({"route": case["route"], "score": case["score"],
                     "m1_route": case.get("m1_route"),
-                    "outcomes": "|".join(outs),
-                    "l1_findings": len(l1.get("findings", [])),
-                    "l1_brands": "|".join(f["brand"] for f in
-                                          l1.get("findings", [])),
+                    "outcomes": "|".join(brand_outcome(checked, b)
+                                         for b in added),
+                    "brand_cache": "|".join(_cache_status(cache, b)
+                                            for b in added),
+                    "agent": (m2_spec_auditor.agent_status(
+                        case["m2"]["agent"], case["trace"].get("M2"))
+                        if a.agent else "not asked"),
+                    "l1_findings": len(found),
+                    "l1_brands": "|".join(found),
                     "correct": case["route"] == m["expected"]})
         results.append(res)
         case["synthetic"] = m["variant"]
@@ -338,8 +426,23 @@ def run(a):
         if i % 30 == 0:
             print(f"  {i}/{len(man)} ({time.time() - t0:.0f}s)")
 
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    run_dir = os.path.join(OUT, "runs", stamp)
+    os.makedirs(run_dir, exist_ok=True)
+    copies = [os.path.join(SYN_TEXT, GROUP, f)
+              for f in os.listdir(os.path.join(SYN_TEXT, GROUP))]
+    with io.open(os.path.join(run_dir, "settings.json"), "w",
+                 encoding="utf-8") as f:
+        json.dump({"stamp": stamp, "argv": sys.argv[1:],
+                   "online": a.online, "agent": a.agent,
+                   "variants": a.variants or "all",
+                   "agent answers by model": llm.answers_by_model(
+                       llm.usage_rows()[log_start:]),
+                   "manifest sha1": _fingerprint([MANIFEST]),
+                   "copies sha1": _fingerprint(copies),
+                   "bases reviewed by hand": len(reviewed)}, f, indent=1)
     cols = list(results[0])
-    with io.open(os.path.join(OUT, "results.csv"), "w", encoding="utf-8",
+    with io.open(os.path.join(run_dir, "results.csv"), "w", encoding="utf-8",
                  newline="") as f:
         w = csv.DictWriter(f, fieldnames=cols)
         w.writeheader()
@@ -349,11 +452,11 @@ def run(a):
             "tenders": len(cases), "awards": graph is not None,
             "agent": a.agent, "weights": m4_case_builder.WEIGHTS,
             "alert_at": m4_case_builder.ALERT, "watch_at": m4_case_builder.WATCH}
-    write_outputs(cases, meta, os.path.join(OUT, "queue"))
-    report(results, state, a.online)
+    write_outputs(cases, meta, os.path.join(run_dir, "queue"))
+    report(results, state, a.online, run_dir, len(reviewed))
 
 
-def report(results, state, online):
+def report(results, state, online, run_dir, n_reviewed=0):
     L = []
     say = L.append
     say(f"SYNTHETIC RIGGED TENDERS - 2510 - {time.strftime('%Y-%m-%d %H:%M')}"
@@ -365,7 +468,15 @@ def report(results, state, online):
                    if r.get("base_allows_equivalents") == "True"})
     say(f"Base tenders already accepting equivalents for every brand "
         f"(standard clause): {nclause}/{nb}. Brands added there are legal, "
-        f"so those copies are expected to CLOSE.\n")
+        f"so those copies are expected to CLOSE. Decided by hand for "
+        f"{n_reviewed} base(s) (--review), by the detector's clause "
+        f"patterns for the others.")
+    ag = collections.Counter(r["agent"].split(":")[0] for r in results)
+    if set(ag) != {"not asked"}:
+        say("M2 agent, per copy: " + ", ".join(f"{k} {v}" for k, v in
+                                               sorted(ag.items()))
+            + " - a copy it did not run on keeps the rules' result")
+    say("")
     say("1. Routing by copy type")
     say(f"   {'copy':5} {'base':12} {'expected':9} {'alert':>6} {'watch':>6} "
         f"{'close':>6}  as expected")
@@ -402,30 +513,44 @@ def report(results, state, online):
         f, t = by[s]
         say(f"   {s:10} {f}/{t}")
 
-    say("\n5. Brand found, by whether the offline cache knows the brand")
+    say("\n5. Brand found, by what the brand cache says about it (read at "
+        "the start of this run)")
     by = collections.defaultdict(lambda: [0, 0])
     for r in pos:
-        for o, c in zip(r["outcomes"].split("|"), r["in_cache"].split("|")):
+        for o, c in zip(r["outcomes"].split("|"), r["brand_cache"].split("|")):
             by[c][1] += 1
             by[c][0] += o == "found"
-    for c in ("True", "False"):
+    for c in ("confirmed", "unknown", "not a brand"):
         f, t = by[c]
-        say(f"   cached={c:5} {f}/{t}")
+        if t:
+            say(f"   {c:12} {f}/{t}")
 
     # A finding on a brand the TEST added is a test result; a finding on a
     # brand already written in the real base tender is a REAL finding (or a
     # real false alarm) and is audited by hand, not scored as the test's.
     def injected(r, b):
-        return any(b.lower().split()[0] == x.lower() or
-                   b.lower().startswith(x.lower())
+        return any(names.begins_with(b, x)
                    for x in r["brands"].split("|") if x)
     neg = [r for r in results if not is_rigged(r)]
-    wrong = [r for r in neg if any(injected(r, b) for b in
-                                   r.get("l1_brands", "").split("|") if b)]
-    say(f"\n6. Copies that should close (D+E+F, plus A+B+C+G built on a base "
-        f"with the clause): {len(wrong)}/{len(neg)} flag the brand the test "
-        f"added")
-    for r in wrong[:10]:
+    added = [r for r in neg if r["variant"] != "F"]
+    wrong = [r for r in added if any(injected(r, b) for b in
+                                     r.get("l1_brands", "").split("|") if b)]
+    plain = [r for r in neg if r["variant"] == "F"]
+    plain_wrong = [r for r in plain if r["route"] != r["expected"]]
+    say("\n6. Copies that should close - the false-alarm guards")
+    for v, what in (("D", "brand added WITH 'or equivalent'"),
+                    ("E", "brand only in a bidder's question")):
+        rs = [r for r in added if r["variant"] == v]
+        say(f"   {v}  {what:36} {sum(r in wrong for r in rs)}/{len(rs)} "
+            f"flag the added brand")
+    legal = [r for r in added if r["variant"] in POSITIVE]
+    if legal:
+        say(f"   A+B+C+G on a base whose clause accepts equivalents "
+            f"{sum(r in wrong for r in legal)}/{len(legal)} flag it")
+    say(f"   F  untouched copy (judged on its route)  "
+        f"{len(plain_wrong)}/{len(plain)} not closed - the brands it finds "
+        f"are real text, listed in 6b")
+    for r in (wrong + plain_wrong)[:10]:
         say(f"   {r['sref']}  {r['route']}  outcomes={r['outcomes']}")
     real = collections.defaultdict(set)
     for r in results:
@@ -452,17 +577,19 @@ def report(results, state, online):
     best = sorted(pool, key=lambda x: (x[0], x[1], not x[2]))[:50]
     worst = sorted(pool, key=lambda x: (x[0], x[1], x[2]))[:50]
     flagged = [x for x in pool if x[0] < 2]
-    say(f"\n7. Ranking: {len(real)} real tenders + {len(syn)} copies "
-        f"({len(pos)} rigged)")
-    say(f"   precision@50: {sum(x[2] for x in worst) / 50:.2f} (ties broken "
-        f"against us) to {sum(x[2] for x in best) / 50:.2f} (ties for us)")
+    say(f"\n7. Synthetic ranking: {len(real)} real tenders (unreviewed, "
+        f"counted as clean) + {len(syn)} copies ({len(pos)} rigged)")
+    say(f"   rigged copies in the top 50: {sum(x[2] for x in worst)} (ties "
+        f"broken against us) to {sum(x[2] for x in best)} (ties for us) - "
+        f"not the real precision@50 of decision 8")
     say(f"   of everything flagged (alert+watch): "
         f"{sum(x[2] for x in flagged)}/{len(flagged)} are rigged copies")
     say(f"   Caveat: {len(pos)} rigged copies among ~{len(pool)} is far more "
         "rigging than real life; read the per-copy recall above first.")
 
     text = "\n".join(L)
-    with io.open(os.path.join(OUT, "summary.txt"), "w", encoding="utf-8") as f:
+    with io.open(os.path.join(run_dir, "summary.txt"), "w",
+                 encoding="utf-8") as f:
         f.write(text + "\n")
     print("\n" + text)
 
@@ -480,12 +607,18 @@ def main():
     ap.add_argument("--variants", default="",
                     help="run only these copy types, e.g. A,D,F - to limit "
                          "tokens with --agent")
+    ap.add_argument("--review", action="store_true",
+                    help="list the bases' 'equivalent' lines for a person to "
+                         "mark (reports/synth/2510/equivalent_review.csv)")
     ap.add_argument("--bases", choices=["no-clause", "any"],
                     default="no-clause",
                     help="--build: pick only base tenders that do NOT already "
                          "accept equivalents for every brand (default); "
                          "'any' = the earlier selection")
     a = ap.parse_args()
+    if a.review:
+        review_equivalents()
+        return
     if a.build or not a.run:
         build(a.n, a.seed, a.bases)
     if a.run or not a.build:

@@ -107,7 +107,7 @@ Open `reports/kb/2510/batches/<date>_queue.html`.
 One tender, with every agent's reasoning: `python tenderlens.py tender cb-425-92729935`
 
 Tests (no data, no network): `python tenderlens.py test` runs every `tests/test_*.py`; one alone: `python -m tests.test_agents`.
-Measurements: `python tenderlens.py eval synth --run` (synthetic rigged tenders) · `python tenderlens.py eval m2 [--agent --online] [--split holdout]` (M2 against the labelled names: 36 tuning + 40 held-out) · `python tenderlens.py eval m4 --online` (M4: no checks / fixed / model).
+Measurements: `python tenderlens.py eval synth --run` (synthetic rigged tenders; each run in its own folder `reports/synth/2510/runs/<stamp>/`; `--review` lists the bases' "equivalent" lines to check by hand) · `python tenderlens.py eval m2 [--agent --online] [--split holdout]` (M2 against the labelled names: 36 tuning + 40 held-out) · `python tenderlens.py eval m4 --online` (M4: no checks / fixed / model).
 
 **Long runs** (agents over a whole category) are done **once, at the end of a category** — not after each fix. Fixes are checked offline on the affected tenders and on the synthetic set.
 

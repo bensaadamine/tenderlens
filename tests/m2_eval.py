@@ -94,18 +94,8 @@ def letter_for(l1, name):
 
 
 def agent_status(l1, trace):
-    """Did the agent really judge this tender?"""
-    if l1.get("agent"):
-        stop = l1["agent"].get("stop_reason", "")
-        return "incomplete: " + stop if stop.startswith("model") else "ran"
-    for t in trace:
-        if t.startswith("agent could not start"):
-            return "did not run: " + t.split("(", 1)[-1].split(")")[0][:80]
-        if t.startswith("agent: nothing"):
-            return "ran (nothing to check)"
-        if t.startswith("--agent asked but no LLM key"):
-            return "did not run: no LLM key"
-    return "ran (rules cleared everything)"
+    """Did the agent really judge this tender? (m2_spec_auditor.agent_status)"""
+    return m2_spec_auditor.agent_status(l1.get("agent"), trace)
 
 
 # ------------------------------------------------------------------ labels
