@@ -56,4 +56,5 @@ The code cites these by number ("decision 15"). Each is settled and measured; th
 45. One command (`python tenderlens.py`), normal packages; what M2 and M3 hand to M4 is defined once (`agents/evidence.py`).
 46. An offline replay never calls a provider: a missing answer is reported, and no key is needed.
 47. One run's choices are one object (`pipeline/settings.py`), passed down as parameters; settled switches are removed.
-48. Brand = winner needs every word of the brand in the winner's name (or an accepted spelling): a shared first word ("General") is not identity.
+48. Brand = winner needs every word of the brand, any length, in the winner's name (or an accepted spelling): a shared word is not identity ("General Electric" is not "General Motors", "GE Healthcare" is not "Siemens Healthcare").
+49. Names are read one way (`tools/names.py`: words, any length, case and punctuation ignored), and each comparison states its own rule: merging spellings (a spelling begins with a shorter finding's words), M2's quote check (an "f" quote holds the whole name, word after word), brand = winner (48). No fuzzy matching.

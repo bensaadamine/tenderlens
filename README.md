@@ -39,7 +39,8 @@ pipeline/              one_tender.py (the four components on one tender), stream
                        tender by tender, against its knowledge base), demo.py, settings.py (one run's choices)
 agents/                M1–M4; m4_checks.py = M4's checks; agent_loop.py = the loop the M2 and M3 agents share
 tools/                 documents.py (a tender's text), brands.py (brand rules), wikidata.py,
-                       level2.py (peer comparison), llm.py (LLM access), report.py (the queue pages)
+                       level2.py (peer comparison), llm.py (LLM access), report.py (the queue pages),
+                       names.py (how brand and company names are compared)
 prepare/               data preparation, in order: profile → docs → text → census → labels
 tests/                 offline tests (test_*.py), evaluations (m2_eval.py, m4_eval.py), synth_rig.py
 experiments/           measured and not chosen: m4_model_coordinator.py (a model choosing M4's checks)
@@ -136,7 +137,7 @@ One line per case in `feedback.csv` (`reference,verdict,note,reviewer,date`), th
 | 2510 motor vehicles | 613 (193 with documents) | 0 | 3 | offline, rules only |
 | 4110 lab equipment | 957 | 2 | 10 | offline, rules only; to audit |
 
-- **M2 on the 37 held-out names** (never used for tuning): rules alone find **1 of 8** real lock-ins; with the M2 agent **8 of 8**, 8 of its 9 findings real, 36 of 37 names right.
+- **M2 on the 37 held-out names** (never used for tuning): rules alone find **1 of 8** real lock-ins; with the M2 agent **8 of 8**, 8 of its 10 findings real, 35 of 37 names right (one model, Groq gpt-oss-120b, 2026-11-08). The false finding: the word "LAMP" on a line requiring an Osram lamp.
 - **M4's checks on 73 labelled tenders** (M2 on rules): 7 false alarms without them, 0 with them (both real lock-ins kept).
 - **The demo** shows each on chosen cases: the rules' false alarm cleared by the re-check (Hitachi/JEOL), a lock-in only the agent finds (Gamry), the real lock-ins kept.
 - **Synthetic test (2510):** of 160 rigged copies, the brand is found in 64 offline; 17 reach alert; 0 of 120 clean copies are flagged.

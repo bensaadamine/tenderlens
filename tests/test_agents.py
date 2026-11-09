@@ -208,6 +208,19 @@ def main():
     check("ACAN + no trade agreement -> CLOSE (context only)",
           c8["route"] == "close" and c8["score"] == 3)
 
+    # ---- one way to read names (tools/names.py), three explicit rules
+    from tools import names
+    check("M2's quote check: the whole name, word after word",
+          names.says("The engine must be a General Electric 7FA", "General "
+                     "Electric")
+          and not names.says("The engine must be General Motors",
+                             "General Electric")
+          and not names.says("a large engine", "GE")
+          and names.says("1 x Knapheide KSS-96 body", "Knapheide KSS"))
+    check("merging: a spelling begins with the shorter one's words",
+          names.begins_with("FormLabs Form", "Formlabs")
+          and not names.begins_with("General Motors", "General Electric"))
+
     # ---- brand = winner: every word of the brand, not its first one
     check("a brand matches its maker, every word: Ford, Zurich Instruments",
           m4._brand_matches("Ford", "FORD MOTOR COMPANY OF CANADA")
@@ -215,6 +228,10 @@ def main():
     check("a shared first word is not identity: General Electric vs "
           "General Motors", not m4._brand_matches("General Electric",
                                                   "GENERAL MOTORS OF CANADA"))
+    check("a short identifier counts: GE Healthcare is not Siemens "
+          "Healthcare", not m4._brand_matches("GE Healthcare",
+                                              "SIEMENS HEALTHCARE LIMITED")
+          and m4._brand_matches("GE Healthcare", "GE HEALTHCARE CANADA INC"))
     ge = {"kind": "brand_without_equivalent", "brand": "General Electric",
           "claim": "x", "level": 1,
           "source": {"file": "01_rfp.pdf", "where": "p1", "line": "GE",

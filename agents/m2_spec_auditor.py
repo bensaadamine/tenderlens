@@ -38,6 +38,7 @@ import sys
 
 from agents.evidence import Evidence, Finding
 from tools import level2
+from tools import names
 from agents import m2_agent
 from tools import brands
 from tools import documents
@@ -219,18 +220,16 @@ def _models(out):
 # its own place and words in the finding's evidence.
 
 
-def _words(name):
-    return re.findall(r"[a-z0-9]+", (name or "").lower())
-
-
 def merge_spellings(findings):
     """Level-1 findings -> one per brand (see above). The kept row is the
     shortest spelling; the others go in also_written, and their locations
     and words first in its list of other locations."""
     hosts = []                         # (words, row), shortest names first
-    for f in sorted(findings, key=lambda f: len(_words(f["brand"]))):
-        w = _words(f["brand"])
-        host = next((h for hw, h in hosts if w[:len(hw)] == hw), None)
+    for f in sorted(findings, key=lambda f: len(names.words(f["brand"]))):
+        w = names.words(f["brand"])
+        host = next((h for hw, h in hosts if names.begins_with(f["brand"],
+                                                               h["brand"])),
+                    None)
         if host is None:
             hosts.append((w, dict(f)))
             continue

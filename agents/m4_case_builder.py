@@ -46,7 +46,8 @@ probability.
 """
 
 
-import re
+
+from tools import names
 
 WEIGHTS = {
     # level 1 - legally grounded, quoted from the document
@@ -161,25 +162,19 @@ def _verified(src):
     return _attached(src) and bool(src.get("checked"))
 
 
-def _tokens(s):
-    return {t for t in re.findall(r"[A-Za-zÀ-ÿ0-9]{3,}", (s or "").upper())}
-
-
 def _brand_matches(brand, supplier):
     """Does the brand named in the spec appear in the winner's name?
 
-    EVERY word of the brand (3+ letters), whole words (decision 48): "Ford"
-    matches "FORD MOTOR COMPANY OF CANADA", "Zurich Instruments" matches
-    "ZURICH INSTRUMENTS AG"; "General Electric" does not match "GENERAL
-    MOTORS" - a shared first word is not identity, and a brand-winner match
+    EVERY word of the brand, any length, as whole words (decision 48,
+    tools/names.py): "Ford" matches "FORD MOTOR COMPANY OF CANADA" and
+    "Zurich Instruments" matches "ZURICH INSTRUMENTS AG"; "General Electric"
+    does not match "GENERAL MOTORS", nor "GE Healthcare" "SIEMENS
+    HEALTHCARE" - a shared word is not identity, and a brand-winner match
     adds 3 points (an alert). The cost: a brand written with its product
     ("Gamry Interface") does not match its maker ("GAMRY INSTRUMENTS"); that
-    error loses an alert, never invents one. Not fuzzy - a fuzzy match
-    between a brand and a company name is the kind of coincidence that
-    becomes an accusation.
+    error loses an alert, never invents one.
     """
-    bt = _tokens(brand)
-    return bool(bt) and bt <= _tokens(supplier)
+    return names.part_of(brand, supplier)
 
 
 def build_case(m1, m2, m3, followups=None):

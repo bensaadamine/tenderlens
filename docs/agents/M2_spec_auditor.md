@@ -66,7 +66,7 @@ python -m tools.brands --tender cb-425-92729935 --offline          # rules only
 
 ## How it is checked
 - `python -m tests.test_m2_agent` — the agent's rules with a scripted fake model (no network).
-- `python tenderlens.py eval m2 [--agent --online] [--split holdout]` — the labelled names: 36 tuning (`tests/m2_labels.csv`) + 40 held-out (`tests/m2_holdout.csv`). Held-out (37 names, 2026-11-04): rules find 1 of 8 lock-ins; with the agent 8 of 8, 8 of 9 findings real, 36/37 right.
+- `python tenderlens.py eval m2 [--agent --online] [--split holdout]` — the labelled names: 36 tuning (`tests/m2_labels.csv`) + 40 held-out (`tests/m2_holdout.csv`). Held-out (37 names, 2026-11-08, Groq only): rules find 1 of 8 lock-ins; with the agent 8 of 8, 8 of 10 findings real, 35/37 right. (The earlier 36/37 mixed two models: 17 of its answers came from Gemini.)
 - `python tenderlens.py eval synth --run [--agent]` — synthetic rigged tenders.
 
 ## Rules it must keep

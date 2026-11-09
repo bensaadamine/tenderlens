@@ -53,6 +53,7 @@ from typing import TypedDict
 
 from tools import brands
 from tools import documents
+from tools import names
 from tools import wikidata
 
 from agents import agent_loop
@@ -468,9 +469,9 @@ def _classify(text, candidates, items, verdicts, open_ids, step):
                          f"'{doc}' near line {v.get('line')}; copy it exactly")
             continue
         name = by_id[cid]["name"]
-        if letter == "f" and _norm(name).split()[0] not in _norm(quote):
+        if letter == "f" and not names.says(quote, name):
             notes.append(f"id {cid}: refused - an 'f' quote must contain "
-                         f"'{name}'")
+                         f"the whole name '{name}'")
             continue
         verdicts[str(cid)] = {"letter": letter, "quote": quote,
                               "document": doc, "line": line, "step": step}
