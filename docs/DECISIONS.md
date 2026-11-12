@@ -43,7 +43,7 @@ The code cites these by number ("decision 15"). Each is settled and measured; th
 32. The agents (M2, M3) each have a goal, tools the model chooses, a loop with a step budget and a trace — one shared loop (`agents/agent_loop.py`). Safety rules stay in code. With no model answering, a run stops and the next run resumes there.
 33. Tenders never awarded (cancelled, still open, RFI, supply arrangement) are read by M1 and M2 only and closed as "not an audit case". Several award rows: the newest is the award, every supplier listed.
 34. One pinned model: Groq gpt-oss-120b answers every agent call. A run uses only answers from the models it may call (Groq; Gemini too with `TENDERLENS_SHARE=1`), cached ones included; an offline replay reuses any pinned model's answer, and every agent result says which model answered.
-35. Interface: one command with subcommands (built); a local page for the auditor (to build).
+35. Interface: one command with subcommands, and a local page for the auditor (`python tenderlens.py serve`, FastAPI, built 2026-11-12): queue with clean / confirm, each case's evidence and agent steps, families to start, rules vs agents, agent activity, synthetic test. Its commands run in one of three modes: rules only, hybrid (agents live, uses quota) or hybrid replayed from the cache.
 36. Share package (deprioritised): one zip of caches, knowledge bases and labels.
 37. Evaluation reports a tuning set (cases rules or prompts were fixed on — flattered) and a held-out set (never used for tuning — the score to quote). Every run writes its own dated folder; never overwrite.
 38. M3 agent: "same company" needs a postal code shared with the winner itself (no chains); a decision applies to the whole group of spellings.
