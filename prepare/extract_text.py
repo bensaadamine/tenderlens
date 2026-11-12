@@ -18,8 +18,7 @@ Then it rolls up per UNSPSC-4 group and prints a verdict, because the
 decision is per category: the comparator only works where enough peers in the
 same group carry comparable numbers.
 
-PDF text comes from pdfminer.six - pure Python, no compiled DLL, so unlike
-pandas it is not blocked by Application Control. .docx is read with the
+PDF text comes from pdfminer.six (pure Python). .docx is read with the
 stdlib zipfile module, no dependency at all.
 
 Extracted text is cached under reports/text/, so re-runs are instant and the

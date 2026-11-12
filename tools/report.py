@@ -126,39 +126,45 @@ def render_html(cases, meta):
             f"<span class=t><div>{_e(c['title']) or '(untitled)'}</div>"
             f"<div class=ref>{_e(c['reference'])} · {_e(c['entity'])} · "
             f"{_e(c['method'])}</div></span></summary><div class=body>"
-            f"<pre class=narr>{_e(c['narrative'])}</pre>")
-        for x in c["claims"]:
-            s = x.get("source") or {}
-            if x.get("plain"):
-                tag = f"{x.get('nature')} · {x.get('points', 0)} pt"
-            else:
-                tag = (f"{x.get('agent')} · {x['kind']} · "
-                       f"{x.get('confidence','')} · {x.get('points', 0)} pt")
-            if not x["verified"]:
-                tag += " · UNVERIFIED"
-            elif x.get("not_scored_because"):
-                tag += f" · not scored: {x['not_scored_because']}"
-            plain = bool(x.get("plain"))
-            src = _e(s.get("file"))
-            if not plain and s.get("where"):
-                src += " - " + _e(s.get("where"))
-            out.append(f"<div class='claim{' v' if x['verified'] else ''}'>"
-                       f"<div class=k>{_e(tag)}</div>"
-                       f"{_e(x.get('plain') or x['claim'])}"
-                       f"<div class=k>Source: {src}</div>")
-            # On the plain page a notice field is already in the sentence;
-            # the quote is shown for document and award evidence only.
-            if s.get("line") and (not plain or x.get("agent") != "M1"):
-                out.append(f"<q>{_e(str(s['line'])[:400])}</q>")
-            out.append("</div>")
-        tr = c.get("trace", {})
-        out.append("<details class=trace><summary>Technical details"
-                   "</summary>")
-        for k in ("M1", "M2", "M3"):
-            v = tr.get(k)
-            v = [v] if isinstance(v, str) else (v or [])
-            for line in v:
-                out.append(f"{k}: {_e(line)}<br>")
-        out.append("</details></div></details>")
+            + case_body(c) + "</div></details>")
     out.append(f"</main><script>{JS}</script></body></html>")
+    return "".join(out)
+
+
+def case_body(c):
+    """One case: the narrative, each claim with its source and quote, then
+    the technical trace."""
+    out = [f"<pre class=narr>{_e(c['narrative'])}</pre>"]
+    for x in c["claims"]:
+        s = x.get("source") or {}
+        if x.get("plain"):
+            tag = f"{x.get('nature')} · {x.get('points', 0)} pt"
+        else:
+            tag = (f"{x.get('agent')} · {x['kind']} · "
+                   f"{x.get('confidence','')} · {x.get('points', 0)} pt")
+        if not x["verified"]:
+            tag += " · UNVERIFIED"
+        elif x.get("not_scored_because"):
+            tag += f" · not scored: {x['not_scored_because']}"
+        plain = bool(x.get("plain"))
+        src = _e(s.get("file"))
+        if not plain and s.get("where"):
+            src += " - " + _e(s.get("where"))
+        out.append(f"<div class='claim{' v' if x['verified'] else ''}'>"
+                   f"<div class=k>{_e(tag)}</div>"
+                   f"{_e(x.get('plain') or x['claim'])}"
+                   f"<div class=k>Source: {src}</div>")
+        # On the plain page a notice field is already in the sentence;
+        # the quote is shown for document and award evidence only.
+        if s.get("line") and (not plain or x.get("agent") != "M1"):
+            out.append(f"<q>{_e(str(s['line'])[:400])}</q>")
+        out.append("</div>")
+    tr = c.get("trace", {})
+    out.append("<details class=trace><summary>Technical details</summary>")
+    for k in ("M1", "M2", "M3"):
+        v = tr.get(k)
+        v = [v] if isinstance(v, str) else (v or [])
+        for line in v:
+            out.append(f"{k}: {_e(line)}<br>")
+    out.append("</details>")
     return "".join(out)

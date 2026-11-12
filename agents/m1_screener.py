@@ -63,7 +63,7 @@ def parse_date(s):
 
 
 def load_notices(path=TENDERS):
-    """{reference: row}. One streaming pass, stdlib csv (pandas is blocked)."""
+    """{reference: row}. One streaming pass, stdlib csv."""
     if not os.path.exists(path):
         raise SystemExit(f"missing {path} - run prepare/profile_tenders.py")
     out = {}

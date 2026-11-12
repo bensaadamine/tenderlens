@@ -1,10 +1,13 @@
 # TenderLens — Canada pipeline
 # Everything else is the Python standard library (csv, zipfile, re).
-# pandas is deliberately absent: Application Control blocks its compiled DLL
-# on our Windows machines. Do not add it.
+# Smart App Control is off on our Windows machines, so compiled packages
+# install; the pipeline still needs no pandas.
 
 requests>=2.31
 pdfminer.six>=20231228
 # the M2 agent's loop (agents/m2_agent.py); without it the same loop runs in
 # plain Python. Tested with 1.2.16 on Windows / Python 3.11.
 langgraph>=1.2
+# the auditor's page (python tenderlens.py serve)
+fastapi>=0.110
+uvicorn>=0.29

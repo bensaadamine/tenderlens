@@ -8,7 +8,7 @@ the same model. TENDERLENS_SHARE=1 also sends calls to Gemini (twice the
 calls a minute, for a first run of a whole category; verdicts can then
 differ between runs). Both speak the OpenAI chat-completions format (Gemini
 through its compatibility endpoint), so there is one code path and no SDK to
-install: urllib only, nothing for Windows Application Control to block.
+install: urllib only.
 
 Keys go in .env (never committed):
 

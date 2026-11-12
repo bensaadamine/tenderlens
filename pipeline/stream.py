@@ -175,6 +175,14 @@ class KB:
         return out
 
 
+def known_groups(root="reports/kb"):
+    """Every category that already has a knowledge base."""
+    if not os.path.isdir(root):
+        return []
+    return sorted(g for g in os.listdir(root)
+                  if os.path.exists(os.path.join(root, g, "register.csv")))
+
+
 # ----------------------------------------------------------- per-tender work
 def load_map(path=MAP_PATH):
     if not os.path.exists(path):
@@ -306,11 +314,13 @@ def run(a):
     amap = load_map()
     notices, wstats, _, graph = one_tender.load_shared(level2_on=False)
     state = kb.state()
-    todo = todo_list(notices, a.group, state, a.until)
     if a.reprocess:
-        again = reprocess_list(kb, notices, a.group, state, a.reprocess)
-        todo += [r for r in again if r not in todo]
-        print(f"  re-run: {len(again)} tender(s)")
+        # Only the tenders named: new ones wait for a plain run, so re-running
+        # one tender (with the agents, say) touches nothing else.
+        todo = reprocess_list(kb, notices, a.group, state, a.reprocess)
+        print(f"  re-run: {len(todo)} tender(s)")
+    else:
+        todo = todo_list(notices, a.group, state, a.until)
     if a.limit:
         todo = todo[:a.limit]
     base = base_rows(kb, state, amap, s.level2)
@@ -436,42 +446,46 @@ def queue(a):
     print(f"  queue: {prefix}.html")
 
 
+def apply_verdict(kb, state, ref, verdict, note=""):
+    """Move one tender by the auditor's verdict (clean -> base, confirmed ->
+    stays in quarantine as a real case); says what happened."""
+    ev = state.get(ref)
+    if verdict not in ("clean", "confirmed"):
+        return "skip: verdict must be 'clean' or 'confirmed'"
+    if not ev:
+        return "skip: not in the register"
+    status = "reviewed_clean" if verdict == "clean" else "confirmed"
+    if ev["status"] == status:
+        return "already applied"
+    if ev["pile"] != "quarantine" and verdict == "clean":
+        return f"skip: not in quarantine (pile={ev['pile']})"
+    had_docs = ev["status"] != "no_documents"
+    pile = ("quarantine" if verdict == "confirmed"
+            else "base" if had_docs else "none")
+    kb.append_event(reference=ref, run_id=ev["run_id"],
+                    pub_date=ev["pub_date"], event="feedback",
+                    status=status, pile=pile, score=ev["score"],
+                    observations=ev["observations"], note=note[:200])
+    state[ref] = {**ev, "status": status, "pile": pile}
+    return f"{verdict} -> {pile}"
+
+
 def feedback(a):
     kb = KB(a.group, a.kb_root)
     state = kb.state()
     applied = skipped = 0
     with io.open(kb.fb, encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))
-    for fb in rows:
-        ref = (fb.get("reference") or "").strip()
+    # The latest verdict on a tender is the one that counts.
+    latest = {(r.get("reference") or "").strip(): r for r in rows}
+    for ref, fb in latest.items():
         verdict = (fb.get("verdict") or "").strip().lower()
-        ev = state.get(ref)
-        if verdict not in ("clean", "confirmed"):
-            print(f"  skip {ref}: verdict must be 'clean' or 'confirmed'")
-            skipped += 1
+        said = apply_verdict(kb, state, ref, verdict, fb.get("note") or "")
+        if said == "already applied":
             continue
-        if not ev:
-            print(f"  skip {ref}: not in the register")
-            skipped += 1
-            continue
-        status = "reviewed_clean" if verdict == "clean" else "confirmed"
-        if ev["status"] == status:
-            continue                       # already applied
-        if ev["pile"] != "quarantine" and verdict == "clean":
-            print(f"  skip {ref}: not in quarantine (pile={ev['pile']})")
-            skipped += 1
-            continue
-        had_docs = ev["status"] != "no_documents"
-        pile = ("quarantine" if verdict == "confirmed"
-                else "base" if had_docs else "none")
-        kb.append_event(reference=ref, run_id=ev["run_id"],
-                        pub_date=ev["pub_date"], event="feedback",
-                        status=status, pile=pile, score=ev["score"],
-                        observations=ev["observations"],
-                        note=(fb.get("note") or "")[:200])
-        state[ref] = {**ev, "status": status, "pile": pile}
-        applied += 1
-        print(f"  {ref}: {verdict} -> {pile}")
+        skipped += said.startswith("skip")
+        applied += not said.startswith("skip")
+        print(f"  {ref}: {said}")
     print(f"feedback: {applied} applied, {skipped} skipped")
 
 
@@ -531,7 +545,7 @@ def main():
     ap.add_argument("--feedback", action="store_true")
     ap.add_argument("--export-labels", action="store_true")
     ap.add_argument("--reprocess", nargs="+", metavar="REF",
-                    help="run these tenders again with today's code and "
+                    help="run only these tenders again, with today's code and "
                          "settings: references, 'quarantine' or 'all'. "
                          "Tenders the auditor judged are kept as judged")
     ap.add_argument("--queue", nargs="?", const="current", metavar="STAMP",

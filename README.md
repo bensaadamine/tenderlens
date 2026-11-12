@@ -57,10 +57,10 @@ Everything starts from `python tenderlens.py <command>` (`-h` for the list); it 
 ## Setup
 
 ```bash
-pip install -r requirements.txt     # requests, pdfminer.six, langgraph
+pip install -r requirements.txt     # requests, pdfminer.six, langgraph, fastapi, uvicorn
 ```
 
-No `pandas` (blocked on our Windows machines) — standard library plus those two.
+No `pandas` needed: the pipeline is the standard library plus those packages. (Smart App Control is off on our Windows machines, so compiled packages install.)
 
 LLM keys go in `.env` (never committed): `GROQ_API_KEY=...`, and optionally `GEMINI_API_KEY=...`. The models are pinned (`tools/llm.py`): Groq's gpt-oss-120b answers every agent call. When its daily quota is spent the run stops, and the next run resumes where it stopped — every verdict comes from the same model. `TENDERLENS_SHARE=1` also sends calls to Gemini (twice the calls a minute, but verdicts can differ between runs). `python tenderlens.py --offline <command>` takes model answers from the cache only: a missing one is reported, never paid, and no key is needed. `python tenderlens.py llm` shows the models; `--usage` the tokens spent.
 
@@ -91,6 +91,18 @@ python tenderlens.py run --group 2510 --online        # the four components, ten
 
 Open `reports/kb/2510/batches/<date>_queue.html`.
 
+**Weekly update** — one command downloads the latest notices, awards and documents, then runs only the tenders not yet in each category's knowledge base (rules only, no model called):
+
+```bash
+python tenderlens.py update                    # 2510 and 4110; --groups to choose
+```
+
+A broken download never replaces the current file; the replaced one is kept in `data/previous/`. To run it every Monday at 08:00 on Windows (once, in a command prompt):
+
+```bat
+schtasks /Create /SC WEEKLY /D MON /ST 08:00 /TN TenderLens-update /TR "cmd /c cd /d C:\Users\bensa\dev\tenderlens && python tenderlens.py update >> reports\update.log 2>&1"
+```
+
 | flag | effect |
 |---|---|
 | `--online` | check brand names on Wikidata (free, cached) |
@@ -112,6 +124,28 @@ Measurements: `python tenderlens.py eval synth --run` (synthetic rigged tenders;
 **Long runs** (agents over a whole category) are done **once, at the end of a category** — not after each fix. Fixes are checked offline on the affected tenders and on the synthetic set.
 
 ---
+
+## The auditor's page
+
+```bash
+pip install fastapi uvicorn
+python tenderlens.py serve          # opens http://127.0.0.1:8000 (this computer only)
+```
+
+A sidebar lists each family with its number of cases to review, and the system's pages.
+
+- **Mode** (bottom of the sidebar) for every command: **Rules** (no model called); **Hybrid**: rules + the M2 and M3 agents and M4's checks, live (uses the model's daily quota; you confirm first); **Replay**: the same hybrid run, with the agents' answers from the cache (no network, no quota: the demo).
+- **Overview:** each family's cases to review, confirmed, in the base, without documents; get new tenders; re-run a family. Recent commands, with their live output (`reports/jobs/`).
+- **Queue:** the cases ranked, each with its reason in one sentence and who decided it (Rules or Agent), with **Mark clean** / **Confirm**.
+- **Case:** the evidence (a quote opens the document at that line), the brand names checked and who settled each, and how each component reached the case: an agent's steps as a table (the tool the model chose, what it asked, what it got back). On the side: the verdict, **Run this tender again** in the chosen mode, the facts, the documents.
+- **Families of tenders:** the 20 families in scope, each with **Start** (you confirm first: time, disk).
+- **Rules vs agents:** the demo's seven tenders, three setups side by side; where the agents changed the outcome is marked.
+- **Agent activity:** model calls and tokens per agent and per day against the daily quota, answers from the cache, how investigations ended, failed calls.
+- **Synthetic test:** its results, and a button to run it.
+
+Fonts (Public Sans, IBM Plex Mono; SIL Open Font License) are bundled in `interface/static/fonts/`, so the page works offline.
+
+A verdict is applied at once and kept in `feedback.csv`, as `run --feedback` does.
 
 ## The auditor's feedback
 

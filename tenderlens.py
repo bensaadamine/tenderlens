@@ -7,8 +7,14 @@ TENDERLENS - the one command. Every part of the system starts here.
     python tenderlens.py run --group 2510 [--online --agent ...]
                                                    a category, tender by tender, against its
                                                    knowledge base (--status, --feedback, --queue)
+    python tenderlens.py serve                     the auditor's page (queue, cases,
+                                                   verdicts, update, synthetic test)
     python tenderlens.py test                      every offline test (no data, no network)
     python tenderlens.py eval m2|m4|synth [...]    the measurements
+    python tenderlens.py update [--groups 2510,4110]
+                                                   download the latest notices, awards
+                                                   and documents, then run the new
+                                                   tenders (rules only)
     python tenderlens.py awards --fetch            download the award notices (once)
     python tenderlens.py prepare profile|docs|text|census|labels [...]
                                                    data preparation, in that order
@@ -36,6 +42,8 @@ COMMANDS = {
     "demo": "pipeline.demo",
     "tender": "pipeline.one_tender",
     "run": "pipeline.stream",
+    "update": "pipeline.update",
+    "serve": "interface.app",
     "awards": "agents.m3_investigator",
     "llm": "tools.llm",
 }
