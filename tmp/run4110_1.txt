@@ -1,0 +1,45 @@
+notices: 30,420 (2s)
+level-2 observations: 0 | awards: 14,908 rows
+knowledge base: 0 tender(s) in base, 0 in quarantine | new tenders to process: 957
+    25/957  base now 0
+    50/957  base now 0
+    75/957  base now 0
+   100/957  base now 0
+   125/957  base now 0
+   150/957  base now 0
+   175/957  base now 0
+   200/957  base now 0
+   225/957  base now 0
+   250/957  base now 0
+   275/957  base now 0
+   300/957  base now 0
+   325/957  base now 0
+   350/957  base now 0
+   375/957  base now 0
+   400/957  base now 0
+   425/957  base now 0
+   450/957  base now 0
+   475/957  base now 0
+   500/957  base now 0
+   525/957  base now 0
+   550/957  base now 0
+   575/957  base now 0
+   600/957  base now 0
+   625/957  base now 0
+   650/957  base now 0
+   675/957  base now 0
+   700/957  base now 0
+   725/957  base now 0
+   750/957  base now 0
+   775/957  base now 0
+   800/957  base now 0
+   825/957  base now 0
+   850/957  base now 0
+   875/957  base now 0
+   900/957  base now 0
+   925/957  base now 0
+   950/957  base now 0
+
+batch 20261109-184153: 957 tender(s) - 2 alert, 10 watch, 945 close
+  -> base 386, quarantine 12, no documents 559
+  queue: tmp/kb4110/4110/batches/20261109-184153_queue.html

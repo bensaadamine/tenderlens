@@ -283,7 +283,12 @@ def brand_outcome(checked, brand):
 def review_equivalents():
     """Write every line of the bases containing "equivalent" (broad, not
     the detector's pattern), one row per base, for a person to mark
-    allows = yes (a clause accepts equivalents for EVERY brand) or no."""
+    allows = yes (a clause accepts equivalents for EVERY brand) or no.
+    Verdicts already written (allows, why, reviewer) are kept."""
+    marks = {}
+    if os.path.exists(REVIEW):
+        with io.open(REVIEW, encoding="utf-8", newline="") as f:
+            marks = {r["base"]: r for r in csv.DictReader(f)}
     with io.open(MANIFEST, encoding="utf-8", newline="") as f:
         bases = sorted({m["base"] for m in csv.DictReader(f)})
     rows = []
@@ -298,10 +303,13 @@ def review_equivalents():
             rows.append({"base": ref, "lines": len(hits),
                          "detector_says": allows_equivalents(
                              documents.tender_documents(ref, "reports/text")),
-                         "first_lines": " || ".join(hits[:4]), "allows": ""})
+                         "first_lines": " || ".join(hits[:4]),
+                         **{k: marks.get(ref, {}).get(k, "")
+                            for k in ("allows", "why", "reviewer")}})
     with io.open(REVIEW, "w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["base", "lines", "detector_says",
-                                          "first_lines", "allows"])
+                                          "first_lines", "allows", "why",
+                                          "reviewer"])
         w.writeheader()
         w.writerows(rows)
     print(f"{len(rows)} of {len(bases)} bases mention 'equivalent' -> "

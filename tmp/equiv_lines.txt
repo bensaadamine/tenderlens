@@ -1,0 +1,377 @@
+===== cb-305-88968281 lines 6 detector False
+  [01_m4000-4-2981_en.pdf l.1809]  / inflatable boat (RHIB) such as a Zodiac 753 or equivalent. / 
+  [01_m4000-4-2981_en.pdf l.1899]  / 5.15  Must be equipped with an ultra-short baseline (USBL) tracking system (or equivalent). / 
+  [01_m4000-4-2981_en.pdf l.1939]  / or equivalent (not keyboard). / 
+  [01_m4000-4-2981_en.pdf l.2303] people and from a rigid hull inflatable boat (RHIB) such as a / Zodiac 753 or equivalent. / 
+  [01_m4000-4-2981_en.pdf l.2391] Must be equipped with an ultra-short baseline (USBL) / tracking system (or equivalent): / 
+  [01_m4000-4-2981_en.pdf l.2475]  / controller, such as a joystick or equivalent (not keyboard). / 2.  The topside controller for the 5-axis arm must be intuitive,
+===== cb-370-80062085 lines 4 detector False
+  [01_w3372-265131-rfp-eng.pdf l.3017] The following mandatory technical criteria must be demonstrated with supporting documentation in the / form of a product specification sheet, technical manual, certification, or equivalent documentation that / must be provided with the bidder’s response at the time of bid submission.  Simply repeati
+  [01_w3372-265131-rfp-eng.pdf l.3147] 5.5.6. The Q-UGV must have both Wi-Fi wireless link / and MPU5 persistent radio link or equivalent / 5.5.7. The Q-UGV must be able to autonomously
+  [01_w3372-265131-rfp-eng.pdf l.3334]  / and MPU5 persistent radio link or equivalent. / 
+  [01_w3372-265131-rfp-eng.pdf l.3355]  / Equivalent / persistent
+===== cb-425-92729935 lines 7 detector False
+  [02_w6399-25-lr69b---rfp.pdf l.3040]  / Where a standard is specified and the bidder has offered an equivalent, that equivalent / standard must be supplied by the Bidder; and
+  [02_w6399-25-lr69b---rfp.pdf l.3104]  / "Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of
+  [02_w6399-25-lr69b---rfp.pdf l.3106] standard will be considered for acceptance by the Technical Authority where Proof of / Compliance for equivalency for the respective requirement is provided for evaluation; / 
+  [02_w6399-25-lr69b---rfp.pdf l.3874] cab and accessible to the driver; and / Rear suspension stabilizers or equivalent; / 
+  [02_w6399-25-lr69b---rfp.pdf l.4239] 2.19.3  12/24 VDC Boost System / The vehicle must be equipped with a Re-Volt (or equivalent) boosting system as follows: / 
+  [02_w6399-25-lr69b---rfp.pdf l.4769]  / Manufacturer’s Technical Service Bulletins (or equivalent). / 
+  [02_w6399-25-lr69b---rfp.pdf l.5550] Include a 15 cm (6 in)  wide (minimum) steel reinforcement plate welded across the full / width of the rear end of the deck (ASTM A514 T1 steel or equivalent); / Channel steel main deck beams; and
+===== cb-428-34028921 lines 6 detector False
+  [02_01_w6399_25_lr73_eng_rfp.pdf l.1292]  / Where a standard is specified and the Bidder has offered an equivalent, that equivalent standard / must be supplied by the Bidder; and
+  [02_01_w6399_25_lr73_eng_rfp.pdf l.1312]  / “Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of Compliance
+  [02_01_w6399_25_lr73_eng_rfp.pdf l.1314] standard will be considered for acceptance by the Technical Authority where Proof of Compliance / for equivalency for the respective requirement is provided for evaluation; / 
+  [03_01a_w6399_25_lr73_amd001_eng_rfp_0.pd l.1296]  / Where a standard is specified and the Bidder has offered an equivalent, that equivalent standard / must be supplied by the Bidder; and
+  [03_01a_w6399_25_lr73_amd001_eng_rfp_0.pd l.1316]  / “Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of Compliance
+  [03_01a_w6399_25_lr73_amd001_eng_rfp_0.pd l.1318] standard will be considered for acceptance by the Technical Authority where Proof of Compliance / for equivalency for the respective requirement is provided for evaluation; / 
+===== cb-463-77699133 lines 5 detector False
+  [01_rfp---202505163a-amend-001---en.pdf l.533] repair within 36 hours after bike drop-off. / 5.3.2 If the Contractor cannot repair the bike within 36 hours, they must provide an equivalent replacement, at no / additional cost. The equivalent bike may not be electric but must meet the other requirements as described in
+  [01_rfp---202505163a-amend-001---en.pdf l.534] 5.3.2 If the Contractor cannot repair the bike within 36 hours, they must provide an equivalent replacement, at no / additional cost. The equivalent bike may not be electric but must meet the other requirements as described in / section 5.1.
+  [03_202505163a---rfp---final---en.pdf l.1972] 5.3.2  If  the  Contractor  cannot  repair  the  bike  within  36  hours,  they  must  provide  an / equivalent replacement, at no additional cost. The equivalent bike may not be electric but / must meet the other requirements as described in section 5.1.
+  [05_rfp---202505163a-amend-002---en.pdf l.532] repair within 36 hours after bike drop-off. / 5.3.2 If the Contractor cannot repair the bike within 36 hours, they must provide an equivalent replacement, at no / additional cost. The equivalent bike may not be electric but must meet the other requirements as described in
+  [05_rfp---202505163a-amend-002---en.pdf l.533] 5.3.2 If the Contractor cannot repair the bike within 36 hours, they must provide an equivalent replacement, at no / additional cost. The equivalent bike may not be electric but must meet the other requirements as described in / section 5.1.
+===== cb-476-31486123 lines 18 detector False
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.2712]  / Where a standard is specified and the bidder has offered an equivalent, that equivalent / standard must be supplied by the Bidder; and
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.2771]  / "Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.2773] standard will be considered for acceptance by the Technical Authority where Proof of / Compliance for equivalency for the respective requirement is provided for evaluation; / 
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.2805] Questionnaire question may be considered non-compliant.  Any substitutes or alternatives that are / offered as equivalent to that specified in this purchase description, but still satisfies or exceeds the / mandatory requirement, must be listed in the Conformance Certificate.
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.3345] cab and accessible to the driver; and / Rear suspension stabilizers or equivalent; / 
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.4108]  / Manufacturer’s Technical Service Bulletins (or equivalent). / 
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.4209]  / Where a standard is specified and the Offeror has offered an equivalent, that equivalent standard must be supplied by the Offeror; and / 
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.4211]  / Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance / by  the  Technical  Authority  where  Proof  of  Compliance  for  equivalency  for  the  respective  requirement  is  provided  for
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.4212] Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance / by  the  Technical  Authority  where  Proof  of  Compliance  for  equivalency  for  the  respective  requirement  is  provided  for / evaluation.
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.5361] Rear suspension stabilizers or / equivalent; / 
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.6372]  / Conformance Certificate - Any substitutes of alternatives that are offered as equivalent to that specified in the purchase description, but still / satisfies or exceeds the mandatory requirement, must be listed below.
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.6465] Questionnaire question may be considered non-compliant.  Any substitutes or alternatives that are / offered as equivalent to that specified in this purchase description, but still satisfies or exceeds the / mandatory requirement, must be listed in the Conformance Certificate.
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.6553] Include a 15 cm (6 in)  wide (minimum) steel reinforcement plate welded across the full / width of the rear end of the deck (ASTM A514 T1 steel or equivalent); / Channel steel main deck beams; and
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.6941]  / Where a standard is specified and the Offeror has offered an equivalent, that equivalent standard must be supplied by the Offeror; and / 
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.6969]  / Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance by the Technical / Authority where Proof of Compliance for equivalency for the respective requirement is provided for evaluation.
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.6970] Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance by the Technical / Authority where Proof of Compliance for equivalency for the respective requirement is provided for evaluation. / 
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.7201] (ASTM A514 T1 steel or / equivalent); / Channel steel main deck beams;
+  [05_2a.-w6399-26-ly46a---rfp-eng_0.pdf l.7638]  / Conformance Certificate - Any substitutes or alternatives that are offered as equivalent to that specified in the purchase description, but still / satisfies or exceeds the mandatory requirement, must be listed below.
+===== cb-512-15999315 lines 19 detector False
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.500] date but before Canada awards the contract if the Offeror can prove the delay is due solely to / a delay in the delivery caused by the Canada Post Corporation (or the national equivalent of a / foreign country). Canada will not consider delayed offers due to private couriers (Purolator
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.512] offer before the solicitation of offers closing date and time. Postage meter imprints are not / acceptable as proof of timely mailing. For the national equivalent to the CPC in a foreign / country, Canada will accept the local equivalent to these CPC documents.
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.513] acceptable as proof of timely mailing. For the national equivalent to the CPC in a foreign / country, Canada will accept the local equivalent to these CPC documents. / 
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.2669]  / (g)  Where a standard is specified and the bidder has offered an equivalent, that equivalent standard / 
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.2684]  / "Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.2686] standard will be considered for acceptance by the Technical Authority where Proof of / Compliance for equivalency for the respective requirement is provided for evaluation; / “Vehicle” – The entire vehicle including all systems and sub-systems, in a complete manufactured
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.3107] cab and accessible to the driver; and / Rear suspension stabilizers (or equivalent); / 
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.3517] (scuff plate) to a height of 305 mm (12 in); / Two logistic tracks (Load Lock No. 1806 or equivalent) running the length of the front wall as / follows:
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.3524] Equipped with a minimum of ten (10) tie-down straps (Load Lock No. 1810-23 or / equivalent). / 
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.3798] 2.29  Conspicuity / Conspicuity tape (3M Scotchlite Diamond Grade 980 or equivalent) must be provided in accordance with / the MVSR.
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.4029] Safety Recalls; and / Manufacturer’s Technical Service Bulletins (or equivalent). / 
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.4372] (f) / (g)  Where a standard is specified and the Offeror has offered an equivalent, that equivalent standard must be supplied by the Offeror; and / 
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.4374]  / Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance by / the  Technical  Authority  where  Proof  of  Compliance  for  equivalency  for  the  respective  requirement  is  provided  for
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.4375] Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance by / the  Technical  Authority  where  Proof  of  Compliance  for  equivalency  for  the  respective  requirement  is  provided  for / evaluation.
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.5414] Rear suspension stabilizers (or / equivalent); / 
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.6641] Two logistic tracks (Load Lock No. 1806 / or equivalent) running the length of the / front wall as follows:
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.6650] (10) tie-down straps (Load Lock / No. 1810-23 or equivalent). / 
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.7210] Conspicuity tape (3M Scotchlite Diamond Grade / 980 or equivalent) must be provided in / accordance with the MVSR.
+  [01_2a.-w6399-27-mc59a---rfp-eng.pdf l.7238]  / Conformance Certificate - Any substitutes or alternatives that are offered as equivalent to that specified in the purchase description, but still / satisfies or exceeds the mandatory requirement, must be listed below.
+===== cb-5333-37541591 lines 6 detector False
+  [01_w6399-22li06_b-rfp-english.pdf l.1369]  / Where a standard is specified and the Bidder has offered an equivalent, that equivalent standard / must be supplied by the Bidder; and
+  [01_w6399-22li06_b-rfp-english.pdf l.1389]  / "Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of Compliance
+  [01_w6399-22li06_b-rfp-english.pdf l.1391] standard will be considered for acceptance by the Technical Authority where Proof of Compliance / for equivalency for the respective requirement is provided for evaluation; / 
+  [01_w6399-22li06_b-rfp-english.pdf l.2612]  / Include minimum two (2) Amico DISS wall outlets, model O-DISWAL-U-OXY or equivalent / located as follows:
+  [01_w6399-22li06_b-rfp-english.pdf l.2776] Sharps Containers - One sharps container of with a safe design such as Becton Dickinson / #367201 “Vacutainer” or equivalent, mounted in the patient compartment; and / 
+  [01_w6399-22li06_b-rfp-english.pdf l.3512] Safety Recalls; and / Manufacturer’s Technical Service Bulletins (or equivalent). / 
+===== cb-565-24577747 lines 4 detector False
+  [02_2.-w6399-24-lq28---eng-rfp.pdf l.1306]  / Where a standard is specified and the Bidder has offered an equivalent, that equivalent standard / must be supplied by the Bidder; and
+  [02_2.-w6399-24-lq28---eng-rfp.pdf l.1326]  / “Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of Compliance
+  [02_2.-w6399-24-lq28---eng-rfp.pdf l.1328] standard will be considered for acceptance by the Technical Authority where Proof of Compliance / for equivalency for the respective requirement is provided for evaluation; / 
+  [02_2.-w6399-24-lq28---eng-rfp.pdf l.2073]  / Include two (2) exterior 500 Watt quartz halogen (or equivalent LED) flood lights as follows: / i.
+===== cb-590-39241775 lines 8 detector False
+  [01_2a.-w6399-24-lq59---rfp-eng.pdf l.1306]  / Where a standard is specified and the Bidder has offered an equivalent, that equivalent standard / must be supplied by the Bidder;
+  [01_2a.-w6399-24-lq59---rfp-eng.pdf l.1325]  / "Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of Compliance
+  [01_2a.-w6399-24-lq59---rfp-eng.pdf l.1327] standard will be considered for acceptance by the Technical Authority where Proof of Compliance / for equivalency for the respective requirement is provided for evaluation; / 
+  [01_2a.-w6399-24-lq59---rfp-eng.pdf l.2249]  / b)  Manufacturer's technical service bulletins (or equivalent). / 
+  [01_2a.-w6399-24-lq59---rfp-eng.pdf l.2730]  / Where a standard is specified and the Bidder has offered an equivalent, that equivalent standard / must be supplied by the Bidder;
+  [01_2a.-w6399-24-lq59---rfp-eng.pdf l.2749]  / "Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of Compliance
+  [01_2a.-w6399-24-lq59---rfp-eng.pdf l.2751] standard will be considered for acceptance by the Technical Authority where Proof of Compliance / for equivalency for the respective requirement is provided for evaluation; / 
+  [01_2a.-w6399-24-lq59---rfp-eng.pdf l.3668]  / Manufacturer's technical service bulletins (or equivalent). / 
+===== cb-6285-95639034 lines 13 detector False
+  [02_rfp-english.pdf l.2028]  / Requirements identified by “must” …… or “equivalent” are mandatory.  The Technical / 
+  [02_rfp-english.pdf l.2032] Authority will consider substitutes/alternatives for acceptance as a Technical Authority approved / equivalent; / 
+  [02_rfp-english.pdf l.2042]  / Where “must”, “must” …… or “equivalent”, or “will” are not used, the information provided is / 
+  [02_rfp-english.pdf l.2048]  / Where a standard is specified and the Contractor has offered an equivalent, that equivalent / 
+  [02_rfp-english.pdf l.2083]  / “Equivalent” means a standard, means, or component type, which the Technical Authority / 
+  [02_rfp-english.pdf l.2526] 3.12.2 / equivalent. / 
+  [02_rfp-english.pdf l.2613]  / The brake system actuator must be the Carlisle Hydrastar® 1200 PSI model or equivalent. / 
+  [02_rfp-english.pdf l.2727] 3.18.5 / protectors or equivalent. / 
+  [02_rfp-english.pdf l.2911] 3.22.6     Each securing point must also feature an adjacent frame-mounted retractable ratcheting / tiedown strap mechanism of CargoBuckle model G3 F18800 or equivalent. / 
+  [02_rfp-english.pdf l.3372]  / Definition for Equivalent is found in the DEFINITION section at the end of this document. / BIDDER INFORMATION
+  [02_rfp-english.pdf l.3383] Substitutes/Alternatives / Are any equipment substitutes/alternatives offered as Equivalent? / If yes, please identify all equipment substitutes/alternatives offered as Equivalents below:
+  [02_rfp-english.pdf l.3384] Are any equipment substitutes/alternatives offered as Equivalent? / If yes, please identify all equipment substitutes/alternatives offered as Equivalents below: / 
+  [02_rfp-english.pdf l.3404]  / “Equivalent” - A standard, means, or component type, which has been accepted by the Technical / Authority as meeting the specified requirements for form, fit, function and performance.
+===== cb-648-37758164 lines 12 detector False
+  [01_w8476-267144-i_rfi-original.pdf l.1327]  / offered an Equivalent, that Equivalent standard must / be supplied by the Contractor;
+  [01_w8476-267144-i_rfi-original.pdf l.1387]  / “Equivalent” means a standard, means, or component / type, which the Technical Authority has approved for
+  [01_w8476-267144-i_rfi-original.pdf l.1564]  / or Equivalent; / 
+  [01_w8476-267144-i_rfi-original.pdf l.1629]  / Equivalent in order to prevent the accumulation / of ice and snow;
+  [01_w8476-267144-i_rfi-original.pdf l.1674]  / composite or Equivalent; / 
+  [01_w8476-267144-i_rfi-original.pdf l.1717]  / electrically heated or Equivalent heating system. / 
+  [01_w8476-267144-i_rfi-original.pdf l.1725]  / The under-seat heaters or Equivalent must provide / a total of at least 44.0 kW (150,000 BTU/hr) of
+  [01_w8476-267144-i_rfi-original.pdf l.1745] fully adjustable suspension air ride seat, medium to / dark coloured or Equivalent. / 
+  [01_w8476-267144-i_rfi-original.pdf l.1749] bench style seats, medium to dark vinyl upholstered / or Equivalent. / 
+  [01_w8476-267144-i_rfi-original.pdf l.1826] The suspension system must have dump valve function / or Equivalent. / 
+  [01_w8476-267144-i_rfi-original.pdf l.1869] The battery must be provided with a 110-volt battery / heated blanket or Equivalent. / 
+  [01_w8476-267144-i_rfi-original.pdf l.2085] approved include Krown Rust Control, Rust Check or an / Equivalent; and / 
+===== cb-653-405632 lines 13 detector False
+  [01_w8486-260587-ugv-health-services-rfp. l.520] due solely to a delay in the delivery caused by the Canada Post Corporation (or the / national equivalent of a foreign country). Canada will not consider delayed offers due to / private couriers (Purolator Inc., FedEx Inc., etc.) misrouting, traffic volume, weather
+  [01_w8486-260587-ugv-health-services-rfp. l.530] Offeror sent the offer before the solicitation of offers closing date and time. Postage / meter imprints are not acceptable as proof of timely mailing. For the national equivalent / to the CPC in a foreign country, Canada will accept the local equivalent to these CPC
+  [01_w8486-260587-ugv-health-services-rfp. l.531] meter imprints are not acceptable as proof of timely mailing. For the national equivalent / to the CPC in a foreign country, Canada will accept the local equivalent to these CPC / documents.
+  [01_w8486-260587-ugv-health-services-rfp. l.3750] The following mandatory technical criteria must be demonstrated with supporting documentation in the / form of a product specification sheet, technical manual, certification, or equivalent documentation that / must be provided with the Bidder’s response at the time of bid submission.  Simply repeati
+  [01_w8486-260587-ugv-health-services-rfp. l.3781] specification sheet, technical manual, or / equivalent documentation with their / bid submission.
+  [01_w8486-260587-ugv-health-services-rfp. l.3792] specification sheet, technical manual, or / equivalent documentation with their / bid submission.
+  [01_w8486-260587-ugv-health-services-rfp. l.3803] specification sheet, technical manual, or / equivalent documentation with their / bid submission.
+  [01_w8486-260587-ugv-health-services-rfp. l.3851] specification sheet, technical manual, or / equivalent documentation with their / bid submission.
+  [01_w8486-260587-ugv-health-services-rfp. l.3860] specification sheet, technical manual, or / equivalent documentation with their / bid submission.
+  [01_w8486-260587-ugv-health-services-rfp. l.3869] specification sheet, technical manual, or / equivalent documentation with their / bid submission.
+  [01_w8486-260587-ugv-health-services-rfp. l.3879] specification sheet, technical manual, or / equivalent documentation with their / bid submission.
+  [01_w8486-260587-ugv-health-services-rfp. l.3923] specification sheet, technical manual, or / equivalent documentation with their / bid submission.
+  [01_w8486-260587-ugv-health-services-rfp. l.3943] specification sheet, technical manual, or / equivalent documentation with their / bid submission.
+===== cb-654-8199212 lines 21 detector False
+  [02_w6399-27-mc78_a_rfp_english.pdf l.550] date but before Canada awards the CONTRACT if the Offeror can prove the delay is due solely / to a delay in the delivery caused by the Canada Post Corporation (or the national equivalent of / a foreign country). Canada will not consider delayed offers due to private couriers (Purolator
+  [02_w6399-27-mc78_a_rfp_english.pdf l.562] offer before the solicitation of offers closing date and time. Postage meter imprints are not / acceptable as proof of timely mailing. For the national equivalent to the CPC in a foreign / country, Canada will accept the local equivalent to these CPC documents.
+  [02_w6399-27-mc78_a_rfp_english.pdf l.563] acceptable as proof of timely mailing. For the national equivalent to the CPC in a foreign / country, Canada will accept the local equivalent to these CPC documents. / 
+  [02_w6399-27-mc78_a_rfp_english.pdf l.2853]  / (f)  Where a standard is specified and the Bidder has offered an equivalent, that equivalent / 
+  [02_w6399-27-mc78_a_rfp_english.pdf l.2886]  / (a)  “Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of
+  [02_w6399-27-mc78_a_rfp_english.pdf l.2888] standard will be considered for acceptance by the Technical Authority where Proof of / Compliance for equivalency for the respective requirement is provided for evaluation; / 
+  [02_w6399-27-mc78_a_rfp_english.pdf l.3498] Note: The product applied must be a commercial product such as Krown Rust Control, Rust Check or / equivalent.  A decal and warranty papers must accompany the vehicle. / 
+  [02_w6399-27-mc78_a_rfp_english.pdf l.3752] Safety Recalls; and / Manufacturer’s Technical Service Bulletins (or equivalent). / 
+  [02_w6399-27-mc78_a_rfp_english.pdf l.3804] reference only and may not be exact conversions; / Where a standard is specified and the Offeror has offered an equivalent, that equivalent / standard must be supplied by the Offeror; and
+  [02_w6399-27-mc78_a_rfp_english.pdf l.3806] standard must be supplied by the Offeror; and / Substitutes  and  alternatives  that  are  equivalent  in  product,  performance  or  a / standard will be considered for acceptance by the Technical Authority where Proof
+  [02_w6399-27-mc78_a_rfp_english.pdf l.3808] standard will be considered for acceptance by the Technical Authority where Proof / of  Compliance  for  equivalency  for  the  respective  requirement  is  provided  for / evaluation.
+  [02_w6399-27-mc78_a_rfp_english.pdf l.5746] Conformance Certificate / Any substitutions or alternatives that are offered as equivalent to that specified in the purchase / description, but still satisfies or exceeds the mandatory requirement, must be listed below.
+  [02_w6399-27-mc78_a_rfp_english.pdf l.5918] Equipped with a minimum of ten (10) tie-down straps (Load Lock No. 1810-23 or / equivalent); / 
+  [02_w6399-27-mc78_a_rfp_english.pdf l.5920]  / (d)  Two heavy-duty telescopic poles (Load Lock No. 1818SQH or equivalent). / 
+  [02_w6399-27-mc78_a_rfp_english.pdf l.6147] Conspicuity Tape- Strips of reflective Conspicuity Tape (3M Scotchlite Diamond Grade 980 or / equivalent) in accordance with DOT Canada regulations; and / Dangerous Goods Placard Holders – Four (4) aluminum folding “Dangerous Goods” placard
+  [02_w6399-27-mc78_a_rfp_english.pdf l.6203]  / (g)  Where a standard is specified and the Offeror has offered an equivalent, that equivalent standard must be supplied by the Offeror; and / 
+  [02_w6399-27-mc78_a_rfp_english.pdf l.6205]  / Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance by the / Technical Authority where Proof of Compliance for equivalency for the respective requirement is provided for evaluation.
+  [02_w6399-27-mc78_a_rfp_english.pdf l.6206] Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance by the / Technical Authority where Proof of Compliance for equivalency for the respective requirement is provided for evaluation. / Dimensions stated as nominal must be treated as
+  [02_w6399-27-mc78_a_rfp_english.pdf l.6473] down straps (Load Lock No. 1810-23 or / equivalent); / Two heavy-duty telescopic poles (Load Lock
+  [02_w6399-27-mc78_a_rfp_english.pdf l.6475] Two heavy-duty telescopic poles (Load Lock / No. 1818SQH or equivalent). / Roof
+  [02_w6399-27-mc78_a_rfp_english.pdf l.6825] Conspicuity Tape (3M Scotchlite Diamond / Grade 980 or equivalent) in accordance with / DOT Canada regulations; and
+===== cb-654-97078081 lines 38 detector False
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.562] would affect the requirement / figures, it would provide equivalent / operational capability to the
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.804] 6530-25-160-2914) or an / equivalent model. Featuring / telescopic handles, this stretcher
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.1503] Establish, implement, document and maintain a quality system that ensures conformance to / contractual requirements and meets the objectives of the ISO 9001 or equivalent quality system / model during performance of this Standing Offer; and
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.1798]  / Manufacturer's technical service bulletins (or equivalent). / 
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.1993] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject / or equivalent); and / Include an LED light to indicate when circuit is energized;
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.2296] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject or / equivalent); and / Include an LED light to indicate when circuit is energized;
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.2604] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject / or equivalent); and / Include an LED light to indicate when circuit is energized;
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.2911] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject or / equivalent); and / Include an LED light to indicate when circuit is energized;
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.3348] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject / or equivalent); and / Include an LED light to indicate when circuit is energized;
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.3740] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject or / equivalent); and / Include an LED light to indicate when circuit is energized;
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.5287]  / Where a standard is specified and the Offeror has offered an equivalent, that equivalent standard must be supplied by the Offeror; / 
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.5289]  / Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance by the / Technical Authority where Proof of Compliance for equivalency for the respective requirement is provided for evaluation.
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.5290] Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance by the / Technical Authority where Proof of Compliance for equivalency for the respective requirement is provided for evaluation. / 
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.6323] Super Auto Eject or / equivalent); and / Include an LED light to
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.7056] vehicle upon start-up (Kussmaul / Super Auto Eject or equivalent); / and
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.7924] Super Auto Eject or / equivalent); and / Include an LED light to
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.8700] vehicle upon start-up (Kussmaul / Super Auto Eject or equivalent); / and
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.9691] Super Auto Eject or / equivalent); and / Include an LED light to
+  [01_w6399-26-lw25---eng-rfso-amdt-01.pdf l.10622] vehicle upon start-up (Kussmaul / Super Auto Eject or equivalent); / and
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.1456]  / duly completed forms or their equivalents as identified immediately below. / 
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.1463] OR / Applicable Forms. The Identified User may use an equivalent form or electronic Call-up / document that contains at least the following information:
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.4415] Establish, implement, document and maintain a quality system that ensures conformance to / contractual requirements and meets the objectives of the ISO 9001 or equivalent quality system / model during performance of this Standing Offer; and
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.4772]  / Manufacturer's technical service bulletins (or equivalent). / 
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.4999] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject / or equivalent); and / 
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.5336] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject or / equivalent); and / Include an LED light to indicate when circuit is energized;
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.5696] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject / or equivalent); and / 
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.6034] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject or / equivalent); and / Include an LED light to indicate when circuit is energized;
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.6591] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject / or equivalent); and / Include an LED light to indicate when circuit is energized;
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.7003] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject or / equivalent); and / Include an LED light to indicate when circuit is energized;
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.10509]  / Where a standard is specified and the Offeror has offered an equivalent, that equivalent standard must be supplied by the Offeror; / 
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.10511]  / Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance / by  the  Technical  Authority  where  Proof  of  Compliance  for  equivalency  for  the  respective  requirement  is  provided  for
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.10512] Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance / by  the  Technical  Authority  where  Proof  of  Compliance  for  equivalency  for  the  respective  requirement  is  provided  for / evaluation.
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.11745] Super Auto Eject or / equivalent); and / Include an LED light to
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.12593] vehicle upon start-up (Kussmaul / Super Auto Eject or equivalent); / and
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.13529] Super Auto Eject or / equivalent); and / Include an LED light to
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.14405] vehicle upon start-up (Kussmaul / Super Auto Eject or equivalent); / and
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.15591] Super Auto Eject or / equivalent); and / Include an LED light to
+  [03_flag-2_w6399-26-lw25_rfso_eng.pdf l.16471] vehicle upon start-up (Kussmaul / Super Auto Eject or equivalent); / and
+===== cb-6825-1401259 lines 8 detector False
+  [02_202305753---rfp---mailroom-delivery-t l.414]  / B3000T (2006-06-16) Equivalent Products / 
+  [02_202305753---rfp---mailroom-delivery-t l.719] Requirement, and brochures or other document(s), (e.g. data sheets, web site / information, etc.) for each equivalent item to substantiate compliancy to Mandatory / Technical Criteria.
+  [02_202305753---rfp---mailroom-delivery-t l.1872] be mounted to vehicle frame using rubber protected U-bolts and 3/8” rubber frame rail / spacers or equivalent. / Aluminum side wall posts must be on 24” centers minimum. centers.
+  [02_202305753---rfp---mailroom-delivery-t l.1889]  / 1 row of E-Track or equivalent must be installed on the inner side walls in the box at 48” from / the floor.  Two logistics straps of 16’ with E fittings must be included.
+  [02_202305753---rfp---mailroom-delivery-t l.1892]  / A Maxon TE-20L or equivalent aluminum 40” X 80” platform under mount hydraulic liftgate / rated at 2,000 lbs must be installed at the rear of the vehicle.
+  [02_202305753---rfp---mailroom-delivery-t l.2359] protected U-bolts and 3/8” rubber frame rail / spacers or equivalent. / Aluminum side wall posts must be on 24”
+  [02_202305753---rfp---mailroom-delivery-t l.2387]  / 1 row of E-Track or equivalent must be installed / on the inner side walls in the box at 48” from the
+  [02_202305753---rfp---mailroom-delivery-t l.2453]  / A Maxon TE-20L or equivalent aluminum 40” X / 80” platform under mount hydraulic liftgate rated
+===== cb-6841-57041821 lines 10 detector False
+  [02_technical_evaluation_matrix_english.p l.22]  / Definitions for Equivalent is found in the DEFINITION section at the end of this document. / 
+  [02_technical_evaluation_matrix_english.p l.34]  / Are any equipment substitutes/alternatives offered as Equivalent? / 
+  [02_technical_evaluation_matrix_english.p l.40]  / If yes, please identify all equipment substitutes/alternatives offered as Equivalents below: / 
+  [02_technical_evaluation_matrix_english.p l.159] The following definition applies to the interpretation of this Technical Evaluation Matrix: / “Equivalent” - A standard, means, or component type, which has been accepted by the Technical Authority as meeting the specified / requirements for form, fit, function and performance.
+  [03_rfp-w8475-245528-a-all-terrain-vehicl l.2325]  / Where a standard is specified and the Contractor has offered an Equivalent, that / Equivalent standard must be supplied by the Contractor.
+  [03_rfp-w8475-245528-a-all-terrain-vehicl l.2326] Where a standard is specified and the Contractor has offered an Equivalent, that / Equivalent standard must be supplied by the Contractor. / 
+  [03_rfp-w8475-245528-a-all-terrain-vehicl l.2329] Where a technical certification is referred to in this Purchase Description, a copy of the / certification or Equivalent must be supplied, when requested by the Technical / Authority.
+  [03_rfp-w8475-245528-a-all-terrain-vehicl l.2357]  / “Equivalent” means a standard, means, or component type that the Technical / Authority has approved for this requirement as meeting the specified requirements for
+  [03_rfp-w8475-245528-a-all-terrain-vehicl l.2722]  / Lubrication fittings must conform to SAE J534 or an Equivalent North American / Standard.
+  [03_rfp-w8475-245528-a-all-terrain-vehicl l.3330]  / bulletins, or equivalent must be provided to the Technical Authority and the final delivery / locations on a continuing basis, throughout the life expectancy of the vehicle/equipment or for no
+===== cb-699-32435819 lines 21 detector False
+  [01_w6399-26-lw29---eng-rfp-amdt-02.pdf l.519]  / Where a standard is specified and the Offeror has offered an equivalent, that equivalent standard must be supplied by the Offeror; / and
+  [01_w6399-26-lw29---eng-rfp-amdt-02.pdf l.544]  / Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance / by the Technical Authority where Proof of Compliance for equivalency for the respective requirement is provided for
+  [01_w6399-26-lw29---eng-rfp-amdt-02.pdf l.545] Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance / by the Technical Authority where Proof of Compliance for equivalency for the respective requirement is provided for / evaluation.
+  [01_w6399-26-lw29---eng-rfp-amdt-02.pdf l.1930] Rear suspension stabilizers or / equivalent; / 
+  [01_w6399-26-lw29---eng-rfp-amdt-02.pdf l.2091] aluminum or fibreglass (or an / equivalent product as approved / by the DND TA);
+  [01_w6399-26-lw29---eng-rfp-amdt-02.pdf l.3047] Interior sprayed with X-Box Liner (or / equivalent); / Floor lined with a tough perforated vinyl
+  [01_w6399-26-lw29---eng-rfp-amdt-02.pdf l.3050] matting such as Dry-Dek® vinyl flooring / mat (or equivalent); and / Include an interior light.
+  [02_2a.-w6399-26-lw29---rfp-eng.pdf l.2760]  / Where a standard is specified and the Bidder has offered an equivalent, that equivalent / standard must be supplied by the Bidder; and
+  [02_2a.-w6399-26-lw29---rfp-eng.pdf l.2820]  / "Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of
+  [02_2a.-w6399-26-lw29---rfp-eng.pdf l.2822] standard will be considered for acceptance by the Technical Authority where Proof of / Compliance for equivalency for the respective requirement is provided for evaluation; / 
+  [02_2a.-w6399-26-lw29---rfp-eng.pdf l.3505] cab and accessible to the driver; and / Rear suspension stabilizers or equivalent; / 
+  [02_2a.-w6399-26-lw29---rfp-eng.pdf l.3581]  / Exterior skin fabricated from aluminum or fibreglass (or an equivalent product as / approved by the DND TA);
+  [02_2a.-w6399-26-lw29---rfp-eng.pdf l.4051]  / Interior sprayed with X-Box Liner (or equivalent); / 
+  [02_2a.-w6399-26-lw29---rfp-eng.pdf l.4054] Floor lined with a tough perforated vinyl matting such as Dry-Dek® vinyl flooring mat (or / equivalent); and / 
+  [02_2a.-w6399-26-lw29---rfp-eng.pdf l.5077]  / Where a standard is specified and the Offeror has offered an equivalent, that equivalent standard must be supplied by the Offeror; and / 
+  [02_2a.-w6399-26-lw29---rfp-eng.pdf l.5104]  / Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance / by  the  Technical  Authority  where  Proof  of  Compliance  for  equivalency  for  the  respective  requirement  is  provided  for
+  [02_2a.-w6399-26-lw29---rfp-eng.pdf l.5105] Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance / by  the  Technical  Authority  where  Proof  of  Compliance  for  equivalency  for  the  respective  requirement  is  provided  for / evaluation.
+  [02_2a.-w6399-26-lw29---rfp-eng.pdf l.6464] Rear suspension stabilizers or / equivalent; / 
+  [02_2a.-w6399-26-lw29---rfp-eng.pdf l.6648] aluminum or fibreglass (or an / equivalent product as approved / by the DND TA);
+  [02_2a.-w6399-26-lw29---rfp-eng.pdf l.7630] Interior sprayed with X-Box Liner (or / equivalent); / Floor lined with a tough perforated vinyl
+  [02_2a.-w6399-26-lw29---rfp-eng.pdf l.7633] matting such as Dry-Dek® vinyl flooring / mat (or equivalent); and / Include an interior light.
+===== cb-702-59931138 lines 42 detector False
+  [01_w6399-26-ly03---eng-rfso-amdt-01.pdf l.235] refurbished BV206s; / however, any equivalent / platform that provides
+  [01_w6399-26-ly03---eng-rfso-amdt-01.pdf l.415] transit over water. The vehicles are to be based upon refurbished Hägglunds BV206 platforms (or / equivalent) and consist of two (2) separate cars, the front car being a dual track driven car connected to a / rear dual track driven car that is powered from the front car via a drive shaft.  The confi
+  [02_w6399-26-ly03_rfso_eng.pdf l.1399]  / duly completed forms or their equivalents as identified immediately below. / 
+  [02_w6399-26-ly03_rfso_eng.pdf l.1406] OR / Applicable Forms. The Identified User may use an equivalent form or electronic Call-up / document that contains at least the following information:
+  [02_w6399-26-ly03_rfso_eng.pdf l.4276] Establish, implement, document and maintain a quality system that ensures conformance to / contractual requirements and meets the objectives of the ISO 9001 or equivalent quality system / model during performance of this Standing Offer; and
+  [02_w6399-26-ly03_rfso_eng.pdf l.4622]  / Manufacturer's technical service bulletins (or equivalent). / 
+  [02_w6399-26-ly03_rfso_eng.pdf l.4810] Access port under dash to connect external scanner/diagnostic tool; and / Dash mounted gauge (i.e., Murphy gauge or equivalent) that displays engine data, / codes, warnings, etc.
+  [02_w6399-26-ly03_rfso_eng.pdf l.4933] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject / or equivalent); and / Include an LED light to indicate when circuit is energized;
+  [02_w6399-26-ly03_rfso_eng.pdf l.5312] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject or / equivalent); and / Include an LED light to indicate when circuit is energized;
+  [02_w6399-26-ly03_rfso_eng.pdf l.6853]  / Include two (2) exterior 12 VDC 500 Watt quartz halogen (or equivalent LED) flood lights as / follows:
+  [02_w6399-26-ly03_rfso_eng.pdf l.8347]  / Where a standard is specified and the Offeror has offered an equivalent, that equivalent standard must be supplied by the Offeror; / 
+  [02_w6399-26-ly03_rfso_eng.pdf l.8349]  / Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance / by  the  Technical  Authority  where  Proof  of  Compliance  for  equivalency  for  the  respective  requirement  is  provided  for
+  [02_w6399-26-ly03_rfso_eng.pdf l.8350] Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance / by  the  Technical  Authority  where  Proof  of  Compliance  for  equivalency  for  the  respective  requirement  is  provided  for / evaluation.
+  [02_w6399-26-ly03_rfso_eng.pdf l.8507] in the business of refurbishing and/or selling MOSVs based / upon the Hägglunds BV206 platform (or equivalent) for a / minimum of five (5) years.
+  [02_w6399-26-ly03_rfso_eng.pdf l.8513] refurbishing and/or selling MOSVs based upon the / Hägglunds BV206 platform (or equivalent) for a minimum of / five (5) years.
+  [02_w6399-26-ly03_rfso_eng.pdf l.9340] Dash mounted gauge (i.e., / Murphy gauge or equivalent) / that displays engine data,
+  [02_w6399-26-ly03_rfso_eng.pdf l.9631] Super Auto Eject or / equivalent); and / 
+  [02_w6399-26-ly03_rfso_eng.pdf l.10761]  / Super Auto Eject or equivalent); / and
+  [02_w6399-26-ly03_rfso_eng.pdf l.14207] Include two (2) exterior 12 VDC 500 / Watt quartz halogen (or equivalent LED) / flood lights as follows:
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.197]  / DND Response: Alternate coating would be acceptable if they provide equivalent corrosion protection / as specified (i.e., phosphate treatment plus primer or an E-coat system).
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.266] b. Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject / or equivalent); / 
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.712] DND Response: As stated in a previous question, an alternate coating would be acceptable if it / provides equivalent corrosion protection as specified (i.e., phosphate treatment plus primer or / an E-coat system).
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.1425] Establish, implement, document and maintain a quality system that ensures conformance to / contractual requirements and meets the objectives of the ISO 9001 or equivalent quality system / model during performance of this Standing Offer; and
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.1660]  / A phosphate treatment plus primer, an E-coat system or another equivalent corrosion protection / on all ferrous metals, followed by a minimum of one coat of paint and a clear coat.
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.1736]  / Manufacturer's technical service bulletins (or equivalent). / 
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.1753] transit over water.  The vehicles are to be based upon refurbished Hägglunds BV206 platforms (or / equivalent) and consist of two (2) separate cars, the front car being a dual track driven car connected to a / rear dual track driven car that is powered from the front car via a drive shaft.  The conf
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.1889] Access port under dash to connect external scanner/diagnostic tool; and / Dash mounted gauge (i.e., Murphy gauge or equivalent) that displays engine data, codes, / warnings, etc.
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.2002] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject / or equivalent); and / Include an LED light to indicate when circuit is energized;
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.2343] Auto-eject plug away from the vehicle upon start-up (Kussmaul Super Auto Eject or / equivalent); and / Include an LED light to indicate when circuit is energized;
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.2377] Rear of rear car; / Equivalent umbilical cable between front and rear cars rated to carry all required power / and signal loads; and
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.3657]  / Include two (2) exterior 12 VDC 500 Watt quartz halogen (or equivalent LED) flood lights as / follows:
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.3819]  / Where a standard is specified and the Offeror has offered an equivalent, that equivalent standard must be supplied by the Offeror; / 
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.3821]  / Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance by the / Technical Authority where Proof of Compliance for equivalency for the respective requirement is provided for evaluation.
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.3822] Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance by the / Technical Authority where Proof of Compliance for equivalency for the respective requirement is provided for evaluation. / 
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.3957] the business of refurbishing and/or selling MOSVs based / upon the Hägglunds BV206 platform (or equivalent) for a / minimum of five (5) years.
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.3963] and/or selling MOSVs based upon the Hägglunds BV206 / platform (or equivalent) for a minimum of five (5) years. / 
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.4284] A phosphate treatment plus primer, an E- / coat system or another equivalent / corrosion protection on all ferrous metals,
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.4623] Dash mounted gauge (i.e., / Murphy gauge or equivalent) / that displays engine data, codes,
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.5038] Super Auto Eject or / equivalent); and / Include an LED light to
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.5971] vehicle upon start-up (Kussmaul / Super Auto Eject or equivalent); / and
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.6000] Rear of rear car; / Equivalent umbilical cable / between front and rear cars rated
+  [03_w6399-26-ly03---rfso-amdt-02-en.pdf l.9038] Include two (2) exterior 12 VDC 500 / Watt quartz halogen (or equivalent LED) / flood lights as follows:
+===== cb-707-69525788 lines 4 detector False
+  [01_w8486-260747-rfp.pdf l.409] date but before Canada awards the Contract if the Offeror can prove the delay is due solely to / a delay in the delivery caused by the Canada Post Corporation (or the national equivalent of a / foreign country). Canada will not consider delayed offers due to private couriers (Purolator
+  [01_w8486-260747-rfp.pdf l.421] offer before the solicitation of offers closing date and time. Postage meter imprints are not / acceptable as proof of timely mailing. For the national equivalent to the CPC in a foreign / country, Canada will accept the local equivalent to these CPC documents.
+  [01_w8486-260747-rfp.pdf l.422] acceptable as proof of timely mailing. For the national equivalent to the CPC in a foreign / country, Canada will accept the local equivalent to these CPC documents. / 
+  [01_w8486-260747-rfp.pdf l.3242] documentation in the form of a product specification sheet, technical manual, certification, or / equivalent documentation that must be provided with the bidder’s response at the time of bid / submission.  Simply repeating the statement contained in the bid solicitation is not sufficient.
+===== cb-718-96226692 lines 7 detector False
+  [01_01_w6399-25-lu11a_rfso_eng.pdf l.1166] i.  ConﬁrmaƟon of the Work. The IdenƟﬁed User will authorize or conﬁrm the Work using the / duly completed forms or their equivalents as idenƟﬁed immediately below, or by using a / Canada acquisiƟon card (Visa or MasterCard).
+  [01_01_w6399-25-lu11a_rfso_eng.pdf l.1178] OR / Applicable Forms. The IdenƟﬁed User may use an equivalent form or electronic Call-up / document that contains at least the following informaƟon:
+  [01_01_w6399-25-lu11a_rfso_eng.pdf l.4293] Certified to meet the safety requirements of CAN/CSA-22.2 No.61010-1/ UL-61010-1 (or / equivalent); / 
+  [01_01_w6399-25-lu11a_rfso_eng.pdf l.4380]  / Utilize a filtration system as follows (or equivalent): / i.
+  [01_01_w6399-25-lu11a_rfso_eng.pdf l.4416] (10 ft) long, certified in accordance with the Standards Council of Canada (i.e., CSA or / equivalent); / 
+  [01_01_w6399-25-lu11a_rfso_eng.pdf l.5025] of CAN/CSA-22.2 No.61010-1/ UL-61010-1 / (or equivalent); / 
+  [01_01_w6399-25-lu11a_rfso_eng.pdf l.5242]  / Utilize a filtration system as follows (or equivalent): / i.
+===== cb-7497-76446387 lines 12 detector False
+  [01_attachment_2__utility_terrain_vehicle l.21]  / Definitions for Equivalent is found in the DEFINITION section at the end of this document. / 
+  [01_attachment_2__utility_terrain_vehicle l.33]  / Are any equipment substitutes/alternatives offered as Equivalent? / 
+  [01_attachment_2__utility_terrain_vehicle l.39]  / If yes, please identify all equipment substitutes/alternatives offered as Equivalents below: / 
+  [01_attachment_2__utility_terrain_vehicle l.140]  / “Equivalent” - A standard, means, or component type, which has been accepted by the Technical Authority as meeting the specified / requirements for form, fit, function and performance.
+  [03_aeb_1996__2015__utvs_and_trailers__an l.159] c.  Where “must” or “will” are not used, the information provided is for guidance only. / d.  Where a standard is specified and the Contractor has offered an Equivalent, that Equivalent standard / 
+  [03_aeb_1996__2015__utvs_and_trailers__an l.165]  / Equivalent must be supplied, when requested by the Technical Authority. / 
+  [03_aeb_1996__2015__utvs_and_trailers__an l.189] “Technical Authority” means the official responsible for the technical content of this requirement. / “Equivalent” means a standard, means, or component type that the Technical Authority has approved / for this requirement as meeting the specified requirements for fit, form, function and performance
+  [03_aeb_1996__2015__utvs_and_trailers__an l.852]  / Safety Recalls and manufacturer’s technical service bulletin’s, or equivalent must be provided to the Technical / Authority and the final delivery locations on a continuing basis, throughout the life expectancy of the vehicle
+  [04_aeb-1996-2015-utvs-trailers-rfp.pdf l.2135] c.  Where “must” or “will” are not used, the information provided is for guidance only. / d.  Where a standard is specified and the Contractor has offered an Equivalent, that Equivalent / 
+  [04_aeb-1996-2015-utvs-trailers-rfp.pdf l.2141]  / certification or Equivalent must be supplied, when requested by the Technical Authority. / 
+  [04_aeb-1996-2015-utvs-trailers-rfp.pdf l.2168] “Technical Authority” means the official responsible for the technical content of this requirement. / “Equivalent” means a standard, means, or component type that the Technical Authority has / approved for this requirement as meeting the specified requirements for fit, form, function and
+  [04_aeb-1996-2015-utvs-trailers-rfp.pdf l.2825]  / Safety Recalls and manufacturer’s technical service bulletin’s, or equivalent must be provided to the / Technical Authority and the final delivery locations on a continuing basis, throughout the life expectancy
+===== cb-773-92532316 lines 9 detector False
+  [01_w6399_25_lr73_b_rfp_eng.pdf l.1313]  / Where a standard is specified and the Bidder has offered an equivalent, that equivalent standard / must be supplied by the Bidder; and
+  [01_w6399_25_lr73_b_rfp_eng.pdf l.1333]  / “Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of Compliance
+  [01_w6399_25_lr73_b_rfp_eng.pdf l.1335] standard will be considered for acceptance by the Technical Authority where Proof of Compliance / for equivalency for the respective requirement is provided for evaluation; / 
+  [04_w6399_25_lr73_b_rfp_002_eng.pdf l.1258]  / Where a standard is specified and the Bidder has offered an equivalent, that equivalent standard / must be supplied by the Bidder; and
+  [04_w6399_25_lr73_b_rfp_002_eng.pdf l.1278]  / “Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of Compliance
+  [04_w6399_25_lr73_b_rfp_002_eng.pdf l.1280] standard will be considered for acceptance by the Technical Authority where Proof of Compliance / for equivalency for the respective requirement is provided for evaluation; / 
+  [07_w6399_25_lr73_b_rfp_001_eng.pdf l.1350]  / Where a standard is specified and the Bidder has offered an equivalent, that equivalent standard / must be supplied by the Bidder; and
+  [07_w6399_25_lr73_b_rfp_001_eng.pdf l.1370]  / “Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of Compliance
+  [07_w6399_25_lr73_b_rfp_001_eng.pdf l.1372] standard will be considered for acceptance by the Technical Authority where Proof of Compliance / for equivalency for the respective requirement is provided for evaluation; / 
+===== cb-7926-31227918 lines 6 detector False
+  [01_w6399-22-li06_c_rfp_eng.pdf l.1369]  / Where a standard is specified and the Bidder has offered an equivalent, that equivalent standard / must be supplied by the Bidder; and
+  [01_w6399-22-li06_c_rfp_eng.pdf l.1389]  / "Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of Compliance
+  [01_w6399-22-li06_c_rfp_eng.pdf l.1391] standard will be considered for acceptance by the Technical Authority where Proof of Compliance / for equivalency for the respective requirement is provided for evaluation; / 
+  [01_w6399-22-li06_c_rfp_eng.pdf l.2612]  / Include minimum two (2) Amico DISS wall outlets, model O-DISWAL-U-OXY or equivalent / located as follows:
+  [01_w6399-22-li06_c_rfp_eng.pdf l.2776] Sharps Containers - One sharps container of with a safe design such as Becton Dickinson / #367201 “Vacutainer” or equivalent, mounted in the patient compartment; and / 
+  [01_w6399-22-li06_c_rfp_eng.pdf l.3512] Safety Recalls; and / Manufacturer’s Technical Service Bulletins (or equivalent). / 
+===== cb-844-20864192 lines 13 detector False
+  [03_2a.-w6399-25-lr69---rfp.pdf l.1583]  / Where a standard is specified and the bidder has offered an equivalent, that equivalent standard / must be supplied by the Bidder; and
+  [03_2a.-w6399-25-lr69---rfp.pdf l.1649]  / "Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of Compliance
+  [03_2a.-w6399-25-lr69---rfp.pdf l.1651] standard will be considered for acceptance by the Technical Authority where Proof of Compliance / for equivalency for the respective requirement is provided for evaluation; / 
+  [03_2a.-w6399-25-lr69---rfp.pdf l.2414] and accessible to the driver; and / Rear suspension stabilizers or equivalent; / 
+  [03_2a.-w6399-25-lr69---rfp.pdf l.2751] 2.19.3  12/24 VDC Boost System / The vehicle must be equipped with a Re-Volt (or equivalent) boosting system as follows: / 
+  [03_2a.-w6399-25-lr69---rfp.pdf l.3271]  / Manufacturer’s Technical Service Bulletins (or equivalent). / 
+  [03_2a.-w6399-25-lr69---rfp.pdf l.3859] Include a 15 cm (6 in)  wide (minimum) steel reinforcement plate welded across the full / width of the rear end of the deck (ASTM A514 T1 steel or equivalent); / Channel steel main deck beams; and
+  [06_w6399-25-lr69---eng-rfp-amdt-01.pdf l.273]  / (g)  Where a standard is specified and the bidder has offered an equivalent, that equivalent standard / 
+  [06_w6399-25-lr69---eng-rfp-amdt-01.pdf l.302]  / "Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of
+  [06_w6399-25-lr69---eng-rfp-amdt-01.pdf l.304] standard will be considered for acceptance by the Technical Authority where Proof of / Compliance for equivalency for the respective requirement is provided for evaluation; / 
+  [06_w6399-25-lr69---eng-rfp-amdt-01.pdf l.1092] cab and accessible to the driver; and / Rear suspension stabilizers or equivalent; / 
+  [06_w6399-25-lr69---eng-rfp-amdt-01.pdf l.1464] 2.19.3  12/24 VDC Boost System / The vehicle must be equipped with a Re-Volt (or equivalent) boosting system as follows: / 
+  [06_w6399-25-lr69---eng-rfp-amdt-01.pdf l.1971]  / Manufacturer’s Technical Service Bulletins (or equivalent). / 
+===== cb-858-22734399 lines 3 detector False
+  [02_2a.-w6399-25-ls78b---rfp-eng.pdf l.2691]  / Where a standard is specified and the Offeror has offered an equivalent, that equivalent / standard must be supplied by the Offeror; and
+  [02_2a.-w6399-25-ls78b---rfp-eng.pdf l.2745]  / “Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of
+  [02_2a.-w6399-25-ls78b---rfp-eng.pdf l.2747] standard will be considered for acceptance by the Technical Authority where Proof of / Compliance for equivalency for the respective requirement is provided for evaluation; / 
+===== cb-884-66724285 lines 17 detector False
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.742] screening process and successfully obtain a Senate security clearance at the level of “Site / access”, unless they have successfully obtained an equivalent or higher security status / under the security policy of another Canadian legislature or governmental institution
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.744] under the security policy of another Canadian legislature or governmental institution / recognized by the Senate.  Equivalent security status or clearances must be approved by / the Sente prior to the award of a contract.
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.1515]  / Estimated carbon dioxide emissions equivalent / (CO2e)  based on 1,000km.
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.1519] The unit of measurement used for the carbon / footprint is CO2 equivalent. / 
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.1583]  / CO2 equivalent includes the measurement of the / impact of the different greenhouse gases
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.1740]  / Estimated carbon dioxide emissions equivalent / (CO2e)  based on 1,000km.
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.1747] The unit of measurement used for the carbon / footprint is CO2 equivalent. / 
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.1749]  / CO2 equivalent includes the measurement of / the impact of the different greenhouse gases
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.1904]  / Estimated carbon dioxide emissions equivalent / (CO2e)  based on 1,000km.
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.1911] The unit of measurement used for the carbon / footprint is CO2 equivalent. / 
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.1913]  / CO2 equivalent includes the measurement of / the impact of the different greenhouse gases
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.2709] and successfully obtained a Senate security clearance at the level of “Site Access,” / unless they have successfully obtained an equivalent or higher security status under / the security policy of another Canadian legislature or governmental institution
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.2711] the security policy of another Canadian legislature or governmental institution / recognized by the Senate and that equivalent security status has been approved by / the Senate. All individuals working on this contract must maintain the required
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.3194] objection to an invoice, the date on which the amounts in the invoice become due / and payable under this clause is extended by a period equivalent to the period / required to resolve the objection.
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.3586] the Shuttle Bus. / Base floor to be a synthetic composite or equivalent.  Floor / covering must be non-slip.  Floor at entrance must be sloped
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.3895] the Shuttle Bus. / Base floor to be a synthetic composite or equivalent.  Floor / covering must be non-slip.  Floor at entrance must be sloped
+  [02_finproc_rfp-sen-048-shuttle-bus-eng.p l.4141] the Shuttle Bus. / Base floor to be a synthetic composite or equivalent.  Floor / covering must be non-slip.  Floor at entrance must be sloped
+===== cb-927-29293257 lines 4 detector False
+  [08_w6399_22_li35_rfp_en.pdf l.1248]  / 2.1.10  Must include storage for a minimum of 3 x generators (Honda 3K or equivalent) and 4 x 20L jerry / cans
+  [08_w6399_22_li35_rfp_en.pdf l.1253]  / 2.1.12  Must have spider antenna mount (or equivalent) that is moveable and controlled from the ground. / 
+  [08_w6399_22_li35_rfp_en.pdf l.1461]  / 3K or equivalent) and 4 x 20L jerry cans / 
+  [08_w6399_22_li35_rfp_en.pdf l.1464] 2.1.11  Must have trailer hitch that includes pintle hook and ball / 2.1.12  Must have spider antenna mount (or equivalent) that is / 
+===== cb-934-1698757 lines 5 detector False
+  [02_2.-w6399-25-lx67a---rfp-eng_0.pdf l.3710] Establish, implement, document and maintain a quality system that ensures conformance to / contractual requirements and meets the objectives of the ISO 9001 or equivalent quality system / model during performance of this contract; and
+  [02_2.-w6399-25-lx67a---rfp-eng_0.pdf l.3980]  / Manufacturer's technical service bulletins (or equivalent). / 
+  [02_2.-w6399-25-lx67a---rfp-eng_0.pdf l.5169]  / Where a standard is specified and the Offeror has offered an equivalent, that equivalent standard must be supplied by the Offeror; / 
+  [02_2.-w6399-25-lx67a---rfp-eng_0.pdf l.5171]  / Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance / by  the  Technical  Authority  where  Proof  of  Compliance  for  equivalency  for  the  respective  requirement  is  provided  for
+  [02_2.-w6399-25-lx67a---rfp-eng_0.pdf l.5172] Substitutes and alternatives that are equivalent in product, performance or a standard will be considered for acceptance / by  the  Technical  Authority  where  Proof  of  Compliance  for  equivalency  for  the  respective  requirement  is  provided  for / evaluation.
+===== cb-945-94217713 lines 3 detector False
+  [03_2.-w6399-25-ls78---eng-rfp.pdf l.1342]  / Where a standard is specified and the Bidder has offered an equivalent, that equivalent standard / must be supplied by the Bidder; and
+  [03_2.-w6399-25-ls78---eng-rfp.pdf l.1356]  / “Equivalent” - Substitutes and alternatives that are equivalent in product, performance or a / standard will be considered for acceptance by the Technical Authority where Proof of Compliance
+  [03_2.-w6399-25-ls78---eng-rfp.pdf l.1358] standard will be considered for acceptance by the Technical Authority where Proof of Compliance / for equivalency for the respective requirement is provided for evaluation; / 
+===== cb-980-76229851 lines 2 detector False
+  [01_w8486-260672_rfp_english.pdf l.2697] Requirements, which are identified by the word “must” are mandatory.  Deviations will not be permitted; / Requirements identified by “must . . . or equivalent” are mandatory. The Technical Authority will consider / substitutes/alternatives offered and will provide acceptance if suitable; and
+  [01_w8486-260672_rfp_english.pdf l.2700]  / Where “must”, “must” . . . or equivalent” or “will” are not used, the information provided is for / guidance only.

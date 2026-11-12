@@ -1,0 +1,43 @@
+  rules    cb-484-58375289    watch 5
+  rules    cb-403-14199409    watch 3
+  rules    cb-251-8268519     close 0
+  rules    cb-708-9918231     close 2
+  rules    cb-152-1757339     alert 6
+  rules    cb-952-81230837    watch 3
+  rules    cb-147-94499423    close 0
+  recheck  cb-484-58375289    watch 5
+  recheck  cb-403-14199409    watch 3
+  recheck  cb-251-8268519     close 0
+  recheck  cb-708-9918231     close 2
+  recheck  cb-152-1757339     close 0
+  recheck  cb-952-81230837    close 0
+  recheck  cb-147-94499423    close 0
+  agents   cb-484-58375289    watch 5
+  agents   cb-403-14199409    watch 3
+  agents   cb-251-8268519     watch 3
+  agents   cb-708-9918231     watch 5
+  agents   cb-152-1757339     close 0
+  agents   cb-952-81230837    watch 3
+  agents   cb-147-94499423    close 0
+
+TenderLens demo - 20261109-184127 - replayed offline
+
+tender             why it is here                                                                 rules         recheck       agents        
+cb-484-58375289    real lock-in: SUSS Microtec required, no equivalent                            watch 5       watch 5       watch 5       
+cb-403-14199409    real lock-in: 'a Formlabs Form 4L' 3D printer                                  watch 3       watch 3       watch 3       
+cb-251-8268519     real lock-in the rules miss: a Gamry Interface 5000E required                  close 0       close 0       watch 3       
+cb-708-9918231     advance award notice naming the Zurich Instruments amplifier its winner makes  close 2       close 2       watch 5       
+cb-152-1757339     false alarm: Hitachi and JEOL are a list of makes                              alert 6       close 0       close 0       
+cb-952-81230837    Johnson Controls is the buyer's own system; an ABB drive model is required     watch 3       close 0       watch 3       
+cb-147-94499423    ordinary tender: a shuttle bus, nothing to find                                close 0       close 0       close 0       
+
+model tokens paid                                                                                 0             0             0             
+
+(route and score; tokens are 0 when every answer came from the cache)
+
+agent answers by model:
+  rules    none
+  recheck  groq/openai/gpt-oss-120b 24
+  agents   groq/openai/gpt-oss-120b 40
+
+-> reports/demo/20261109-184127

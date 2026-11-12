@@ -1,0 +1,69 @@
+notices: 30,420 (2s)
+level-2 observations: 0 | awards: 14,908 rows
+real knowledge base: 152 tenders as peers
+  30/280 (5s)
+  60/280 (12s)
+  90/280 (21s)
+  120/280 (27s)
+  150/280 (35s)
+  180/280 (41s)
+  210/280 (47s)
+  240/280 (51s)
+  270/280 (56s)
+
+SYNTHETIC RIGGED TENDERS - 2510 - 2026-11-09 18:40 - brand check OFFLINE (cache only)
+40 base tenders x 7 copies
+
+Base tenders already accepting equivalents for every brand (standard clause): 1/40. Brands added there are legal, so those copies are expected to CLOSE. Decided by hand for 31 base(s) (--review), by the detector's clause patterns for the others.
+
+1. Routing by copy type
+   copy  base         expected   alert  watch  close  as expected
+   A     no clause    watch          0     12     27  12/39
+   A     clause       close          0      0      1  1/1
+   B     no clause    alert          4     19     16  4/39
+   B     clause       close          0      0      1  1/1
+   C     no clause    alert         12      0     27  12/39
+   C     clause       close          0      0      1  1/1
+   D     no clause    close          0      0     39  39/39
+   D     clause       close          0      0      1  1/1
+   E     no clause    close          0      0     39  39/39
+   E     clause       close          0      0      1  1/1
+   F     no clause    close          0      0     39  39/39
+   F     clause       close          0      0      1  1/1
+   G     no clause    watch          0     13     26  13/39
+   G     clause       close          0      0      1  1/1
+
+2. Rigged copies (A+B+C+G, base without the clause): brand found in 60/156 (38%); alert fired on 16
+
+3. What happened to each injected brand (A+B+C+G)
+   brand_not_confirmed              97
+   found                            64
+   not_picked_up                    25
+   cleared_or_equivalent_nearby     9
+
+4. Brand found, by wording style (A+B+C+G, per injected brand)
+   prose      15/30
+   table      8/30
+   field      6/25
+   trademark  11/30
+   oem        15/30
+   no_model   0/25
+   french     9/25
+
+5. Brand found, by what the brand cache says about it (read at the start of this run)
+   confirmed    64/76
+   unknown      0/100
+   not a brand  0/19
+
+6. Copies that should close - the false-alarm guards
+   D  brand added WITH 'or equivalent'     0/40 flag the added brand
+   E  brand only in a bidder's question    0/40 flag the added brand
+   A+B+C+G on a base whose clause accepts equivalents 0/4 flag it
+   F  untouched copy (judged on its route)  0/40 not closed - the brands it finds are real text, listed in 6b
+
+6b. Brands found in the REAL text of base tenders (not added by the test) - audit by hand: 0 in 0 tender(s)
+
+7. Synthetic ranking: 613 real tenders (unreviewed, counted as clean) + 280 copies (156 rigged)
+   rigged copies in the top 50: 49 (ties broken against us) to 50 (ties for us) - not the real precision@50 of decision 8
+   of everything flagged (alert+watch): 60/63 are rigged copies
+   Caveat: 156 rigged copies among ~893 is far more rigging than real life; read the per-copy recall above first.

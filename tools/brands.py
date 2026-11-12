@@ -105,7 +105,9 @@ RE_DOC_CLAUSE = re.compile(
 # brand name, model ...". It permits an equivalent for EVERY brand the tender
 # names. Measured 2026-10-17: present in 111 of the 200 2510 tenders with
 # text (29 of 396 in 4110), recognised by RE_DOC_CLAUSE in none - only the
-# LLM judge read it.
+# LLM judge read it. A tender may also bring the clause in by its SACC
+# number alone ("B3000T (2006-06-16) Equivalent Products", no text): 3 real
+# tenders in 2510/4110 (2026-11-09), all closed anyway.
 # Measured 2026-10-19: "A Bendix Model AD9 ... must be provided" became the
 # candidate "Bendix Model", which no lookup confirms as a brand - losing a
 # real lock-in. A trailing generic word
@@ -117,7 +119,8 @@ RE_EQUIV_CLAUSE = re.compile(
     r"\bequivalent\s+in\s+form\s*,?\s*fit\s*,?\s*(?:and\s+)?function"
     r"|\béquivalents?\b[^.\n]{0,60}\bforme\b[^.\n]{0,60}\bfonction"
     r"|\b(?:substituts?|produits?)\b[^.\n]{0,60}\béquivalents?\b[^.\n]{0,100}"
-    r"\bpris\s+en\s+considération", re.I)
+    r"\bpris\s+en\s+considération"
+    r"|\bB3000T\b", re.I)
 
 # A cited standard is the opposite of brand lock-in.
 STANDARDS = {

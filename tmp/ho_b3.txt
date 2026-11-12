@@ -1,0 +1,55 @@
+  cb-130-53819577              [ran] Suite: a (want a)
+  cb-137-90333458              [ran (nothing to check)] Box: not a candidate (want a)
+  cb-165-65813117              [ran] LAMP: f (want a)
+  cb-181-39672228              [ran] Esquimalt: a (want a)
+  cb-215-75638735              [ran] Salaberry-de-Valleyfield: a (want a)
+  cb-225-45577419              [ran] Regulation: a (want a)
+  cb-240-89802758              [ran] Room: a (want a)
+  cb-251-8268519               [ran] Gamry Interface: f (want f)
+  cb-263-98162299              [ran (nothing to check)] Information Circular: not a candidate (want a)
+  cb-285-76674067              [ran (nothing to check)] Block: not a candidate (want a)
+  cb-289-37719810              [ran] PW-HS: a (want a)
+  cb-338-29913907              [ran] Principles: a (want a)
+  cb-370-80062085              [ran (nothing to check)] ISPM: not a candidate (want a)
+  cb-380-64859505              [ran] Within: a (want a)
+  cb-382-57678121              [ran] Biologic: f (want f)
+  cb-4-12591734                [ran] D-LM: a (want a)
+  cb-403-14199409              [ran] Formlabs: f (want f)
+  cb-443-62482749              [ran] Conviron: f (want c)
+  cb-450-25491568              [ran] Galileo: a (want a)
+  cb-472-3640332               [ran] APLAO DM: c (want c)
+  cb-476-31486123              [ran (nothing to check)] Consult Section: not a candidate (want a)
+  cb-484-64748846              [ran] Mars: a (want a)
+  cb-503-83948548              [ran] SUPPRIMER: a (want a)
+  cb-566-5186432               [ran] Changement: a (want a)
+  cb-637-27095940              [ran (nothing to check)] British-Columbia Incoterms: not a candidate (want a)
+  cb-648-37758164              [ran] Approval: a (want a)
+  cb-653-405632                [ran (nothing to check)] Consult Section: not a candidate (want a)
+  cb-6679-79043272             [ran] Upright: a (want a)
+  cb-674-66722575              [ran] NRCan: a (want a)
+  cb-702-59931138              [ran (nothing to check)] Principles: not a candidate (want a)
+  cb-708-9918231               [ran] VHFLI: f (want f)
+  cb-804-89346602              [ran] AKTApure: f (want f)
+  cb-881-85355839              [ran] HWL TS: f (want f)
+  cb-927-97529616              [ran] Gamry Reference: f (want f)
+  cb-934-1698757               [ran (nothing to check)] Principles: not a candidate (want a)
+  cb-945-19756996              [ran] Heidelberg: f (want f)
+  cb-970-2043111               [ran] PW-HS: a (want a)
+
+M2 exam - agent
+run 20261109-184140, code 4eba67d + uncommitted changes
+settings: {"agent": true, "agent_names": "labelled", "left_out_agent_did_not_run": 0, "limit": 0, "online": false, "only": [], "split": "holdout", "tenders_run": 37}
+
+tuning: no labelled case
+
+HOLDOUT - 37 cases
+  finding right:  35/37
+  precision:      80% (8 of 10 findings real)
+  recall:         100% (8 of 8 lock-ins found)
+  exact letter:   26/37
+  what each was given: a 17, f 10, not a candidate 9, c 1
+
+agent answers by model: groq/openai/gpt-oss-120b 101
+
+
+-> reports/m2_eval/20261109-184140_agent_partial

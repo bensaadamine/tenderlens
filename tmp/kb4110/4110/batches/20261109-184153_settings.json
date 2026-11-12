@@ -1,0 +1,38 @@
+{
+ "stamp": "20261109-184153",
+ "argv": [
+  "--group",
+  "4110",
+  "--no-level2",
+  "--kb-root",
+  "tmp/kb4110"
+ ],
+ "settings": {
+  "group": "4110",
+  "until": null,
+  "limit": 0,
+  "online": false,
+  "agent": false,
+  "m3_agent": false,
+  "m4_checks": null,
+  "no_level2": true,
+  "kb_root": "tmp/kb4110",
+  "status": false,
+  "feedback": false,
+  "export_labels": false,
+  "reprocess": null,
+  "queue": null
+ },
+ "reprocessed": [],
+ "models": {
+  "groq": [
+   "openai/gpt-oss-20b",
+   "openai/gpt-oss-120b"
+  ],
+  "gemini": [
+   "models/gemini-2.5-flash",
+   "models/gemini-3-flash-preview"
+  ]
+ },
+ "share": false
+}

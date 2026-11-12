@@ -1,0 +1,958 @@
+rank,reference,route,score,m1_route,readable,verified_claims,title,entity,supplier
+1,cb-152-1757339,alert,6,close,1,2,Cryo-Focused Ion Beam (FIB) and scanning electron microscope (SEM),National Research Council of Canada (NRC),Systems for Research Corp.
+2,cb-760-71260031,alert,6,close,1,2,Three (3) cyclic corrosion chambers,National Research Council Canada,Rollan Tech Inc
+3,WS3865393769-Doc3930854792,watch,5,deep_unreadable,0,3,01581-230734 Mycotoxin Analysis Instrument,Department of Public Works and Government Services (PSPC),
+4,cb-450-25491568,watch,5,deep,1,2,Hyspex Short-Wave-Infrared Radiation (SWIR) Sensor Upgrade to Mjolnir VS-620,National Research Council Canada,Norsk Elektro Optikk AS
+5,cb-484-58375289,watch,5,deep,1,2,"Karl Suss/Microtec MA 6 Mask Aligner, 4’’- 6’’ (2001 Vintage)",National Research Council of Canada (NRC),Light Conversion USA
+6,cb-444-59344351,watch,4,watch,1,2,Bench-Top Reactor High Pressure High Temperature Reactor System,National Research Council of Canada (NRC),Fisher Scientific
+7,cb-174-30559981,watch,3,deep_unreadable,0,2,Automated Hydrothermal Hydrolysis System,NRC-CNRC,
+8,cb-403-14199409,watch,3,close,1,1,Purchase of one 3D Resin Printer,National Research Council of Canada (NRC),
+9,cb-443-7434752,watch,3,close,1,1,Fluke 5560A/2G Multi-Product Calibrators,Department of National Defence (DND),
+10,cb-73-25444415,watch,3,deep,1,2,ACAN 23-58036 DASbox Mini Bioreactor System,National Research Council Canada,
+11,cb-927-69748405,watch,3,close,1,1,Submarine Dynamometer and Sword Components,National Research Council of Canada (NRC),
+12,cb-952-81230837,watch,3,close,1,1,ABB Variable Frequency Drives (VFD),National Research Council of Canada (NRC),
+13,WS3589784935-Doc3631946404,close,5,deep_unreadable,0,3,Laboratory Electrowinning System,Department of Public Works and Government Services (PSPC),"SX Kinetics, Inc."
+14,WS3863134582-Doc3954416848,close,5,deep_unreadable,0,3,Hydrogen Mass Spectrometer,Department of Public Works and Government Services (PSPC),V&F Gas Analysis Systems Inc
+15,WS3636682827-Doc3655757246,close,4,deep_unreadable,0,2,Physical Vapour Deposition system (PVD),Department of Public Works and Government Services (PSPC),
+16,WS3686454290-Doc3712352555,close,4,deep_unreadable,0,2,KW405-230227 Remote Access Sampler ACAN,Department of Public Works and Government Services (PSPC),ROMOR Atlantic Limited
+17,WS3715607482-Doc3715993966,close,4,deep_unreadable,0,2,3D Measuring Laser Confocal Microscope,Department of Public Works and Government Services (PSPC),
+18,WS3717886111-Doc3717977532,close,4,deep_unreadable,0,2,Cups and Lids for Insect Rearing,Department of Public Works and Government Services (PSPC),Better life supplies
+19,WS3726687554-Doc3726761002,close,4,deep_unreadable,0,2,PR4330 U6309-232821 Calibration Laboratory Pressure Controller,Department of Public Works and Government Services (PSPC),Technel Engineering Inc.
+20,WS3749455149-Doc3751296765,close,4,deep_unreadable,0,2,Automated Test Dishwashing Machine,Department of Public Works and Government Services (PSPC),Great Safe Apparatus Limited
+21,WS3764220923-Doc3798876809,close,4,deep_unreadable,0,2,PR4662 5P037-220148 Structured Light 3D Scanner,Department of Public Works and Government Services (PSPC),
+22,WS3764220923-Doc3843183791,close,4,deep_unreadable,0,2,PR4662_5P037-220148B Structured Light 3 Dimensional (3D) Scanners,Department of Public Works and Government Services (PSPC),CANADIAN MEASUREMENT - METROLOGY INC.
+23,WS3795943105-Doc3797379895,close,4,deep_unreadable,0,2,6D063-225263 - Nextseq 2000 and 1000 Sequencing Systems,Department of Public Works and Government Services (PSPC),
+24,WS3814055001-Doc3821569907,close,4,deep_unreadable,0,2,23295-230494 - Bulk Electrolyzer,Department of Public Works and Government Services (PSPC),
+25,WS3815031154-Doc3820918279,close,4,deep_unreadable,0,2,Integrated FTIR and QCL imaging microscopy and spectrometry system,Department of Public Works and Government Services (PSPC),
+26,WS3849920487-Doc3849957137,close,4,deep_unreadable,0,2,ACAN 6D063-225432 ELISPOT and Fluorospot Readers,Department of Public Works and Government Services (PSPC),CTL ANALYZERS LLC
+27,WS3852939897-Doc3852992644,close,4,deep_unreadable,0,2,ACAN 6D055-225262 Parasitology Reference Services,Department of Public Works and Government Services (PSPC),
+28,WS3865393769-Doc3872247165,close,4,deep_unreadable,0,2,01581-230734 Mycotoxin Analysis Instrument,Department of Public Works and Government Services (PSPC),
+29,WS3919344931-Doc3994193243,close,4,deep_unreadable,0,2,31026-232753 – Multi-Channel Fluorescence Imaging Modules for Prototype Replication - Advance Contract Award Notice.,Department of Public Works and Government Services (PSPC),"ETALUMA, INC."
+30,WS3972519215-Doc4065625021,close,4,deep_unreadable,0,2,Thermostat Emulator,Department of Public Works and Government Services (PSPC),
+31,WS4065230349-Doc4169532622,close,4,deep_unreadable,0,2,MINI-PORTABLE EMISSIONS MEASUREMENT SYSTEM,Department of Public Works and Government Services (PSPC),
+32,WS4065230349-Doc4220027530,close,4,deep_unreadable,0,2,ACAN for MINI-PORTABLE EMISSIONS MEASUREMENT SYSTEM,Department of Public Works and Government Services (PSPC),
+33,WS4075083669-Doc4075114096,close,4,deep_unreadable,0,2,M5100-234458 Online subscription service on real estate transactions,Department of Public Works and Government Services (PSPC),
+34,WS4086470931-Doc4121409171,close,4,deep_unreadable,0,2,No Maintenance Hydrogen Generator,Department of Public Works and Government Services (PSPC),
+35,WS4127325595-Doc4127369167,close,4,deep_unreadable,0,2,Reflectance and Transmittance Modules for an OL-750 Spectroradiometer,Department of Public Works and Government Services (PSPC),
+36,WS4198301989-Doc4203634850,close,4,deep_unreadable,0,2,Spectral Flow Cytometer,Department of Public Works and Government Services (PSPC),
+37,WS4207598607-Doc4267779933,close,4,deep_unreadable,0,2,ACAN 01550-240442 - VirTis G25EL Freeze Dryer,Department of Public Works and Government Services (PSPC),MRDUFORT VENTES/SERVICE INC. / MRDUFORT SALES/SERVICE INC.
+38,WS4274150661-Doc4296337917,close,4,deep_unreadable,0,2,F1640-230574 - Datalogger,Department of Public Works and Government Services (PSPC),Hoskin Scientific Limited
+39,WS4297887359-Doc4298279868,close,4,deep_unreadable,0,2,Video Recording System - Zebrafish research,Department of Public Works and Government Services (PSPC),
+40,WS4341939779-Doc4505608924,close,4,deep_unreadable,0,2,ACAN - Freeze Dryer Systems,Department of Public Works and Government Services (PSPC),
+41,WS4356442434-Doc4379844284,close,4,deep_unreadable,0,2,ACAN-Metaphase Spreader,Department of Public Works and Government Services (PSPC),
+42,WS4452533611-Doc4478185857,close,4,deep_unreadable,0,2,K8D10-240617 Freeze Dryer,Department of Public Works and Government Services (PSPC),
+43,WS4518225765-Doc4521855812,close,4,deep_unreadable,0,2,Automatic Solid Phase Extraction System,Department of Public Works and Government Services (PSPC),
+44,WS4565164091-Doc4566599454,close,4,deep_unreadable,0,2,ACAN - In-vitro air-liquid interface (ALI) exposure system,Department of Public Works and Government Services (PSPC),SCIREQ SCIENTIFIC RESPIRATORY EQUIPMENT INC/EQUIPEMENT RESPIRATOIRE SCIENTIFIQUE SCIREQ INC
+45,WS4576962399-Doc4597135650,close,4,deep_unreadable,0,2,Particle Size Analyzer,Department of Public Works and Government Services (PSPC),
+46,WS4643738042-Doc4645234834,close,4,deep_unreadable,0,2,ACAN - Glow Discharge Mass Spectrometer,Department of Public Works and Government Services (PSPC),Nu Instruments
+47,WS4704212246-Doc4712153873,close,4,deep_unreadable,0,2,PR14416_H4084-246372 - Upright and Inverted Microscope System,Department of Public Works and Government Services (PSPC),
+48,WS4718283901-Doc4718419233,close,4,deep_unreadable,0,2,ACAN MicroFAST Single Cell Automation,Department of Public Works and Government Services (PSPC),
+49,WS4744488541-Doc4757900591,close,4,deep_unreadable,0,2,PR14762_H4084-246522 Cell Separator,Department of Public Works and Government Services (PSPC),
+50,WS4767494428-Doc4769903307,close,4,deep_unreadable,0,2,ACAN - High-Resolution Magnetic Sector GC-MS System,Department of Public Works and Government Services (PSPC),
+51,WS5198206862-Doc5200894107,close,4,deep_unreadable,0,2,23240-250052 Pilot Scale Vacuum Arc Furnace - ACAN,Department of Public Works and Government Services (PSPC),
+52,WS5420145315-Doc5467272179,close,4,deep_unreadable,0,2,ACAN - Automated Microscopy Platform,Department of Public Works and Government Services (PSPC),
+53,WS5466343601-Doc5466458261,close,4,deep_unreadable,0,2,ACAN - K8D10-260213 - McLane Remote Access Sampler,Department of Public Works and Government Services (PSPC),
+54,WS5492189277-Doc5501957824,close,4,deep_unreadable,0,2,ACAN - Discrete Clinical Chemistry Analyzer,Department of Public Works and Government Services (PSPC),
+55,WS5605209981-Doc5645209438,close,4,deep_unreadable,0,2,ACAN - Vision Screener,Department of Public Works and Government Services (PSPC),
+56,WS5873475140-Doc5895801483,close,4,deep_unreadable,0,2,H4004-254581 Mass Spectrometer - High-Resolution Mass Spectrometry analysis,Department of Public Works and Government Services (PSPC),
+57,cb-465-66779446,close,4,deep_unreadable,0,2,Purchase of Bio X Ultracentrifuge,National Research Council of Canada,Beckman Coulter
+58,cb-6267-17131293,close,4,deep_unreadable,0,2,Electromechanical testing equipment,"NRC, Saguenay site, Aluminum Technology Centre, ATS",MTS Testing Systems (Canada)  Ltd.
+59,cb-7565-94891783,close,4,deep_unreadable,0,2,Hydraulic servo testing machine with grooved table.,"NRC, Saguenay site, Aluminum Technology Centre, ATS",MTS Testing Systems (Canada)  Ltd.
+60,WS4592164822-Doc4666544094,close,3,deep_unreadable,0,2,F7047-230011 - Parts Washer System,Department of Public Works and Government Services (PSPC),
+61,cb-135-38152257,close,3,close,1,1,Bench-Top Reactor High Pressure High Temperature Reactor System,National Research Council of Canada (NRC),
+62,cb-174-49390947,close,3,deep,1,2,Lab environment 80 Kelvin cryocooler,National Research Council of Canada (NRC),Bluefors Cryocooler Technologies Inc.
+63,cb-836-90805059,close,3,deep,1,2,Air Bath for Standard Resistors,National Research Council of Canada (NRC),
+64,WS3726687554-Doc3788958222,close,2,deep_unreadable,0,1,Multi-Range Pressure Controller,Department of Public Works and Government Services (PSPC),Technel Engineering Inc.
+65,WS3728465376-Doc3728509913,close,2,deep_unreadable,0,1,01R11-230413 - Plant Growth Cabinet,Department of Public Works and Government Services (PSPC),Controlled Environments limited
+66,WS3740235670-Doc3740350703,close,2,deep_unreadable,0,1,Coaxial laser wire cladding head,Department of Public Works and Government Services (PSPC),Precitec Inc
+67,WS3845577207-Doc3845674032,close,2,deep_unreadable,0,1,ACAN - HTHP FURNACE TUBE,Department of Public Works and Government Services (PSPC),MTI Corporation
+68,WS4015452306-Doc4036001721,close,2,deep_unreadable,0,1,Droplet Digital Polymerase Chain Reaction System,Department of Public Works and Government Services (PSPC),Bio-Rad Laboratories (Canada) Ltd.
+69,WS4158743281-Doc4172965578,close,2,deep_unreadable,0,1,ELISPOT FluoroSpot Reader,Department of Public Works and Government Services (PSPC),
+70,WS4213811203-Doc4319085966,close,2,deep_unreadable,0,1,23145-240137 - Bioanalyzer,Department of Public Works and Government Services (PSPC),AGILENT TECHNOLOGIES CANADA INC
+71,WS4403793701-Doc5185560971,close,2,deep_unreadable,0,1,39903-240689 - Plant Growth Chambers,Department of Public Works and Government Services (PSPC),
+72,WS4408836012-Doc4409177646,close,2,deep_unreadable,0,1,ACAN - Benchtop X-Ray Diffractometer System,Department of Public Works and Government Services (PSPC),
+73,WS4461953427-Doc4531109212,close,2,deep_unreadable,0,1,F1625-230058 - Plate Reader,Department of Public Works and Government Services (PSPC),FISHER SCIENTIFIC COMPANY/SOCIETE FISHER SCIENTIFIQUE
+74,WS4496553458-Doc4496603118,close,2,deep_unreadable,0,1,COVID-19 Test Kits,Department of Public Works and Government Services (PSPC),ABBOTT RAPID DIAGNOSTICS ULC
+75,WS4735474215-Doc4748506327,close,2,deep_unreadable,0,1,ACAN - 23549-241078 Autosampler System,Department of Public Works and Government Services (PSPC),
+76,WS4811284329-Doc4811306121,close,2,deep_unreadable,0,1,RFSO - Data Loggers and Temperature Probes for Oceanographic Research,Department of Public Works and Government Services (PSPC),
+77,WS4816097637-Doc4837247887,close,2,deep_unreadable,0,1,H4084-246742 Spectrometer,Department of Public Works and Government Services (PSPC),
+78,WS5035999823-Doc5282479206,close,2,deep_unreadable,0,1,ACAN - Hatchery Stacking System,Department of Public Works and Government Services (PSPC),
+79,WS5161660981-Doc5161848835,close,2,deep_unreadable,0,1,MOBILE WIND TUNNEL,Department of Public Works and Government Services (PSPC),
+80,WS5161660981-Doc5355991641,close,2,deep_unreadable,0,1,MOBILE WIND TUNNEL,Department of Public Works and Government Services (PSPC),
+81,WS5420309031-Doc5518474820,close,2,deep_unreadable,0,1,ACAN Ultra-High Speed Automated Centrifuge System,Department of Public Works and Government Services (PSPC),
+82,WS5420891762-Doc5467953003,close,2,deep_unreadable,0,1,M7594-254610 - PR18529 Portable Forensic Laser Equipment,Department of Public Works and Government Services (PSPC),
+83,WS5534591801-Doc5616066435,close,2,deep_unreadable,0,1,W7701-268112 - 4CV Mixer,Department of Public Works and Government Services (PSPC),
+84,WS5534591801-Doc5647678982,close,2,deep_unreadable,0,1,W7701-268112 - 4CV Mixer - RFP,Department of Public Works and Government Services (PSPC),
+85,cb-106-1430206,close,2,deep_unreadable,0,1,Supply and Installation of PIVOT BLI High Throughput Instrument,National Research Council of Canada,Gator Bio Inc.
+86,cb-106-28207481,close,2,deep,1,1,23-58036 DASbox Mini Bioreactor System,National Research Council Canada,
+87,cb-130-53819577,close,2,deep,1,1,Protein Purification System,National Research Council of Canada,Global Life Science Solutions Canada ULC
+88,cb-144-29887661,close,2,deep_unreadable,0,1,Automated parallel synthesis platform,NRC-CNRC,Chemspeed Technologies Inc.
+89,cb-145-35956828,close,2,deep,1,1,High precision laboratory tables,NRC-CNRC,Newport Corp - MKS instruments
+90,cb-148-28220403,close,2,deep,1,1,Droplet Digital PCR system,NRC,BIO-RAD LABORATORIES CANADA LTD
+91,cb-149-59100143,close,2,deep,1,1,Supply of one (1) Femtosecond laser,National Research Council of Canada (NRC),Light Conversion USA
+92,cb-149-94065224,close,2,deep,1,1,Laser Pulse Compressors,National Research Council,N2 Photonics GMBH
+93,cb-182-17006727,close,2,deep,1,1,Active Hydrogen Maser,National Research Council of Canada (NRC),T4Science
+94,cb-186-13374469,close,2,deep_unreadable,0,1,ion milling machine,National Research Council Canada,HITACHI HIGH-TECH CANADA INC
+95,cb-196-87008713,close,2,deep,1,1,8.5 GHz Lock-in Amplifier,National Research Council of Canada (NRC),ZURICH INSTRUMENTS AG
+96,cb-2-41503095,close,2,deep,1,1,Designing and Developing a High-Fidelity Digital Twin Platform for Artic,National Research Council of Canada (NRC),Centre of  Advanced Technology
+97,cb-205-92137057,close,2,deep,1,1,Cold Field Emission Scanning Electron Microscope,National Research Council of Canada (NRC),Hitachi High-Tech Canada Inc.
+98,cb-206-41600468,close,2,deep_unreadable,0,1,PM Analyzer,National Research Council Canada,CAMBUSTION
+99,cb-21-95671817,close,2,deep_unreadable,0,1,Ultrasensitive Spectrometer,National Research Council Canada,Delta Photonics Inc
+100,cb-214-81708751,close,2,deep,1,1,Advanced Polymerase Chain Reaction (PCR) System,National Research Council of Canada (NRC),n6 TEC
+101,cb-219-17144636,close,2,deep,1,1,Supply a real-time simulation model of a two-unit rubber-tracked vehicle for use with the NRC’s HIL simulator for Arctic,National Research Council of Canada,CRM Labs
+102,cb-239-17154518,close,2,deep,1,1,Multiplex Hand-Held Assays (MHHA),Department of National Defence,
+103,cb-246-53479627,close,2,deep_unreadable,0,1,Fully Automated Cell Sorter,National Research Council Canada,Sony Biotechnology Inc.
+104,cb-25-97682082,close,2,deep,1,1,"Purchase of High‑Frequency Lock‑in Amplifier with PID/PLL, AM/FM Modulation, and Multi‑frequency Capabilities",National Research Council of Canada (NRC),"Zurich Instruments USA, Inc"
+105,cb-277-90803437,close,2,deep,1,1,Quantum resistance calibration suite,National Research Council of Canada (NRC),Measurements International
+106,cb-279-81306801,close,2,deep_unreadable,0,1,set of replacement parts for existing Precision Scan dye laser,National Research Council Canada,SIRAH LASERTECHNIK GMBH
+107,cb-288-13528961,close,2,deep,1,1,Toptica TOPO Tunable MIR Laser,National Research Council of Canada (NRC),TOPTICA Photonics Inc
+108,cb-293-68300988,close,2,deep,1,1,Ti:Sapphire femtosecond oscillator,National Research Council Canada,Coherent Canada Inc.
+109,cb-296-9537366,close,2,deep,1,1,Flow cytometry instrument,National Research Council of Canada (NRC),Miltenyi Biotec Inc
+110,cb-3-96661552,close,2,deep,1,1,Procurement of Kaye Temperature Mapping Datalogger Validator,National Research Council Canada,Alpha Controls & Instruments
+111,cb-302-82224920,close,2,deep,1,1,UPGRADE KITS FOR ATLAS ABATEMENT SYSTEMS,National Research Council Canada,
+112,cb-303-57699471,close,2,deep_unreadable,0,1,Automated programmable laser confocal microscope equipped with advanced image analysis software,National Research Council Canada,Carl Zeiss Canada Ltd./Ltée
+113,cb-312-71168982,close,2,deep,1,1,Acquisition Environmental Cycling Chambers,National Research Council Canada,
+114,cb-318-22821359,close,2,deep,1,1,Automated eDNA sampler,NRC,"Dartmouth Ocean Technologies, Inc"
+115,cb-318-37826330,close,2,deep,1,1,AVITI24 upgrade,National Research Council of Canada (NRC),Element Biosciences
+116,cb-318-54950567,close,2,deep,1,1,Periodically poled lithium niobate waveguide mixer,National Research Council of Canada (NRC),
+117,cb-343-97800951,close,2,deep,1,1,Benchtop X-ray Diffractometer,National Research Council of Canada (NRC),Bruker AXS LLC
+118,cb-345-44959295,close,2,deep_unreadable,0,1,White Light End Point Detector,National Research Council Canada,
+119,cb-369-53877946,close,2,deep_unreadable,0,1,Service Contract for the preventative maintenance and emergency repair of ThermoFisher analytical instrumentation – Otta,Agriculture & Agri-Food Canada,
+120,cb-369-617278,close,2,deep_unreadable,0,1,Thermal Analysis System,NRC-CNRC,TA Instruments - Waters LLC
+121,cb-371-90630901,close,2,deep_unreadable,0,1,JWST Scientist – FGS,National Research Council of Canada (NRC),Pierre Chayer
+122,cb-382-57678121,close,2,deep,1,1,Battery Cycler with Native EIS,National Research Council of Canada (NRC),SnowHouse Solutions
+123,cb-392-734254,close,2,deep_unreadable,0,1,Die Bonder,National Research Council Canada,Tresky Corporation
+124,cb-416-42632396,close,2,deep_unreadable,0,1,High Repetition Rate Laser System,National Research Council Canada,Light Conversion-USA Inc
+125,cb-43-91403619,close,2,deep_unreadable,0,1,Confocal microscope dedicated to 3D characterization,National Research Council of Canada (NRC),Keyence Canada Inc
+126,cb-433-76303609,close,2,deep,1,1,Benchtop Bioreactor Controller,National Research Council Canada,Getinge Canada Ltd
+127,cb-434-91523772,close,2,deep_unreadable,0,1,Acquisition of Afterloader System,National Research Council Canada,
+128,cb-439-69034242,close,2,deep_unreadable,0,1,ACAN 23-58175 Robot Upgrade Kit for Tegal 901E Plasma Etch Tool,National Research Council Canada,
+129,cb-441-96047194,close,2,deep_unreadable,0,1,"ACAN  - UofT, Ethic Reports, Data Access",Department of Health (HC),
+130,cb-443-62482749,close,2,deep,1,1,ACAN 23-58173 – Conviron Plant Growth Chambers System Controller Replacement,National Research Council Canada,
+131,cb-463-43609750,close,2,deep,1,1,Zero Clearance Dies,National Research Council of Canada (NRC),Andritz Bitrode Corp.
+132,cb-465-10558792,close,2,deep,1,1,Supply of FAIMS PRO DUO,National Research Council of Canada,Thermo Fisher Scientific
+133,cb-47-91465218,close,2,deep,1,1,Integrated suite of automated photonic processing equipment,National Research Council of Canada (NRC),Opto System Co. LTD.
+134,cb-472-3640332,close,2,deep,1,1,Deformable mirror and drive electronics for Adaptive Optics,National Research Council of Canada (NRC),Bertin Alpao
+135,cb-474-74481475,close,2,deep_unreadable,0,1,Gas Chromatography and Mass Spectrometry System,National Research Council Canada,
+136,cb-484-64748846,close,2,deep,1,1,Upgrade of the data acquisition system in the Structure Lab,National Research Council Canada,
+137,cb-500-23638241,close,2,deep,1,1,ACAN 26-58020 Laboratory Motion Platform System (Hexapod),National Research Council of Canada (NRC),
+138,cb-503-99347448,close,2,deep_unreadable,0,1,high powered ring laser,NRC-CNRC,Newport Corporation MKS instruments Inc.
+139,cb-510-3816353,close,2,deep_unreadable,0,1,Supply of Nano Particle Analyzer,National Research Council of Canada,
+140,cb-513-86194727,close,2,deep_unreadable,0,1,Femtosecond pulsed laser system,NRC-CNRC,Newport corporation
+141,cb-515-4082287,close,2,deep_unreadable,0,1,Optical Particle Analyzer (OPA),National Research Council of Canada (NRC),Mazlite Inc.
+142,cb-515-41248841,close,2,deep,1,1,OEB Wave Maker Controls and Equipment,National Research Council of Canada,Akamina Technologies Inc.
+143,cb-524-87445187,close,2,deep,1,1,"Bench-top, single-use chromatography system and 140-200mm ID columns",NRC,Global Life Sciences Solutions Canada ULC
+144,cb-532-44611704,close,2,deep_unreadable,0,1,Liquid Chromatography-High Resolution Mass Spectrometry System with Differential Ion Mobility,National Research Council Canada (NRC),Thermo Fisher Scientific Inc
+145,cb-533-62649811,close,2,deep,1,1,Procurement and Installation of a Broadband Observe RF Probe for an existing 600MHz Bruker NMR,National Research Council of Canada (NRC),Bruker Ltd.
+146,cb-534-84034436,close,2,deep,1,1,Stainless Steel Double Melt Tubing and Peripherals,National Research Council of Canada (NRC),"Banner Industries of N.E.,LLC"
+147,cb-541-35415665,close,2,deep,1,1,X-ray Diffraction High Temperature and Pressure Reaction Chamber,National Research Council of Canada,
+148,cb-567-41655667,close,2,deep,1,1,Liquid Droplet Dispensing System,Mike Cox,axiVEND
+149,cb-568-3862915,close,2,deep_unreadable,0,1,High Temperature Furnace,NRC-CNRC,
+150,cb-592-43378292,close,2,deep_unreadable,0,1,JWST Scientist – JNIS-2,National Research Council of Canada (NRC),Gael Noirot
+151,cb-596-61544763,close,2,deep_unreadable,0,1,LASER PULSE SELECTOR,National Research Council Canada,"Rohde & Schwarz Canada, Inc."
+152,cb-597-40729981,close,2,deep_unreadable,0,1,Megahertz femtosecond laser system and optical parametric amplifiers,National Research Council Canada,Light Conversion USA
+153,cb-606-69077148,close,2,deep,1,1,Hail impact tester,National Research Council of Canada (NRC),PSE Instruments GmbH
+154,cb-607-10976593,close,2,deep,1,1,Femtosecond Ultrafast Ti:Sapphire Oscillator,National Research Council Canada,NEWPORT CORPORATION
+155,cb-617-11507557,close,2,deep,1,1,Carbon Conversion Product Detection System,National Research Council Canada,Mandel Scientific Company Inc.
+156,cb-621-21311590,close,2,deep_unreadable,0,1,ACAN - Controller Replacement for Five Conviron Growth Chambers – AAFC Lethbridge Alberta,Department of Agriculture and Agri-Food (AAFC),L.B.J. Services Ltd
+157,cb-629-53594321,close,2,deep,1,1,Supply of Triple Quadrupole Mass Spectrometer,National Research Council,Waters Limited
+158,cb-664-96207572,close,2,deep_unreadable,0,1,SegFlow-S3,National Research Council Canada,Flownamics Inc.
+159,cb-665-91768487,close,2,deep_unreadable,0,1,"SCANNING ELECTRON MICROSCOPE WITH FIELD EMISSION GUN (SEM-FEG), INTEGRATED ENERGY DISPERSIVE SPECTROMETRY (EDS) AND ELEC",National Research Council Canada,Systems for Research Corp
+160,cb-680-96094291,close,2,deep_unreadable,0,1,Femtosecond Optical Parametric Oscillator,National Research Council Canada,"APPLIED PHYSICS & ELECTRONICS, INC"
+161,cb-687-39324722,close,2,deep,1,1,Reconditioned Bruker BBI MHz 5mm Solution NMR Probe,National Research Council of Canada (NRC),MR Resources Inc.
+162,cb-6938-57393305,close,2,deep_unreadable,0,1,Low Temperature Nano-Positioning System,NRC-CNRC,ATTOCUBE SYSTEMS AG EGLFINGER WEG 2 HAAR - 85540 GERMANY
+163,cb-708-9918231,close,2,deep,1,1,"ACAN - Low Noise Lock-in Amplifier with PID/PLL Controller, AM/FM Modulation, and Multi-frequency Capabilities",National Research Council of Canada (NRC),Zurich Instruments AG
+164,cb-736-19414352,close,2,deep_unreadable,0,1,Requirement for CSA Z251 Design for Modular Construction,National Research Council Canada,
+165,cb-737-75578419,close,2,deep,1,1,Purchase of 4 Standard Propeller Shaft Dynamometers for use in the Model Testing Area,National Research Council of Canada,HR Wallingford
+166,cb-739-78615839,close,2,deep,1,1,DYNAMIC DUAL WAVELENGTH LIGHT ENGINE,National Research Council of Canada (NRC),In-Vision Technologies AG
+167,cb-77-58329129,close,2,deep,1,1,Titanium-Sapphire Pumped Optical Parametric Amplifier,National Research Council of Canada (NRC),"APPLIED PHYSICS & ELECTRONICS, INC."
+168,cb-773-21262461,close,2,deep,1,1,Automated Parallel Synthesis Platform,National Research Council of Canada (NRC),Chemspeed Technologies Inc
+169,cb-774-4036789,close,2,deep,1,1,Purchase of Next Generational Sequencing Equipment,National Research Council of Canada (NRC),
+170,cb-7796-70460735,close,2,deep_unreadable,0,1,23-58070 High-Resolution Wavelength Meter for Optical Clock,National Research Council Canada,The Jackson Laboratory
+171,cb-7810-90432425,close,2,deep_unreadable,0,1,ACAN 23-58052 High-Performance Tunable Laser System,National Research Council Canada,
+172,cb-786-77267989,close,2,deep,1,1,Multi-channel Waveform Generator,National Research Council of Canada (NRC),
+173,cb-793-97721840,close,2,deep,1,1,2D Materials Transfer Station,National Research Council of Canada (NRC),ATOMIC SANDWICHES
+174,cb-804-89346602,close,2,deep,1,1,AKTApure 150M system and AxiChrom columns 50-100 mm ID,National Research Council Canada (NRC),Global Life Sciences Solutions Canada ULC
+175,cb-806-34537209,close,2,deep_unreadable,0,1,Chromatography System,National Research Council Canada,GLOBAL LIFE SCIENCES SOLUTIONS
+176,cb-809-53179910,close,2,deep_unreadable,0,1,Service and training of Oxford Plasma tools,NRC-CNRC,Oxford Instruments America Inc.
+177,cb-813-66672688,close,2,deep,1,1,NEW COULOMETRY AND ELECTROCHEMICAL IMPEDANCE SPECTROSCOPY (EIS) SYSTEM,National Research Council of Canada (NRC),NOVONIX Battery Technology Solutions inc
+178,cb-817-52899847,close,2,deep_unreadable,0,1,JWST Scientist – JNIS-1,National Research Council of Canada (NRC),Kevin Volk
+179,cb-818-1455083,close,2,deep,1,1,Automatic Filter Integrity Testing System,National Research Council of Canada (NRC),
+180,cb-82-32292937,close,2,deep,1,1,Laboratory Anemometer with Two Prototype Probes,National Research Council of Canada (NRC),Laboratory Anemometer with Two Prototype Probes
+181,cb-826-6556795,close,2,deep,1,1,Long-Wave Infrared Hyperspectral Imaging System for Defence and Dual-Use Applications Using Remotely Piloted Aircraft Sy,National Research Council of Canada (NRC),Telops Inc.
+182,cb-84-38159545,close,2,deep,1,1,Supply of a Critical Point Dryer,National Research Council of Canada (NRC),Tousimis Research Corporation
+183,cb-863-13463449,close,2,deep_unreadable,0,1,automated multi- parallel bioreactor system,NRC-CNRC,Ependorf Canada LTD
+184,cb-8682-53509358,close,2,deep,1,1,Thermal Analysis Laboratory Renewal,National Research Council Canada,TA Instruments
+185,cb-8813-92438477,close,2,deep_unreadable,0,1,TAM air calorimeters for cement and concrete samples,National Research Council Canada,TA Instruments - Waters L.L.C.
+186,cb-883-80911702,close,2,deep_unreadable,0,1,Kilohertz Femtosecond Laser System and an Optical Parametric Amplifier (OPA),NRC-CNRC,
+187,cb-885-78133963,close,2,deep_unreadable,0,1,Nanoscale Flow Cytometer,National Research Council of Canada,Beckman Coulter Canada LP
+188,cb-886-31888455,close,2,deep,1,1,Valved Molecular Beam Epitaxy Effusion Cells for Gallium and Indium,National Research Council of Canada (NRC),E-Science
+189,cb-893-78211114,close,2,deep_unreadable,0,1,Imaging Spectrograph,NRC-CNRC,Delta Photonics
+190,cb-898-97232249,close,2,deep_unreadable,0,1,microvolume  ultrasensitive flow cytometer,National Research Council Canada,NANOFCM INC.
+191,cb-903-30222437,close,2,deep,1,1,Surface Modification and Deposition System (SMDS),National Research Council Canada,Plasmionique inc
+192,cb-905-83119512,close,2,deep,1,1,Advanced Research Grade Live-Cell Imaging and Analysis System,National Research Council of Canada (NRC),Sartorius Canada Inc
+193,cb-906-91357897,close,2,deep,1,1,Automated Cassette-to-Cassette Photoluminescence (PL) and White-Light Reflectance Wafer (WLR) Mapping System,National Research Council of Canada (NRC),Laytec AG
+194,cb-919-5337900,close,2,deep_unreadable,0,1,One Year of CYTIVA Consumable Material for CTMF,National Research Council Canada,Global Life Sciences Solutions Canada ULC
+195,cb-923-2027335,close,2,deep,1,1,Replacement of Supersonic Nozzle Jack Stations Controls,National Research Council Canada,
+196,cb-938-96330728,close,2,deep_unreadable,0,1,Preventative Maintenance for Q Exactive Mass Spectrometer,Department of Agriculture and Agri-Food (AAFC),Scollard Maintenance Limited
+197,cb-94-97658613,close,2,deep_unreadable,0,1,Superconducting Nanowire Single Photon Detector,NRC-CNRC,Single Quantum
+198,cb-945-19756996,close,2,deep,1,1,ACAN 25-58010 Direct Write Laser Exposure System,National Research Council of Canada (NRC),Spectra Research Corporation
+199,cb-95-45189286,close,2,deep_unreadable,0,1,Supply of Heat-pipe Furnaces and Resistance Ratio Bridges for Thermometry Calibration Laboratory,National Research Council,Isotech North American Inc
+200,cb-95-90612825,close,2,deep_unreadable,0,1,Optical Frequency Comb System,National Research Council Canada (NRC),Menlo Systems Inc
+201,cb-956-23414710,close,2,deep_unreadable,0,1,femtosecond Yitterbium laser system,National Research Council Canada,Light Conversion-USA Inc.
+202,cb-963-28204447,close,2,deep,1,1,Lasers for fabrication and characterization of nanomaterials,National Research Council of Canada (NRC),Light Conversion USA
+203,cb-971-99186437,close,2,deep,1,1,ACAN 25-58292 – Sliding Load Apparatus -SLA Prototype,National Research Council of Canada (NRC),Memorial University of Newfoundland
+204,cb-973-7408424,close,2,deep_unreadable,0,1,High Signal-to-Noise Darkfield Visible-Near-Infrared (VNIR) Hyperspectral Microscope,National Research Council of Canada (NRC),CytoViva Inc
+205,cb-981-17270938,close,2,deep_unreadable,0,1,EFFLUENT LIFT STATION EQUIPMENT ADD-ON,National Research Council Canada,ABC Actini LLC
+206,cb-984-16339730,close,2,deep,1,1,Polarization Synthesizer,National Research Council of Canada (NRC),
+207,cb-992-57968257,close,2,deep,1,1,Rotating Device for Inner Diameter High Velocity Oxy-Fuel (HVOF) Spray System,National Research Council of Canada (NRC),Spraywerx Technologies inc.
+208,cb-995-30853625,close,2,deep,1,1,Additive-Subtractive Hybrid Printer,NRC-CNRC,
+209,WS3636322776-Doc3723489209,close,1,watch,0,1,PR3616 39903-23016 Lyophilizer,Department of Public Works and Government Services (PSPC),
+210,WS3933381003-Doc3989794420,close,1,watch,0,1,01B46-230560-Purchasing a reverse osmosis filtration system,Department of Public Works and Government Services (PSPC),
+211,WS4013768629-Doc4046467390,close,1,watch,0,1,PR6403 HT235-225451 NaI Probes,Department of Public Works and Government Services (PSPC),
+212,WS4110256158-Doc4300246350,close,1,watch,0,1,H4084-233992 - PR8898 Freeze Dryer,Department of Public Works and Government Services (PSPC),
+213,WS4257876624-Doc4340129878,close,1,watch,0,1,23240-240195-B - Solvent Purification System,Department of Public Works and Government Services (PSPC),
+214,WS4382816803-Doc4436006544,close,1,watch,0,1,Area Detection And Identification System,Department of Public Works and Government Services (PSPC),
+215,WS4430443668-Doc4430501296,close,1,watch,0,1,9F064-230273 Weather and Atmospheric Characterization Equipment-RFP,Department of Public Works and Government Services (PSPC),
+216,WS4430443668-Doc4507842785,close,1,watch,0,1,9F064-230273-2 Weather and Atmospheric Characterization Equipment - RFP,Department of Public Works and Government Services (PSPC),
+217,WS4452533611-Doc4790838125,close,1,watch,0,1,K8D10-240617 Freeze Dryer,Department of Public Works and Government Services (PSPC),
+218,WS4511994968-Doc4518086105,close,1,watch,0,1,Plant Analyzer,Department of Public Works and Government Services (PSPC),Hoskin Scientific Ltd.
+219,WS5006064570-Doc5019464478,close,1,watch,0,1,F3712-240131 - Lab Scientific equipment - RFP,Department of Public Works and Government Services (PSPC),
+220,WS5023764193-Doc5034617807,close,1,watch,0,1,H4084-247712 Automated Slide Stainer,Department of Public Works and Government Services (PSPC),
+221,WS5075857361-Doc5076358586,close,1,watch,0,1,PR18562 E60PV-25XRAY X-ray Imaging Systems and Support,Department of Public Works and Government Services (PSPC),
+222,WS5075857361-Doc5365322145,close,1,watch,0,1,PR18562 E60PV-25XRAY X-ray Imaging Systems and Support - List of Qualified Respondents,Department of Public Works and Government Services (PSPC),
+223,WS5075857361-Doc5806456931,close,1,watch,0,1,PR18562 E60PV-25XRAY (B) X-ray Imaging Systems and Support,Department of Public Works and Government Services (PSPC),
+224,WS5155401123-Doc5183239702,close,1,watch,0,1,W2481-25P003 Micro IRHD Test System,Department of Public Works and Government Services (PSPC),
+225,WS5460216821-Doc5512855619,close,1,watch,0,1,39903-260424 - Automated Nucleic Acid Extraction Instrument,Department of Public Works and Government Services (PSPC),
+226,WS5460216821-Doc5774759824,close,1,watch,0,1,39903-260424-B - Automated Nucleic Acid Extraction Instrument,Department of Public Works and Government Services (PSPC),
+227,WS5638067283-Doc5638391511,close,1,watch,0,1,PR23484 47064-271365 ITQ - CT Imaging Systems and Support,Department of Public Works and Government Services (PSPC),
+228,WS5638067283-Doc5832666528,close,1,watch,0,1,PR23484 47064-271365 ITQ - CT Imaging Systems and Support - List of Qualified Respondents,Department of Public Works and Government Services (PSPC),
+229,WS5676335138-Doc5676493320,close,1,watch,0,1,PR23888 47064-279276 - LOI - Field Chemical Identification Tools,Department of Public Works and Government Services (PSPC),
+230,WS5806316032-Doc5812656609,close,1,watch,0,1,PR24714 47064-276088 RFI Automatic Contraband Detection X-Ray Images,Department of Public Works and Government Services (PSPC),
+231,WS5870261052-Doc5870286625,close,1,watch,0,1,47064-260982 RFI Non-Intrusive Inspection System for Rail Cargo and Drive Through,Department of Public Works and Government Services (PSPC),
+232,cb-108-53714418,close,1,watch,1,1,Tensiomètre,National Research Council Canada,Data Physics Instruments USA
+233,cb-131-67263720,close,1,watch,1,1,Recon Pro Field Kit V3,Department of National Defence (DND),
+234,cb-138-12290533,close,1,watch,1,1,Ultra Low Temperature (ULT),Canadian Food Inspection Agency,
+235,cb-138-83342213,close,1,watch,1,1,Labware Washer for PYLET,Mitchell Palmer,
+236,cb-167-59906125,close,1,watch,1,1,Gentec-EO Beam Measurement System,Department of National Defence (DND),
+237,cb-204-20316920,close,1,watch,0,2,Sample Grinder,Agriculture Agri-Food Canada,Genome Quebec
+238,cb-240-6053162,close,1,watch,0,1,XRF Handheld analyser,Conseil National de Recherche Canada,Inifinite Scientific Limited
+239,cb-292-11365155,close,1,watch,0,1,Four (4) Upright Reach-in Freezers,Military Personnel Command,
+240,cb-307-6093805,close,1,watch,0,1,Fort McMurray - Urine Sample Collection Program,"Regional Headquarters- Prairies, Correctional Service of Canada",Fort McMurray Urinalysis Collection
+241,cb-344-77902161,close,1,watch,1,1,Benchtop Petroleum Test Centrifuge and Accessories- NPP,Department of National Defence,
+242,cb-368-75334541,close,1,watch,0,1,Data Loggers and Sensors,NRCan,
+243,cb-386-70565016,close,1,watch,0,1,Benchtop Petroleum Test Centrifuge and Accessories- NPP,Department of National Defence,
+244,cb-409-62985706,close,1,watch,1,1,DrySafe Drying Cabinet,Royal Canadian Mounted Police,
+245,cb-464-56910958,close,1,watch,0,1,Production and Distribution of Documents in Alternative Formats (reformatting),Canadian Nuclear Safety Commission (CNSC),
+246,cb-464-6119163,close,1,watch,0,1,Statistics Canada: Laboratory Freezers and Refrigerators,Statistics Canada,
+247,cb-476-2248163,close,1,watch,1,1,Guildline 9344-1T Decade Box,Department of National Defence (DND),
+248,cb-5-77034011,close,1,watch,1,1,Framework for Digital Twinning of an NRC Physical Assets,National Research Council of Canada (NRC),
+249,cb-51-52213765,close,1,watch,0,1,SGII Multiparameter,Fisheries and Oceans,Hoskin Scientific Ltd.
+250,cb-519-56191122,close,1,watch,1,1,Vibration-Isolated Optical Table System,National Research Council Canada,BiOptiPro Ltd.
+251,cb-526-93335413,close,1,watch,0,2,Fourier Transform Infrared Spectrometer (FTIR) Instrumentation,Natural Resources Canada,Agilent Technologies Canada Inc.
+252,cb-555-86730946,close,1,watch,0,1,Mass Spectrometer,Department of the Environment (ECCC ),Agilent Technologies Canada
+253,cb-561-39661032,close,1,watch,0,1,Optical Extensometer,National Research Council Canada,Epsilon Technology Corp
+254,cb-566-42261421,close,1,watch,0,1,"E60PV-19EQUI - Category: Chromatographic Measuring Instruments, Sub-Category: Ion Chromatographs",Health Canada,Thermo Fisher Scientific (Mississauga) Inc
+255,cb-610-54094386,close,1,watch,0,1,Liquid Particle Counter,Canadian Space Agency,
+256,cb-626-10862835,close,1,watch,1,1,SGII Multiparameter,Fisheries and Oceans,
+257,cb-633-48091580,close,1,watch,0,1,Laundry services contract for lab coats of the Canadian Space Agency laboratories and clean rooms,Agence spatiale canadienne,
+258,cb-728-34195915,close,1,watch,0,1,Ultra Low Freezers,Agriculture Agri-Food Canada,
+259,cb-744-1892134,close,1,watch,1,1,CO2 Cell Culture Incubators,Public Health Agency of Canada (PHAC),
+260,cb-759-1649333,close,1,watch,1,1,Halifax-class spares for HIGH PRESSURE FILTER ASSEMBLY,Department of National Defence (DND),Connors Diving Services Limited
+261,cb-8026-94000331,close,1,watch,0,1,2022-10607 - Notice of Proposed Procurement,Defence Research and Development Canada,
+262,cb-812-93495771,close,1,watch,0,1,Water Purification System,Canadian Space Agency,
+263,cb-8314-41191883,close,1,watch,0,1,Wind Measuring/ Logging Equipment,Fisheries and Oceans Canada,Campbell Scientific(Canada) Corp.
+264,cb-837-48354086,close,1,watch,0,1,Urinalysis Collection Services,Correctional Service Canada,Brendan Wall
+265,cb-883-91915501,close,1,watch,1,1,Mettler Toledo R4 Refractometer with USB-P25/00 Data Writer,Department of National Defence (DND),
+266,cb-913-81004233,close,1,watch,1,1,Narda EHP-200AC Electric & Magnetic Field Analyzer,Department of National Defence (DND),
+267,cb-947-2615228,close,1,watch,1,1,Clarke-Hess 5002 Phase Verification Bridge,Department of National Defence (DND),
+268,cb-956-44582130,close,1,watch,1,1,Air Bath for Standard Resistors,National Research Council of Canada (NRC),
+269,WS3465524934-Doc3715622324,close,0,close,0,0,31019-226139(B) Battery Testing System,Department of Public Works and Government Services (PSPC),
+270,WS3465524934-Doc3802168711,close,0,close,0,0,31019-226139(C) Battery Testing System,Department of Public Works and Government Services (PSPC),
+271,WS3524171524-Doc3618990282,close,0,close,0,0,39903 - 230065 - Digital PCR System,Department of Public Works and Government Services (PSPC),
+272,WS3524171524-Doc3770313974,close,0,close,0,0,39903-230065 - Digital PCR System,Department of Public Works and Government Services (PSPC),
+273,WS3530684524-Doc3731234787,close,0,close,0,0,31034-233630 - Optical Vibrometry System,Department of Public Works and Government Services (PSPC),SERVICES TECHNIQUES CLAUDE DROUIN INC
+274,WS3545107316-Doc3599738638,close,0,close,0,0,6D063-215611 - Media Preparator,Department of Public Works and Government Services (PSPC),
+275,WS3545107316-Doc3973008144,close,0,close,0,0,Copy of 6D063-215611_B - Media Preparator,Department of Public Works and Government Services (PSPC),
+276,WS3559147513-Doc3682551034,close,0,close,0,0,23240-220679 - Environmental test facility for air source heat pump performance testing,Department of Public Works and Government Services (PSPC),
+277,WS3571070650-Doc3622245882,close,0,close,0,0,Benchtop WDXRF Spectrometer,Department of Public Works and Government Services (PSPC),
+278,WS3573710866-Doc3658251872,close,0,close,0,0,PR3634 K8A21-230157 Automatic Distiller Unit,Department of Public Works and Government Services (PSPC),
+279,WS3577190839-Doc3608342024,close,0,close,0,0,01587-232306 - Pressure Vessel,Department of Public Works and Government Services (PSPC),
+280,WS3577190839-Doc3765771654,close,0,close,0,0,01587-232306 Pressure Vessel (V2),Department of Public Works and Government Services (PSPC),Buchiglas USA Corp
+281,WS3592610258-Doc3641203371,close,0,close,0,0,PR3887 K8A21-230234 Acid Steam Cleaning System,Department of Public Works and Government Services (PSPC),ATS SCIENTIFIC INC
+282,WS3601208840-Doc3607942846,close,0,close,0,0,KAD10-230120 Droplet Digital PCR System,Department of Public Works and Government Services (PSPC),Bio-Rad Laboratories (Canada) Limted
+283,WS3605946636-Doc3609405936,close,0,close,0,0,01756-230187 - Acquisition of a digital PCR system - RFP,Department of Public Works and Government Services (PSPC),
+284,WS3605946636-Doc3859853995,close,0,close,0,0,01756-230187-2 - Acquisition of a digital PCR system - RFP,Department of Public Works and Government Services (PSPC),
+285,WS3609362853-Doc3734230712,close,0,close,0,0,Radio Frequency Power Amplifier Module,Department of Public Works and Government Services (PSPC),Firstchoice Group Canada
+286,WS3613023483-Doc3613081920,close,0,close,0,0,RF-EMI Filtering Faraday Enclosure Tent (Faraday Tent) - 47810-223474,Department of Public Works and Government Services (PSPC),Teel Technologies Canada Inc
+287,WS3631516918-Doc3635052086,close,0,close,0,0,Raman Spectroscopy System,Department of Public Works and Government Services (PSPC),
+288,WS3632083803-Doc3644232015,close,0,close,0,0,Handheld XRF analyzes,Department of Public Works and Government Services (PSPC),
+289,WS3632083803-Doc3694215914,close,0,close,0,0,Handheld XRF analyzer,Department of Public Works and Government Services (PSPC),
+290,WS3636322776-Doc3643902563,close,0,close,0,0,PR3616 39903-23016 Lyophilizor,Department of Public Works and Government Services (PSPC),
+291,WS3638353168-Doc3837361073,close,0,close,0,0,23240-230242 - Growth Chambers,Department of Public Works and Government Services (PSPC),
+292,WS3646216823-Doc3647381391,close,0,close,0,0,K3D10-230069 ICP-OES Spectrometer,Department of Public Works and Government Services (PSPC),
+293,WS3664402856-Doc3711940306,close,0,close,0,0,PR3784 K8A01-230203 Portable Spectroradiometer,Department of Public Works and Government Services (PSPC),
+294,WS3669721988-Doc3705416661,close,0,close,0,0,PR4209 23375-230278 Airflow Station,Department of Public Works and Government Services (PSPC),
+295,WS3670324775-Doc3777954679,close,0,close,0,0,23240-230468 - Elemental Analysis System,Department of Public Works and Government Services (PSPC),LECO INSTRUMENTS ULC
+296,WS3677897868-Doc3688253241,close,0,close,0,0,W0114-220004 3D Optical Profilometer System,Department of Public Works and Government Services (PSPC),Systems for Research Corp.
+297,WS3677908071-Doc3737230514,close,0,close,0,0,W3474-230161 Thermoform Acrylic-PVC Sheeting,Department of Public Works and Government Services (PSPC),GCPROC LTD.
+298,WS3684845604-Doc3684898153,close,0,close,0,0,01B30-230324 - Acquisition of a spectrometer - RFP,Department of Public Works and Government Services (PSPC),
+299,WS3693037503-Doc3721570542,close,0,close,0,0,RFP Templates01755-220567 - Acquisition of a Microbiological Analysis Automation System - RFP,Department of Public Works and Government Services (PSPC),
+300,WS3694158826-Doc3697246809,close,0,close,0,0,F4750-220474 Portable Particle Counter,Department of Public Works and Government Services (PSPC),
+301,WS3698138683-Doc3708034556,close,0,close,0,0,23145-230442 - Laboratory Microwave Digestion System,Department of Public Works and Government Services (PSPC),
+302,WS3705581770-Doc3705761102,close,0,close,0,0,31241-239003 - Acquisition of Drum gas meters - RFP,Department of Public Works and Government Services (PSPC),RollanTech Inc.
+303,WS3705712307-Doc3705928814,close,0,close,0,0,39903-230243 - Biological Safety Cabinets.,Department of Public Works and Government Services (PSPC),
+304,WS3707820538-Doc3733984561,close,0,close,0,0,PR4371 39903-230253 Automated Coverslipper,Department of Public Works and Government Services (PSPC),Fisher Scientific
+305,WS3709631249-Doc3709669142,close,0,close,0,0,K8F13-230090 - Commercial Grade Glassware Washer,Department of Public Works and Government Services (PSPC),
+306,WS3721488659-Doc3741356864,close,0,close,0,0,PR3503_H4067-224282 Automated Slide Stainer,Department of Public Works and Government Services (PSPC),"DANAHER CANADA PARTNERS INC., LEICA MICROSYSTEMS (CANADA) INC."
+307,WS3724613812-Doc3735399617,close,0,close,0,0,PR4347 31184-237483 Waste Neutralization System,Department of Public Works and Government Services (PSPC),
+308,WS3728267742-Doc3731336359,close,0,close,0,0,"31019-223089, Vibratory Polisher",Department of Public Works and Government Services (PSPC),
+309,WS3731287027-Doc3732920978,close,0,close,0,0,M5000-223869 - Wide Ductless Fume Hoods,Department of Public Works and Government Services (PSPC),
+310,WS3731334326-Doc3731404339,close,0,close,0,0,W7701-237664-Purchasing a bladeless centrifuge mixer,Department of Public Works and Government Services (PSPC),Nabsa Tech Inc.
+311,WS3732326265-Doc3768787007,close,0,close,0,0,K8D10-230051 - Automated Titration Instrument System,Department of Public Works and Government Services (PSPC),579453 Ontario Inc. o/a MANTECH
+312,WS3733018980-Doc3762770917,close,0,close,0,0,W0114-220015 Particle Image Velocimetry System,Department of Public Works and Government Services (PSPC),Dantec Dynamics Inc
+313,WS3734092840-Doc3734207211,close,0,close,0,0,01755-220950 - Acquisition of a nitrogen analyzer - RFP,Department of Public Works and Government Services (PSPC),MEYER SERVICE & SUPPLY
+314,WS3734621952-Doc3743177209,close,0,close,0,0,01B46-230489-Purchasing a turnkey laboratory scale SWIR hyperspectral imaging system,Department of Public Works and Government Services (PSPC),
+315,WS3734621952-Doc3841947568,close,0,close,0,0,01B46-230489-Purchasing a turnkey laboratory scale SWIR hyperspectral imaging system,Department of Public Works and Government Services (PSPC),
+316,WS3735405347-Doc3735682695,close,0,close,0,0,01756-230454 - Acquisition of a Carbon and Nitrogen Analyzer - RFP,Department of Public Works and Government Services (PSPC),ELEMENTAR AMERICAS INC
+317,WS3735766292-Doc3849814049,close,0,close,0,0,31184-239027 H2 Purifier,Department of Public Works and Government Services (PSPC),
+318,WS3735982548-Doc3745103262,close,0,close,0,0,H4005--224723 - UV Spectrophotometer,Department of Public Works and Government Services (PSPC),
+319,WS3739891262-Doc3739942948,close,0,close,0,0,Solvent Extraction Pilot Plant,Department of Public Works and Government Services (PSPC),"SX Kinetics, Inc."
+320,WS3739891262-Doc3992599575,close,0,close,0,0,Solvent Extraction Pilot Plant (23376-230349-B),Department of Public Works and Government Services (PSPC),"SX Kinetics, Inc."
+321,WS3741514924-Doc3741541900,close,0,close,0,0,Wet High-Intensity Magnetic Separator,Department of Public Works and Government Services (PSPC),
+322,WS3744601933-Doc3744623341,close,0,close,0,0,31206-236723 - Acquisition of a portable infrared oven - RFP,Department of Public Works and Government Services (PSPC),9426-5972 Québec Inc.
+323,WS3744824114-Doc3744847859,close,0,close,0,0,W7714-238487 Spectrograph and Streak Camera Imager System,Department of Public Works and Government Services (PSPC),
+324,WS3744824114-Doc4063528379,close,0,close,0,0,W7714-238487 Spectrograph and Streak Camera Imager System,Department of Public Works and Government Services (PSPC),
+325,WS3744824114-Doc4272611277,close,0,close,0,0,W7714-238487 Spectrograph and Streak Camera Imager System,Department of Public Works and Government Services (PSPC),
+326,WS3749531020-Doc3754471465,close,0,close,0,0,PR4481_23240-230346 Fine Grinding Mill,Department of Public Works and Government Services (PSPC),
+327,WS3749531020-Doc3820978702,close,0,close,0,0,PR4481_23240-230346-B Fine Grinding Mill,Department of Public Works and Government Services (PSPC),
+328,WS3752989625-Doc3770040833,close,0,close,0,0,01634-221004 Segmented flow analyzer,Department of Public Works and Government Services (PSPC),
+329,WS3752989625-Doc3866710972,close,0,close,0,0,01634-221004 Segmented flow analyzer -2,Department of Public Works and Government Services (PSPC),
+330,WS3762881863-Doc3762948220,close,0,close,0,0,31026-245134 - High Free Volume Twin-Screw Extruder,Department of Public Works and Government Services (PSPC),
+331,WS3762881863-Doc4056551699,close,0,close,0,0,31026-245134 - 2 - High Free Volume Twin-Screw Extruder,Department of Public Works and Government Services (PSPC),
+332,WS3764244176-Doc3769866636,close,0,close,0,0,Gas Chromatographs,Department of Public Works and Government Services (PSPC),MANDEL SCIENTIFIC COMPANY INC/LA COMPAGNIE SCIENTIFIQUE MANDEL INC
+333,WS3764495063-Doc3764557677,close,0,close,0,0,39903-230110 Raman Microscope,Department of Public Works and Government Services (PSPC),"HORIBA Canada, Inc."
+334,WS3764705784-Doc3765716511,close,0,close,0,0,23331-230452- He-cryostat system,Department of Public Works and Government Services (PSPC),Advanced Research Systems
+335,WS3764705784-Doc3834915321,close,0,close,0,0,23331-230452-2- He-cryostat system,Department of Public Works and Government Services (PSPC),Advanced Research Systems
+336,WS3766148646-Doc3767236671,close,0,close,0,0,"RFP - ET025-231039 - Public Health Agency of Canada HEPA filter housings and HEPA filters, Winnipeg, Manitoba",Department of Public Works and Government Services (PSPC),E H PRICE
+337,WS3769715915-Doc3822871578,close,0,close,0,0,PR4484 H4091-224751 Wascator FOM71 CLS Washing Machine,Department of Public Works and Government Services (PSPC),
+338,WS3773245793-Doc3819399343,close,0,close,0,0,31030-239520 High Temperature Box Furnace,Department of Public Works and Government Services (PSPC),13064204 Canada Inc.
+339,WS3773861970-Doc3898119532,close,0,close,0,0,31034-234243 - Cryogenic Probe Station,Department of Public Works and Government Services (PSPC),
+340,WS3773861970-Doc4104765668,close,0,close,0,0,31034-234243_B - Cryogenic Probe Station,Department of Public Works and Government Services (PSPC),
+341,WS3778103728-Doc3781473141,close,0,close,0,0,01R11-230508 - Digital Imaging System,Department of Public Works and Government Services (PSPC),
+342,WS3779290425-Doc3799070357,close,0,close,0,0,PR4649 31184-235881 Temperature Control System,Department of Public Works and Government Services (PSPC),Ador tech Inc.
+343,WS3779578180-Doc3824359776,close,0,close,0,0,PR4613 23375-230385 Carrier gas grade hydrogen generator,Department of Public Works and Government Services (PSPC),
+344,WS3780908453-Doc3790109385,close,0,close,0,0,Multicollector Noble Gas Mass Spectrometer and an Ultra-high Vacuum Gas Extraction Line,Department of Public Works and Government Services (PSPC),Isotopx Inc.
+345,WS3787070156-Doc3851780013,close,0,close,0,0,K8D10-230433-Purchasing a incubator,Department of Public Works and Government Services (PSPC),Fisher Scientific
+346,WS3788258425-Doc3815031143,close,0,close,0,0,Particle Counters,Department of Public Works and Government Services (PSPC),
+347,WS3791777941-Doc3791843591,close,0,close,0,0,6D063-224691 Low voltage electron microscope for pathology,Department of Public Works and Government Services (PSPC),Delong America
+348,WS3799449973-Doc3799455997,close,0,close,0,0,NDDB Blood and Buccal FTA Collection Kits,Department of Public Works and Government Services (PSPC),
+349,WS3799547509-Doc3799562722,close,0,close,0,0,"31184-224639, Benchtop Ultrasonic Spray Coater",Department of Public Works and Government Services (PSPC),
+350,WS3800972779-Doc3815031147,close,0,close,0,0,Ultra Low Temperature (ULT) Stand-Up Freezers,Department of Public Works and Government Services (PSPC),
+351,WS3806825901-Doc3806887117,close,0,close,0,0,01550-230430 Automated Tissue Homogenizer,Department of Public Works and Government Services (PSPC),
+352,WS3817184223-Doc3817206870,close,0,close,0,0,K8F10-230329A Automated Capillary Electrophoresis Instrument,Department of Public Works and Government Services (PSPC),
+353,WS3821290171-Doc3821384163,close,0,close,0,0,Invitation to Qualify (ITQ) - Security Screening Equipment,Department of Public Works and Government Services (PSPC),
+354,WS3835751557-Doc3835810979,close,0,close,0,0,Autoclave,Department of Public Works and Government Services (PSPC),MRH Biotechnical Ltd.
+355,WS3843220219-Doc3843250268,close,0,close,0,0,39903-230284 - Single Cell Printer,Department of Public Works and Government Services (PSPC),"Molecular Devices, LLC"
+356,WS3844731291-Doc3844796990,close,0,close,0,0,"E60PV-19EQUI-D - RFSA for Laboratory and Scientific Equipment, Part and Accessories, Supplies and Services",Department of Public Works and Government Services (PSPC),
+357,WS3865260774-Doc3866650757,close,0,close,0,0,PR7404 47419-238860 - ITQ for Fumigant Detection Systems,Department of Public Works and Government Services (PSPC),"Syft Technologies, Inc."
+358,WS3885542924-Doc3888957164,close,0,close,0,0,31241-237429 - Tangential Flow Filtration unit,Department of Public Works and Government Services (PSPC),Repligen Corporation
+359,WS3885784370-Doc3899933797,close,0,close,0,0,PR5971 - 47419-239561 - Video Probes,Department of Public Works and Government Services (PSPC),
+360,WS3919712501-Doc3929120818,close,0,close,0,0,5K003-221146 - PULSE NUCLEAR MAGNETIC RESONANCE (NMR) INSTRUMENTS,Department of Public Works and Government Services (PSPC),Bruker Ltd.
+361,WS3919712501-Doc4077644903,close,0,close,0,0,5K003-221146(B)-PULSE NUCLEAR MAGNETIC RESONANCE (NMR) INSTRUMENTS,Department of Public Works and Government Services (PSPC),
+362,WS3919712501-Doc4235810869,close,0,close,0,0,5K003-221146(C) - PULSE NUCLEAR MAGNETIC RESONANCE (NMR) INSTRUMENTS,Department of Public Works and Government Services (PSPC),Bruker Ltd.
+363,WS3933381003-Doc3933414228,close,0,close,0,0,01B46-230560-Purchasing a reverse osmosis filtration system,Department of Public Works and Government Services (PSPC),
+364,WS3984518968-Doc4162495786,close,0,close,0,0,39903-230538 Sterile cellulose Sponge-sticks,Department of Public Works and Government Services (PSPC),
+365,WS3985228504-Doc4252399963,close,0,close,0,0,PR6184 39903-230715 Digital Polymerase Chain Reaction Instrument,Department of Public Works and Government Services (PSPC),
+366,WS3989917575-Doc4201577855,close,0,close,0,0,PR6110 23240-230198 X-Ray Fluorescence Analyzer,Department of Public Works and Government Services (PSPC),
+367,WS3989917575-Doc4265128607,close,0,close,0,0,PR6110 23240-230198B X-Ray Fluorescence (XRF) analyzer,Department of Public Works and Government Services (PSPC),
+368,WS4003403039-Doc4125302404,close,0,close,0,0,PR5987 31184-239056 SF6 Analyzer,Department of Public Works and Government Services (PSPC),
+369,WS4003771241-Doc4021873454,close,0,close,0,0,01755-240023_Purchasing a Ethylene Oxide Gas Sterilizer,Department of Public Works and Government Services (PSPC),"Andersen Products, Inc."
+370,WS4006531620-Doc4093832980,close,0,close,0,0,PR5249 01B46-230529 Portable Greenhouse Gas Analyzers,Department of Public Works and Government Services (PSPC),
+371,WS4006531620-Doc4209627703,close,0,close,0,0,PR5249 01B46-230529 Portable Greenhouse Gas Analyzers,Department of Public Works and Government Services (PSPC),
+372,WS4013768629-Doc4051294986,close,0,close,0,0,PR6403 HT235-225451 NaI Probes,Department of Public Works and Government Services (PSPC),"Bridgeport Instruments, LLC"
+373,WS4015113216-Doc4015525362,close,0,close,0,0,6D063-226031 Tubes,Department of Public Works and Government Services (PSPC),Fisher Scientific
+374,WS4017389377-Doc4027345058,close,0,close,0,0,K8C13-240062 - X-Ray Fluorescence Analyser,Department of Public Works and Government Services (PSPC),Malvern Panalytical Inc
+375,WS4038438417-Doc4038484211,close,0,close,0,0,6D063-226247 Genetic analyzer system,Department of Public Works and Government Services (PSPC),
+376,WS4038438417-Doc4128544007,close,0,close,0,0,6D063-226247 Genetic analyzer system - 2,Department of Public Works and Government Services (PSPC),
+377,WS4075352041-Doc4102209202,close,0,close,0,0,Portable Raman Detector,Department of Public Works and Government Services (PSPC),
+378,WS4092233033-Doc4096119936,close,0,close,0,0,01E91-230444-Triple Quadrupole Mass Spectrometry Liquid Chromatography System,Department of Public Works and Government Services (PSPC),THERMO FISHER SCIENTIFIC (MISSISSAUGA) INC.
+379,WS4097371571-Doc4097436136,close,0,close,0,0,39903-230574 - Growth Chambers,Department of Public Works and Government Services (PSPC),
+380,WS4097371571-Doc4245157344,close,0,close,0,0,39903-230574B - Growth Chamber,Department of Public Works and Government Services (PSPC),
+381,WS4104281981-Doc4106749806,close,0,close,0,0,6D063-226052 DNA microarray scanner system,Department of Public Works and Government Services (PSPC),ILLUMINA CANADA ULC
+382,WS4104576231-Doc4256137956,close,0,close,0,0,"PR4817 23225-230458 One pilot-scale, explosion-proof RO system",Department of Public Works and Government Services (PSPC),
+383,WS4106361086-Doc4130881447,close,0,close,0,0,23240-240198 -RFP- Electrical Meters,Department of Public Works and Government Services (PSPC),Atlantic XL
+384,WS4114033023-Doc4115900660,close,0,close,0,0,01581-240122 Impedance Flow Cytometer,Department of Public Works and Government Services (PSPC),
+385,WS4125358320-Doc4254382066,close,0,close,0,0,PR7896 - W6399-23LM18 - High Purity Germanium (HPGe) Radioisotope Identifier,Department of Public Works and Government Services (PSPC),GAMBLE TECHNOLOGIES LIMITED
+386,WS4141761805-Doc4254504925,close,0,close,0,0,01896-240255 Plate Reader System,Department of Public Works and Government Services (PSPC),
+387,WS4146340676-Doc4219892178,close,0,close,0,0,RFP HT226-224973 Gas Adsorption Analyzer,Department of Public Works and Government Services (PSPC),
+388,WS4147962761-Doc4200475348,close,0,close,0,0,F1007-230004 - Tissue Processor,Department of Public Works and Government Services (PSPC),Somagen Diagnostics Inc
+389,WS4151590983-Doc4203538980,close,0,close,0,0,Thermal Ionisation Mass Spectrometer,Department of Public Works and Government Services (PSPC),
+390,WS4151727099-Doc4349010053,close,0,close,0,0,DSSA Fume Hood Certification and Maintenance,Department of Public Works and Government Services (PSPC),
+391,WS4151727099-Doc4424331584,close,0,close,0,0,DSSA Fume Hood Certification and Maintenance,Department of Public Works and Government Services (PSPC),
+392,WS4169269918-Doc4198271312,close,0,close,0,0,W0046-240002 Eddy Current System,Department of Public Works and Government Services (PSPC),Eddyfi NDT Inc.
+393,WS4169277683-Doc4169303171,close,0,close,0,0,3D57-240313 Pyrolysis Gas Inlet System,Department of Public Works and Government Services (PSPC),RollanTech Inc.
+394,WS4171386688-Doc4302767076,close,0,close,0,0,5K003-230806 Pulse Mill,Department of Public Works and Government Services (PSPC),
+395,WS4203833934-Doc4218785266,close,0,close,0,0,Supply and Delivery of an Extractor,Department of Public Works and Government Services (PSPC),Promega Corporation
+396,WS4213016903-Doc4213079787,close,0,close,0,0,"Supply, Delivery, and Installation of a Flow Cytometer",Department of Public Works and Government Services (PSPC),Life Technologies Inc./Technologies Life Inc.
+397,WS4218826617-Doc4235651799,close,0,close,0,0,PR10052 - 47419-247577 - Compact Mass Spectrometers,Department of Public Works and Government Services (PSPC),
+398,WS4218844765-Doc4218888501,close,0,close,0,0,23240-240330 Microturbine,Department of Public Works and Government Services (PSPC),APOLLOONEPOWER LTD
+399,WS4221476912-Doc4231712951,close,0,close,0,0,K8D10-240404 Planetary Ball Mill,Department of Public Works and Government Services (PSPC),Laval Lab Inc.
+400,WS4228069142-Doc4245418555,close,0,close,0,0,Handheld Forensic Laser,Department of Public Works and Government Services (PSPC),
+401,WS4229825623-Doc4241745830,close,0,close,0,0,RFP Communication Service Monitor Kit,Department of Public Works and Government Services (PSPC),
+402,WS4230714893-Doc4230752336,close,0,close,0,0,5K003-230777 - Microwave Digestion System,Department of Public Works and Government Services (PSPC),
+403,WS4234101420-Doc4261018048,close,0,close,0,0,Handheld 3D laser scanner,Department of Public Works and Government Services (PSPC),
+404,WS4256224392-Doc4256224460,close,0,close,0,0,01756-240266 - Total organic carbon analyzer - RFP,Department of Public Works and Government Services (PSPC),ELEMENTAR AMERICAS INC
+405,WS4257876624-Doc4257914672,close,0,close,0,0,23240-240195 - Solvent Purification System,Department of Public Works and Government Services (PSPC),
+406,WS4261068077-Doc4287127622,close,0,close,0,0,"F5286-230510 RISO for fine evaporated white salt - Mactaquac Biodiversity Facility, NB",Department of Public Works and Government Services (PSPC),
+407,WS4272098311-Doc4272136407,close,0,close,0,0,5K003-231091 Two Tank Kiln,Department of Public Works and Government Services (PSPC),
+408,WS4275214270-Doc4275311045,close,0,close,0,0,PR9241 01E86-240115 Laser Diffraction Particle Size Analyzer,Department of Public Works and Government Services (PSPC),
+409,WS4275472814-Doc4277308745,close,0,close,0,0,F3746-230007_Acquisition of a floating waste collector -RFP,Department of Public Works and Government Services (PSPC),
+410,WS4275689138-Doc4275719024,close,0,close,0,0,6D063-234512 Cell Sorter Instrument and Accessories,Department of Public Works and Government Services (PSPC),Beckman Coulter Canada LP
+411,WS4283207973-Doc4287300369,close,0,close,0,0,H4005-234982 - Acquisition of two light scattering airborne particle counters,Department of Public Works and Government Services (PSPC),Interfax Systems Inc
+412,WS4284660033-Doc4284717420,close,0,close,0,0,01755-240569 - Fat laboratory extractor for AAC Sherbrooke - RFP,Department of Public Works and Government Services (PSPC),
+413,WS4286841501-Doc4286887754,close,0,close,0,0,PR10138 - 47419-242320 - V-cone shaped heavy duty Tumble Blender,Department of Public Works and Government Services (PSPC),
+414,WS4286841501-Doc4457663238,close,0,close,0,0,PR10138 - 47419-242320 - V-cone shaped heavy duty Tumble Blender,Department of Public Works and Government Services (PSPC),
+415,WS4288845645-Doc4294505116,close,0,close,0,0,Liquid chromatography – Tandem Mass Spectrometer (LCMS-MS) system,Department of Public Works and Government Services (PSPC),
+416,WS4298286843-Doc4327064558,close,0,close,0,0,PR9392 HT227-234142 Flow cytometer,Department of Public Works and Government Services (PSPC),
+417,WS4310926999-Doc4404059731,close,0,close,0,0,H4005-235061 - DART-MS Installation,Department of Public Works and Government Services (PSPC),
+418,WS4310926999-Doc4554745247,close,0,close,0,0,H4005-235061 - DART-MS Installation - Solicitation B,Department of Public Works and Government Services (PSPC),
+419,WS4310926999-Doc4603360241,close,0,close,0,0,H4005-235061 - DART-MS Installation - Solicitation C,Department of Public Works and Government Services (PSPC),
+420,WS4350964408-Doc4362968803,close,0,close,0,0,W0114-230014 - Portable Radio Frequency (RF)-Electro-magnetic Interference (EMI) Shielded Enclosures (PRESE),Department of Public Works and Government Services (PSPC),MSAB Canada Inc.
+421,WS4362913378-Doc4378744085,close,0,close,0,0,PR10265 C1111-230133 Four (4) handheld X-ray fluorescence spectrometers (XRF),Department of Public Works and Government Services (PSPC),
+422,WS4363570528-Doc4366266886,close,0,close,0,0,RFP HT347-225611 Atomatic Pipetting Station,Department of Public Works and Government Services (PSPC),
+423,WS4363570528-Doc4733836661,close,0,close,0,0,PR6603 HT347-225611 Automatic Pipetting Station,Department of Public Works and Government Services (PSPC),
+424,WS4367420856-Doc4373654755,close,0,close,0,0,PR9694 HT226-233912 Cryostat,Department of Public Works and Government Services (PSPC),
+425,WS4379954293-Doc4381260971,close,0,close,0,0,6D063-234413 - Thermal Cycling System,Department of Public Works and Government Services (PSPC),
+426,WS4381133340-Doc4395177819,close,0,close,0,0,PR9676 23375-240212 Electrochemical Measurement Station,Department of Public Works and Government Services (PSPC),
+427,WS4382893596-Doc4426513150,close,0,close,0,0,23240-240474 Automated Titration System,Department of Public Works and Government Services (PSPC),
+428,WS4388745839-Doc4394629261,close,0,close,0,0,F5261-230145 - High Precision Saw,Department of Public Works and Government Services (PSPC),Opti-Tech Scientific Inc.
+429,WS4388935424-Doc4399392940,close,0,close,0,0,39903-240591 Centrifuge Gradient Fractionator,Department of Public Works and Government Services (PSPC),
+430,WS4388935424-Doc4522029455,close,0,close,0,0,39903-240591B Centrifuge Gradient Fractionator,Department of Public Works and Government Services (PSPC),
+431,WS4390912308-Doc4628896124,close,0,close,0,0,23375-240204 Custom DRI Test System,Department of Public Works and Government Services (PSPC),
+432,WS4390912308-Doc4712273336,close,0,close,0,0,Request For Information 23375-240204 Custom Direct Reduction of Iron Test System,Department of Public Works and Government Services (PSPC),
+433,WS4390912308-Doc4803949934,close,0,close,0,0,23375-240204 Custom Direct Reduction of Iron Test System RFI-B,Department of Public Works and Government Services (PSPC),
+434,WS4390912308-Doc4938633861,close,0,close,0,0,23375-240204-B Custom DRI Test System,Department of Public Works and Government Services (PSPC),
+435,WS4395133439-Doc4419807274,close,0,close,0,0,Portable carbon dioxyde Analyzer,Department of Public Works and Government Services (PSPC),
+436,WS4406764904-Doc4406823335,close,0,close,0,0,39903-240743 Automated DNA (DeoxyriboNucleic acid) or RNA (Ribonucleic acid) Extraction System - RFP,Department of Public Works and Government Services (PSPC),Galenvs Sciences
+437,WS4408639248-Doc4410407729,close,0,close,0,0,6D063-235233 Automatic microbiological media preparator,Department of Public Works and Government Services (PSPC),
+438,WS4408639248-Doc4496321169,close,0,close,0,0,6D063-235233B Automatic microbiological media preparator,Department of Public Works and Government Services (PSPC),
+439,WS4414626642-Doc4445613125,close,0,close,0,0,C1111-230117-PR10219 Vacuum Freeze Dryer,Department of Public Works and Government Services (PSPC),
+440,WS4422716804-Doc4445471129,close,0,close,0,0,"PR11700_39903-240804_Vials, Caps and Septa",Department of Public Works and Government Services (PSPC),
+441,WS4422752383-Doc4465599907,close,0,close,0,0,W7714-238435 Multi Channel Corrosion Testing System,Department of Public Works and Government Services (PSPC),NORTHERN MATERIALS INNOVATIONS LTD
+442,WS4426360337-Doc4450584616,close,0,close,0,0,6D063-235333 Imaging System,Department of Public Works and Government Services (PSPC),
+443,WS4445993959-Doc4518383471,close,0,close,0,0,31034-246767 SKA Low Noise Amplifier,Department of Public Works and Government Services (PSPC),Nanowave Technologies Inc
+444,WS4447171806-Doc4489022096,close,0,close,0,0,6D063-235154 Droplet Digital PCR System,Department of Public Works and Government Services (PSPC),
+445,WS4452533611-Doc4822554803,close,0,close,0,0,K8D10-240617B Freeze Dryer,Department of Public Works and Government Services (PSPC),
+446,WS4465174612-Doc4528865270,close,0,close,0,0,3D Microscope System,Department of Public Works and Government Services (PSPC),
+447,WS4472854498-Doc4474792063,close,0,close,0,0,39903-240988 Automated culture media preparation instrument,Department of Public Works and Government Services (PSPC),
+448,WS4472854498-Doc4606316233,close,0,close,0,0,39903-240988_2 Automated culture media preparation instrument,Department of Public Works and Government Services (PSPC),
+449,WS4489022225-Doc4489105570,close,0,close,0,0,23125-240264 Climatic chambers,Department of Public Works and Government Services (PSPC),
+450,WS4489022225-Doc4908387143,close,0,close,0,0,23125-240264-2 Climatic chambers,Department of Public Works and Government Services (PSPC),
+451,WS4489022225-Doc5469760666,close,0,close,0,0,23125-240264-3 Climatic chambers,Department of Public Works and Government Services (PSPC),
+452,WS4489022225-Doc5742015057,close,0,close,0,0,23125-240264-4 Climatic chambers,Department of Public Works and Government Services (PSPC),
+453,WS4511819964-Doc4511825726,close,0,close,0,0,47419-245352 - Optical Character Recognition - Request for Information,Department of Public Works and Government Services (PSPC),
+454,WS4519807534-Doc4519851695,close,0,close,0,0,6D063-235832 Bait capture enrichment panel,Department of Public Works and Government Services (PSPC),
+455,WS4540664874-Doc4655356442,close,0,close,0,0,BET Surface Analyzer,Department of Public Works and Government Services (PSPC),ATS SCIENTIFIC INC
+456,WS4579047982-Doc4586581931,close,0,close,0,0,F2402-230235 Liquid Handling Robot,Department of Public Works and Government Services (PSPC),
+457,WS4580370996-Doc4658307934,close,0,close,0,0,Multichannel Liquid Handler System,Department of Public Works and Government Services (PSPC),
+458,WS4628588613-Doc4643116105,close,0,close,0,0,W7701-247810 - High-temperature sintering furnace for ceramic and composite materials - RFP,Department of Public Works and Government Services (PSPC),
+459,WS4628588613-Doc5489972531,close,0,close,0,0,"W7701-247810-2, High-temperature sintering furnace for ceramic and composite materials",Department of Public Works and Government Services (PSPC),
+460,WS4657557578-Doc4671227522,close,0,close,0,0,F5284-230628 Plasma Asher,Department of Public Works and Government Services (PSPC),
+461,WS4657557578-Doc4796506163,close,0,close,0,0,F5284-230628B Plasma Asher,Department of Public Works and Government Services (PSPC),
+462,WS4675231736-Doc4716680314,close,0,close,0,0,01587-250102 - PR14591 - Digital PCR System,Department of Public Works and Government Services (PSPC),
+463,WS4675231736-Doc4813662345,close,0,close,0,0,01587-250102B - PR14591 - Digital PCR System,Department of Public Works and Government Services (PSPC),
+464,WS4692164554-Doc4702207537,close,0,close,0,0,01B30-250271-Membran Distillation System,Department of Public Works and Government Services (PSPC),
+465,WS4699837861-Doc4863302191,close,0,close,0,0,01686-241066-Research Track Spray Chamber,Department of Public Works and Government Services (PSPC),
+466,WS4714859077-Doc4822736820,close,0,close,0,0,6D063-246533 Anaerobic Chamber,Department of Public Works and Government Services (PSPC),
+467,WS4724126871-Doc4899014581,close,0,close,0,0,01896-250013 Floor Centrifuge with Continuous Flow Rotor,Department of Public Works and Government Services (PSPC),
+468,WS4730439648-Doc4931817712,close,0,close,0,0,23295-250147 X-ray Diffractometer,Department of Public Works and Government Services (PSPC),
+469,WS4735984503-Doc4737322166,close,0,close,0,0,23240-250015 - Scanning Electron Microscope,Department of Public Works and Government Services (PSPC),
+470,WS4748568002-Doc4849297775,close,0,close,0,0,47419-246180 - Repair and Annual Calibration of Radiation Detection Meters,Department of Public Works and Government Services (PSPC),
+471,WS4749901904-Doc4750408894,close,0,close,0,0,U6309-255511 - RFP Fault Injector,Department of Public Works and Government Services (PSPC),
+472,WS4755876275-Doc4755914045,close,0,close,0,0,47419-259313 - Request for Information - Detection Technologies for CBSA Special Operations,Department of Public Works and Government Services (PSPC),
+473,WS4755876275-Doc5424630380,close,0,close,0,0,47419-259313 - Request for Proposal - Mobile Backscatter Imaging Systems,Department of Public Works and Government Services (PSPC),
+474,WS4755876275-Doc5594217410,close,0,close,0,0,47419-259313 (B) - Request for Proposal - Mobile Backscatter Imaging Systems,Department of Public Works and Government Services (PSPC),
+475,WS4759714585-Doc4774239328,close,0,close,0,0,PR14792_HT282-246471 3D Biopinter,Department of Public Works and Government Services (PSPC),
+476,WS4761342561-Doc4792619577,close,0,close,0,0,W8486-259828 - PR15788 - RFI FOR THE PROVISION OF THE LOCAL CHEMICAL AGENT DETECTOR (LCAD) PROJECT,Department of Public Works and Government Services (PSPC),
+477,WS4770277369-Doc4770439581,close,0,close,0,0,6D063-246535 Fluorescence-activated cell sorter for antibody discovery,Department of Public Works and Government Services (PSPC),
+478,WS4787239063-Doc4798230189,close,0,close,0,0,RFP- long-read DNA sequencer,Department of Public Works and Government Services (PSPC),
+479,WS4792417222-Doc4794850392,close,0,close,0,0,PR14977_23440-250257 Laboratory Scale Grinding Mill,Department of Public Works and Government Services (PSPC),
+480,WS4850835621-Doc4850862513,close,0,close,0,0,23240-250510-Three-phase AC source grid simulator and regenerative AC load bank,Department of Public Works and Government Services (PSPC),
+481,WS4857645107-Doc4868291619,close,0,close,0,0,RFP - Metallographic Cut-off Machine,Department of Public Works and Government Services (PSPC),
+482,WS4863298341-Doc4863355698,close,0,close,0,0,01B30-250496 Production Unit for Compressible Yogurt-Type Fluids-RFP,Department of Public Works and Government Services (PSPC),
+483,WS4870156061-Doc4875482266,close,0,close,0,0,RFP-Plasma Cleaner - 23584-250595,Department of Public Works and Government Services (PSPC),
+484,WS4872748668-Doc4942021579,close,0,close,0,0,23240-250276 Automated Titration Instrument System,Department of Public Works and Government Services (PSPC),
+485,WS4872999123-Doc4931759443,close,0,close,0,0,F2905-240008 - Calorimeter,Department of Public Works and Government Services (PSPC),
+486,WS4885431634-Doc4885543165,close,0,close,0,0,W0046-250079- Magnetron Plasma Sputtering System,Department of Public Works and Government Services (PSPC),
+487,WS4886976709-Doc4887326772,close,0,close,0,0,W0046-250126 Continuous-Wave Diode-Pumped Solid State Green Laser,Department of Public Works and Government Services (PSPC),
+488,WS4890657211-Doc4943785187,close,0,close,0,0,PR15282 K8A21-250422 Air Sample Preconcentrator with Autosampler,Department of Public Works and Government Services (PSPC),
+489,WS4902229500-Doc4929731337,close,0,close,0,0,Polypropylene Fume Hood with Base Cabinet (K4D30-250806),Department of Public Works and Government Services (PSPC),
+490,WS4902229500-Doc5105265877,close,0,close,0,0,Polypropylene Fume Hood with Base Cabinet (K4D30-250806B),Department of Public Works and Government Services (PSPC),
+491,WS4919383034-Doc4919443140,close,0,close,0,0,23240-250581 Laser-Based Glass Puller,Department of Public Works and Government Services (PSPC),
+492,WS4924675910-Doc4974546239,close,0,close,0,0,23445-250247 Core Sample Splitter,Department of Public Works and Government Services (PSPC),
+493,WS4924708822-Doc4963466454,close,0,close,0,0,6D063-247203 Multiplate Spectrophotometer,Department of Public Works and Government Services (PSPC),
+494,WS4931607808-Doc4940683627,close,0,close,0,0,6D063-247152 Automated Nucleic Acid Extractor Instrument,Department of Public Works and Government Services (PSPC),
+495,WS4944571586-Doc4946829415,close,0,close,0,0,PR15109 23375-250338 Multi-Gas Analyzers,Department of Public Works and Government Services (PSPC),
+496,WS4944571586-Doc5082196539,close,0,close,0,0,PR15109 23375-250338 Multi-Gas Analyzers,Department of Public Works and Government Services (PSPC),
+497,WS4946960414-Doc4948392876,close,0,close,0,0,PR15978 5P033-240155 Portable handheld XRF,Department of Public Works and Government Services (PSPC),
+498,WS4972193306-Doc4987308566,close,0,close,0,0,PR14321 23375-240727 Bench-Scale Stirred Reactor System,Department of Public Works and Government Services (PSPC),
+499,WS4972193306-Doc5174826840,close,0,close,0,0,PR14321 23375-240727-1 Bench-Scale Stirred Reactor System,Department of Public Works and Government Services (PSPC),
+500,WS4978424828-Doc4978527038,close,0,close,0,0,39903-250914 Automated DNA (DeoxyriboNucleic acid) or RNA (Ribonucleic acid) Extraction System,Department of Public Works and Government Services (PSPC),
+501,WS4979465313-Doc4979713461,close,0,close,0,0,PR15802 HT226-246842 Benchtop Nuclear Magnetic Resonance Spectrometer,Department of Public Works and Government Services (PSPC),
+502,WS5010386625-Doc5022312340,close,0,close,0,0,6D063-247214 - Live Cell Imager,Department of Public Works and Government Services (PSPC),
+503,WS5010386625-Doc5189637626,close,0,close,0,0,6D063-247214 Live Cell Imager B,Department of Public Works and Government Services (PSPC),
+504,WS5063037546-Doc5365322074,close,0,close,0,0,PR17592 M7594-251104 Eyepiece-less Stereo microscopes,Department of Public Works and Government Services (PSPC),
+505,WS5111832911-Doc5147356939,close,0,close,0,0,PR16731 U6309-255852 Solar radiation exposure chamber,Department of Public Works and Government Services (PSPC),
+506,WS5126537549-Doc5565608771,close,0,close,0,0,W0046-250118 Thermal Vacuum Chamber,Department of Public Works and Government Services (PSPC),
+507,WS5136806369-Doc5175218971,close,0,close,0,0,PR18852 47419-250306 Colourimetric Tubes,Department of Public Works and Government Services (PSPC),
+508,WS5162207260-Doc5205028224,close,0,close,0,0,RFP - Polarimeter,Department of Public Works and Government Services (PSPC),
+509,WS5178067583-Doc5207987546,close,0,close,0,0,01B30-260044 – Acquisition of a compact Benchtop Direct Contact Membrane Distillation laboratory-scale unit,Department of Public Works and Government Services (PSPC),
+510,WS5182923687-Doc5182923761,close,0,close,0,0,01B30-260004 Production Unit for Compressible Yogurt-Type Fluids-RFP,Department of Public Works and Government Services (PSPC),
+511,WS5212048509-Doc5237583265,close,0,close,0,0,23584-260111 Pyrolysis Spray System,Department of Public Works and Government Services (PSPC),
+512,WS5213678736-Doc5218612446,close,0,close,0,0,W7701-268050 - Tank rental and supply of nitrogen,Department of Public Works and Government Services (PSPC),
+513,WS5233535404-Doc5233535469,close,0,close,0,0,01755-260144 - Refrigerated Floor Centrifuge,Department of Public Works and Government Services (PSPC),
+514,WS5240552358-Doc5240850359,close,0,close,0,0,RFP - Jet Mill System,Department of Public Works and Government Services (PSPC),
+515,WS5240552358-Doc5373147886,close,0,close,0,0,RFP B - Jet Mill System,Department of Public Works and Government Services (PSPC),
+516,WS5240552358-Doc5587994970,close,0,close,0,0,RFP C - Jet Mill System,Department of Public Works and Government Services (PSPC),
+517,WS5247090978-Doc5322604480,close,0,close,0,0,F5957-250071 Multi-Matrix Purge and Trap System,Department of Public Works and Government Services (PSPC),
+518,WS5247465584-Doc5380178928,close,0,close,0,0,F1022-250147 - Freeze Dryer,Department of Public Works and Government Services (PSPC),
+519,WS5247465584-Doc5634844764,close,0,close,0,0,F1022-250147 B - Freeze Dryer,Department of Public Works and Government Services (PSPC),
+520,WS5247465584-Doc5854709470,close,0,close,0,0,F1022-250147 C - Freeze Dryer,Department of Public Works and Government Services (PSPC),
+521,WS5249615289-Doc5324562725,close,0,close,0,0,23240-260088- Vacuum Hot Press,Department of Public Works and Government Services (PSPC),
+522,WS5265437959-Doc5323959584,close,0,close,0,0,PR19366 47419-264488 ITQ Radiation Detection Systems and Support,Department of Public Works and Government Services (PSPC),
+523,WS5265437959-Doc5813700607,close,0,close,0,0,PR19366 47419-264488 ITQ Radiation Detection Systems and Support ITQ - List of Qualified Respondents,Department of Public Works and Government Services (PSPC),
+524,WS5286039535-Doc5286067958,close,0,close,0,0,01755-260145 Multi-mode plate reader,Department of Public Works and Government Services (PSPC),
+525,WS5294704917-Doc5295966224,close,0,close,0,0,23240-260130 Magnetic Force Microscope,Department of Public Works and Government Services (PSPC),
+526,WS5296197209-Doc5298094070,close,0,close,0,0,23584-260312 Vibrating Sample Magnetometer,Department of Public Works and Government Services (PSPC),
+527,WS5307256451-Doc5356006661,close,0,close,0,0,01800-260086 - Air Flow Cabinet Oven,Department of Public Works and Government Services (PSPC),
+528,WS5307256451-Doc5389963235,close,0,close,0,0,01800-260086B - Air Flow Cabinet Oven,Department of Public Works and Government Services (PSPC),
+529,WS5307256451-Doc5426420717,close,0,close,0,0,01800-260086C - Air Flow Cabinet Oven,Department of Public Works and Government Services (PSPC),
+530,WS5338439925-Doc5338452385,close,0,close,0,0,9F012-250057 Diamond Wire Saw,Department of Public Works and Government Services (PSPC),
+531,WS5346244930-Doc5385996948,close,0,close,0,0,23240-260373 Kerr Microscope,Department of Public Works and Government Services (PSPC),
+532,WS5367180249-Doc5368897757,close,0,close,0,0,EQ754-260857 Laboratory Fume Hoods,Department of Public Works and Government Services (PSPC),
+533,WS5370468746-Doc5370485914,close,0,close,0,0,01634-250003 - Automated Sample Extractor and Concentrator,Department of Public Works and Government Services (PSPC),
+534,WS5370468746-Doc5471185392,close,0,close,0,0,01634-250003B - Automated Sample Extractor and Concentrator,Department of Public Works and Government Services (PSPC),
+535,WS5372221038-Doc5540586645,close,0,close,0,0,RFP - Field Emission Scanning Electron Microscope,Department of Public Works and Government Services (PSPC),
+536,WS5372233700-Doc5372291796,close,0,close,0,0,01686-260210 Hydraulic Soil Sampler,Department of Public Works and Government Services (PSPC),
+537,WS5382778386-Doc5383527341,close,0,close,0,0,23125-260143 Accessible laboratory fume hood,Department of Public Works and Government Services (PSPC),
+538,WS5388799657-Doc5388836820,close,0,close,0,0,23584-260312 (B) Vibrating Sample Magnetometer,Department of Public Works and Government Services (PSPC),
+539,WS5388842471-Doc5431190205,close,0,close,0,0,PR20213 39903-260411 Automated DNA and RNA extraction system,Department of Public Works and Government Services (PSPC),
+540,WS5413933883-Doc5474128454,close,0,close,0,0,PR18557 23240-251304 X-Ray Machine,Department of Public Works and Government Services (PSPC),
+541,WS5414248460-Doc5467626643,close,0,close,0,0,RFP - Automated Plate Pouring System,Department of Public Works and Government Services (PSPC),
+542,WS5414248460-Doc5656436774,close,0,close,0,0,RFP - Automated Plate Pouring System,Department of Public Works and Government Services (PSPC),
+543,WS5426468983-Doc5490421791,close,0,close,0,0,PR20104 H4084-253122_Microfluidics instrument,Department of Public Works and Government Services (PSPC),
+544,WS5429184517-Doc5444220581,close,0,close,0,0,47064-264953 - Request for Standing Offer - Handheld Raman Spectrometers,Department of Public Works and Government Services (PSPC),
+545,WS5444242004-Doc5494696762,close,0,close,0,0,PR20192 HT282-253101 - Anaerobic Chamber,Department of Public Works and Government Services (PSPC),
+546,WS5445944072-Doc5446014934,close,0,close,0,0,01B30-260750 – Basic Compact Benchtop Laboratory-scale Direct Contact Membrane Distillation System,Department of Public Works and Government Services (PSPC),
+547,WS5446122648-Doc5446324369,close,0,close,0,0,PR20112 23413-260452 Atomic Clock,Department of Public Works and Government Services (PSPC),
+548,WS5454225054-Doc5456148745,close,0,close,0,0,RFP - 3Y004-251153-Plate reader,Department of Public Works and Government Services (PSPC),
+549,WS5456174345-Doc5457521384,close,0,close,0,0,W7714-268832 - EMC Shielded Test Enclosure,Department of Public Works and Government Services (PSPC),
+550,WS5459060201-Doc5486357321,close,0,close,0,0,F3710-255059 - Water Purification System - RFP,Department of Public Works and Government Services (PSPC),
+551,WS5459060201-Doc5715635429,close,0,close,0,0,F3710-255059-2 - Water Purification System - RFP,Department of Public Works and Government Services (PSPC),
+552,WS5463452336-Doc5474127047,close,0,close,0,0,PR18763 87055-260042 - Benchtop X-ray Diffractometer,Department of Public Works and Government Services (PSPC),
+553,WS5478156916-Doc5484440432,close,0,close,0,0,39903-260598 -Automated Nucleic Acid Extraction Instrument,Department of Public Works and Government Services (PSPC),
+554,WS5494650809-Doc5497455275,close,0,close,0,0,39903-260455 Benchtop Sequencing and Single Cell Multi-omics System,Department of Public Works and Government Services (PSPC),
+555,WS5494707029-Doc5494762290,close,0,close,0,0,W0046-260117 Cuboid Vacuum Chamber,Department of Public Works and Government Services (PSPC),
+556,WS5494707029-Doc5715322894,close,0,close,0,0,W0046-206117B Cuboid Vacuum Chamber,Department of Public Works and Government Services (PSPC),
+557,WS5502132928-Doc5512574467,close,0,close,0,0,K3D56-260578 Water filters,Department of Public Works and Government Services (PSPC),
+558,WS5507988089-Doc5520211567,close,0,close,0,0,H4084-253211 Surface Plasmon Resonance Instrument,Department of Public Works and Government Services (PSPC),
+559,WS5530498558-Doc5724426571,close,0,close,0,0,PR22657 47064-266992 FT-IR Spectrometer and FT-Raman Spectrometer Module,Department of Public Works and Government Services (PSPC),
+560,WS5536674995-Doc5565967930,close,0,close,0,0,W7702-266452-Preventive Maintenance of BTDS Laboratory Equipment,Department of Public Works and Government Services (PSPC),
+561,WS5538729348-Doc5538762719,close,0,close,0,0,W7702-266436 Optical detection system,Department of Public Works and Government Services (PSPC),
+562,WS5538729348-Doc5771435865,close,0,close,0,0,W7702-266436-2 Optical detection system,Department of Public Works and Government Services (PSPC),
+563,WS5555527018-Doc5555578348,close,0,close,0,0,K3D56-260578 sol B Water filters,Department of Public Works and Government Services (PSPC),
+564,WS5565284688-Doc5676278073,close,0,close,0,0,PR23251 47064-261533 Compact FTIR Spectrometers,Department of Public Works and Government Services (PSPC),
+565,WS5568695610-Doc5574368899,close,0,close,0,0,PR20333 - 23375-260481 Thermal Property Analyser,Department of Public Works and Government Services (PSPC),
+566,WS5623588395-Doc5638287532,close,0,close,0,0,RFP Ion Mobility Spectrometers Systems,Department of Public Works and Government Services (PSPC),
+567,WS5642984329-Doc5643014559,close,0,close,0,0,PR23291 W8486-260708 Paper Chemical Agent Detector,Department of Public Works and Government Services (PSPC),
+568,WS5653632765-Doc5658279108,close,0,close,0,0,EP745-261093 - Interpretation Tools for the Translation Bureau of Canada,Department of Public Works and Government Services (PSPC),
+569,WS5685065876-Doc5809265663,close,0,close,0,0,PR23696 47064-260316 Radiation Portal Monitors,Department of Public Works and Government Services (PSPC),
+570,WS5705484325-Doc5705506797,close,0,close,0,0,W7714-278992_Photon arrival time taggers,Department of Public Works and Government Services (PSPC),
+571,WS5780935316-Doc5781060198,close,0,close,0,0,PR22102 47419-262823 Postal and Oversized Postal Small Scale Imaging Systems,Department of Public Works and Government Services (PSPC),
+572,WS5790693166-Doc5819411223,close,0,close,0,0,01B30-270094 Scanner,Department of Public Works and Government Services (PSPC),
+573,WS5802465799-Doc5812814483,close,0,close,0,0,PR24724 47064-274721 Non Intrusive Inspection Systems for Small Packets and Letter Mail,Department of Public Works and Government Services (PSPC),
+574,WS5829676437-Doc5840059559,close,0,close,0,0,PR10192 U6309-244412 Flow Metering Test Bench,Department of Public Works and Government Services (PSPC),
+575,WS5840639624-Doc5843850230,close,0,close,0,0,PR24868 23240-270155 High Pressure Gravimetric Adsorption Analyzer,Department of Public Works and Government Services (PSPC),
+576,WS5866114561-Doc5870015522,close,0,close,0,0,01756-270027 Sequencer - RFP,Department of Public Works and Government Services (PSPC),
+577,WS5870387015-Doc5872186520,close,0,close,0,0,W0046-270157- Festo Didactic -LabVolt Components,Department of Public Works and Government Services (PSPC),
+578,WS5886812608-Doc5886985691,close,0,close,0,0,W7714-278992-2_Photon arrival time taggers,Department of Public Works and Government Services (PSPC),
+579,WS5897088302-Doc5908275818,close,0,close,0,0,PR25073 23240-270244 Ultrasonic Microwave Reaction System,Department of Public Works and Government Services (PSPC),
+580,cb-100-485003,close,0,close,1,0,Mobile Dry Helium Leak Detector,National Research Council Canada,1737868 ONTARIO INC.   CCR Process Products
+581,cb-100-85422787,close,0,close,0,0,CTMF EXTERNAL LABORATORY TESTING WFI & PURE STEAM,National Research Council Canada,
+582,cb-114-78946602,close,0,close,1,0,"FILTER,FLUID",Department of National Defence (DND),Unisource Technology Inc
+583,cb-117-83308844,close,0,close,0,0,"Telescope, Laboratory Scientific Equipment, SA E60PV-19EQUI","Department of National Defence, Combat Training Centre",
+584,cb-123-74969670,close,0,close,1,0,Nitrogen Analyzer - St-Hyacinthe Research and Development Centre,Department of Agriculture and Agri-Food (AAFC),Gestion Imm-Tech Inc.
+585,cb-125-70879576,close,0,close,1,0,Plant Growth Chamber,Agriculture and Agri-Food Canada,GENOME QUEBEC
+586,cb-126-10535879,close,0,close,1,0,SA Fifteen (15) Low Temperature Growth Chambers - AAFC Coastal Region,Department of Agriculture and Agri-Food (AAFC),
+587,cb-129-75884416,close,0,close,1,0,Laboratory equipment - Genetic Analyzer,Health Canada,
+588,cb-133-68293734,close,0,close,1,0,Nitrogen gas generators,National Research Council of Canada (NRC),Peak Scientific Canada LTD
+589,cb-135-54193328,close,0,close,1,0,Two (2) quantities of Ballistic Plasticine Oven,Department of National Defence (DND),
+590,cb-136-95906104,close,0,close,1,0,"Supply Arrangement E60PV-19EQUI - category Laboratory Baths, sub-category Water Baths",Health Canada,
+591,cb-137-90333458,close,0,close,1,0,Cyanoacrylate Fuming Chamber,Royal Canadian Mounted Police (RCMP),Felix Technology Inc
+592,cb-139-64125564,close,0,close,1,1,Request for Proposal - Purchase of a Real-Time PCR System LC480,Agriculture and Agri-Food Canada,ThermoFisher Scientific Inc
+593,cb-140-76545645,close,0,close,1,0,Notice of Proposed Procurement- Microscope,Natural Resources Canada,Opti-Tech Scientific Inc.
+594,cb-143-65540903,close,0,close,0,0,Two Tier Growth Chamber,Agriculture Agri-Food Canada,
+595,cb-145-35759581,close,0,close,0,0,"Services of a contractor to supply, replace and maintain the new osmosis water system at the Quebec Research and Develop",Agriculture and Agri-Food Canada,Puribec Inc.
+596,cb-148-66716562,close,0,close,1,0,Computer Numerical Controlled (CNC) Electrical Discharge Machine (EDM),National Research Council of Canada (NRC),
+597,cb-153-45865788,close,0,close,1,0,Laboratory Equipment - Nanoparticle Tracking Analysis Instrument,Health Canada,
+598,cb-157-41482138,close,0,close,1,0,E60HN-16ELEC - Signal Generators and Analyzers,"Innovation, Science and Economic Development Canada",
+599,cb-157-64625853,close,0,close,1,0,VECTOR NETWORK ANALYZER Amendment #1,National Research Council,Rohde & Schwarz Canada Inc
+600,cb-158-12028085,close,0,close,1,0,Water Level Recorders (SA E60PV-19EQUI),Fisheries and Oceans Canada,Hoskin Scientific
+601,cb-16-71155311,close,0,close,1,0,Automated Centrifugal Planetary Mixer,National Research Council of Canada,11559010 Canada Inc. DBA Form-Tech Scientific
+602,cb-162-65456899,close,0,close,1,0,BENCH TOP LABORATORY MANUAL PRESS,National Research Council Canada,First Choice Group
+603,cb-164-1224694,close,0,close,1,0,INLINE XRF ANALYZER AND AUTOMATED CONTROL,National Research Council of Canada (NRC),EVIDENT CANADA INC
+604,cb-165-65813117,close,0,close,1,0,Purchase and delivery of a refurbished MICROTEC MA/BA6.,National Research Council of Canada (NRC),Petrano Supply Inc.
+605,cb-169-81139202,close,0,close,1,0,NPP - Potentiostat / Galvanostat (Vancouver),National Research Council Canada,Les Solutions Snowhouse 2014 Inc
+606,cb-174-79861875,close,0,close,1,0,Ambient multi-metals monitoring system,Department of the Environment (ECCC ),
+607,cb-176-85814765,close,0,close,1,0,Ultrasonic Spray Coating System,National Research Council of Canada (NRC),Maktoum Supplier
+608,cb-18-77070023,close,0,close,1,0,DMA Analyzer,Department of the Environment (ECCC ),
+609,cb-180-48038113,close,0,close,1,0,E60PV-19EQUI - Lab and Sci Equipment - Ultra High Speed Framing Camera,Department of National Defence (DND),
+610,cb-181-45725188,close,0,close,1,0,23-58100 Benchtop Ultrasonic Spray Coating System,National Research Council Canada,"Felix Technology, Inc."
+611,cb-19-65021601,close,0,close,1,0,Planetary Ball Mill,National Research Council Canada,Ador Tech inc
+612,cb-192-74235395,close,0,close,1,0,POLYMER INJECTION MOLDING MACHINE,National Research Council Canada,
+613,cb-193-91434019,close,0,close,0,0,Laboratory equipment,Department of Natural Resources (NRCan),
+614,cb-195-98115779,close,0,close,1,0,Contact Angle Measurement System,National Research Council Canada,Rollan Tech Inc.
+615,cb-197-16130287,close,0,close,1,0,Advanced Optical Microscope,fed gov't,Carl Zeiss Canada Limited
+616,cb-200-20652936,close,0,close,1,0,"Halifax class spares - FILTER ELEMENT,FLUID",Department of National Defence (DND),Dibblee Industries LTD
+617,cb-205-26568903,close,0,close,1,0,"HALIFAX CLASS SPARES – FILTER, FLUID",Department of National Defence (DND),DIBBLEE INDUSTRIES
+618,cb-210-29313860,close,0,close,1,0,Lab equipment for the Operative System Engineering’s (OSE) to support radar operation,Mitchell Palmer,
+619,cb-214-67115531,close,0,close,1,0,Two Articulated Robots,National Research Council of Canada (NRC),Kokyo Inc.
+620,cb-218-43503841,close,0,close,1,0,Guildline 5032 Variable Temp Air Bath,Department of National Defence (DND),
+621,cb-218-80199976,close,0,close,0,0,Vertical Planar Motion Mechanism,NRC-CNRC,HR wallingford Ltd.
+622,cb-224-79695298,close,0,close,1,0,Wet Chemical Processing Station with Vented Fume Hood,Royal Canadian Mounted Police (RCMP),
+623,cb-225-45577419,close,0,close,1,0,"Replacement, Installation, Testing and Commissioning of Supersonic Nozzle Jack Stations Controls",National Research Council of Canada (NRC),Futech ottawa inc
+624,cb-225-63850860,close,0,close,0,0,Gel Documentation System,National Research Council Canada,Fisher Scientific
+625,cb-228-62449357,close,0,close,1,0,Purchase and delivery of one (1) of a Spectrograph for dispersing short-wave infrared wavelengths,National Research Council of Canada (NRC),
+626,cb-230-62162190,close,0,close,1,0,Two Articulated Robots,National Research Council of Canada (NRC),
+627,cb-237-3208616,close,0,close,1,0,Notice of Proposed Procurement (NPP),Department of Agriculture and Agri-Food (AAFC),Lekter industrial Services Inc.
+628,cb-237-51650918,close,0,close,0,0,AUTOMATED ROTARY MICROTOME,Canadian Food Inspection Agency,
+629,cb-237-94345687,close,0,close,0,0,Reverse Laminar Flow Cabinet,Canadian Food Inspection Agency,
+630,cb-238-31088958,close,0,close,0,0,Notice of Proposed Procurement (NPP) to Purchase of an EDXRF spectrometer,Health Canada,
+631,cb-24-93799628,close,0,close,1,0,High Frame Rate Photon Counting Camera Based on the Single Photon Avalanche Diode (SPAD) Technology,National Research Council Canada (NRC),OPTOELECTRONIC COMPONENTS
+632,cb-240-89802758,close,0,close,1,0,Anton Parr SVM 3001 Cold Properties Viscometer and Xsample 340 Sample Changer,Department of National Defence (DND),
+633,cb-242-73708981,close,0,close,1,0,Procurement of Experimental Modal Analysis Equipment for Medium to Large Scale Testing and Model Validation,National Research Council of Canada,
+634,cb-245-7786391,close,0,close,0,0,Two (2) glassware wash machines,Department of the Environment (ECCC ),THERMO FISHER SCIENTIFIC INC
+635,cb-247-73875333,close,0,close,0,0,Asymmetric Flow Field-Flow Fractionation System and Detectors,National Research Council Canada,
+636,cb-249-95720437,close,0,close,1,0,Near Infrared Continuously Tunable Laser with Multi-Port Optical Power Meter Amendment 002,National Research Council Canada,
+637,cb-251-34391133,close,0,close,1,0,Vessels Reactors,National Research Council of Canada (NRC),Ceretest Inc.
+638,cb-251-51453652,close,0,close,1,0,Supply of Ion Beam Mill,National Research Council of Canada,Hitachi High Technologies Canada Inc.
+639,cb-251-8268519,close,0,close,1,0,High-profile 100W PEMFC Test Station,National Research Council of Canada,Greenlight Innovation Corp
+640,cb-254-10896596,close,0,close,1,0,Roll-to-Roll Slot-Die Coater,National Research Council Canada,
+641,cb-261-96936062,close,0,close,1,1,Notice of Proposed Procurement- Gas Chromatograph Mass Spectrometer (GCMS),Natural Resources Canada,Agilent Technologies Canada Inc.
+642,cb-263-98162299,close,0,close,1,0,One (1) Four Bay Glovebox System,National Research Council of Canada (NRC),MBraun
+643,cb-264-42130359,close,0,close,0,0,Magneto Optical Imaging System based on the Kerr Effect,Department of Natural Resources (NRCan),
+644,cb-264-82291730,close,0,close,1,0,"FILTER ELEMENT,FLUID",Department of National Defence (DND),
+645,cb-266-49576012,close,0,close,0,0,High Current Potentiostats,NRC-CNRC,Greenlight Innovation Corp.
+646,cb-267-44099224,close,0,close,1,0,QUANTUM OPTICS LABORATORY EQUIPMENT,Department of National Defence (DND),Delta Photonics
+647,cb-267-83314067,close,0,close,0,0,"Bench Lyophilizer, pump and drying chamber",Fisheries and Oceans Canada,VWR International Co.
+648,cb-273-21101759,close,0,close,1,0,XRAY FLUORESCENCE SPECTROMETER,National Research Council Canada,HORIBA CANADA INC
+649,cb-274-9675761,close,0,close,1,0,COULOMETRIC KARL FISCHER TITRATOR,CNRC-NRC,"METROHM CANADA, INC"
+650,cb-28-67802141,close,0,close,1,0,Automated Coin-Cell crimper and Sealing Machine,National Research Council of Canada (NRC),Cellerate Limited
+651,cb-284-54582284,close,0,close,0,0,Three (3) Reach in Growth Chambers,Agriculture Agri-Food Canada,Chase Office Interiors Inc.
+652,cb-285-76674067,close,0,close,1,0,monochromator based microplate reader for fluorescence and colorimetric (absorbance) assays,National Research Council Canada,Fisher Scientific
+653,cb-287-41391063,close,0,close,1,0,Turbo Pump for Semiconductor Growth System,National Research Council of Canada (NRC),Can-Vac Technologies
+654,cb-29-2193051,close,0,close,1,0,Two (2) Fume Hoods,Environment and Climate Change Canada,
+655,cb-292-44952927,close,0,close,1,0,Supply and Installation of Multiport Chemisorption /Physisorption /Micropore Analyzer plus Preparation Degas System,National Research Council of Canada,Anton Parr
+656,cb-297-46834517,close,0,close,1,0,High Resolution Sputter Coater for Field Emission Scanning Electron Microscopy,National Research Council of Canada (NRC),
+657,cb-304-42824918,close,0,close,0,0,Purchase of a Digital PCR,Agriculture and Agri-Food Canada,Fisher Scientific
+658,cb-304-71789230,close,0,close,1,0,Vacuum Arc Furnace,National Research Council of Canada (NRC),Across International
+659,cb-305-81971151,close,0,close,1,0,Snap-On Versatest Digital Monitor,Department of National Defence (DND),
+660,cb-306-2111192,close,0,close,1,0,"Filter Element, Fluid",Department of National Defence,Les Hall Filter Services (2013) Ltd.
+661,cb-309-70131307,close,0,close,1,0,Laboratory clean steam sterilizer,National Research Council of Canada (NRC),STERIS Canada Sales ULC
+662,cb-311-17643640,close,0,close,1,0,Langmuir Probe,National Research Council of Canada (NRC),RollanTech Inc
+663,cb-312-26237167,close,0,close,0,0,NPP - Sintering Furnace,Department of Natural Resources (NRCan),
+664,cb-312-79282749,close,0,close,1,0,Wet Processing Bench with Ducted Fume Hood,RCMP-GRC,ADOR Tech Inc
+665,cb-315-75635088,close,0,close,1,0,Tangential Flow Filtration (TFF) System,National Research Council of Canada (NRC),Repligen
+666,cb-316-99652723,close,0,close,1,0,INDUCTIVELY COUPLED PLASMA – OPTICAL EMISSION  SPECTROMETER WITH AUTOSAMPLER,National Research Council Canada,Agilent Technologies
+667,cb-32-21230903,close,0,close,1,0,Notice of Proposed Procurement (NPP),Department of Agriculture and Agri-Food (AAFC),Lekter industrial Services Inc.
+668,cb-321-83286122,close,0,close,1,0,Purchasing of high-speed extremely low noise visible camera,National Research Council of Canada (NRC),"EVIDENT Canada MIS, Inc"
+669,cb-327-12369462,close,0,close,0,0,Microwave Digestion System,Canadian Grain Commission (CGC),
+670,cb-329-2253464,close,0,close,1,0,Wet Chemical Processing Station with Ductless Fume Hood,Royal Canadian Mounted Police (RCMP),
+671,cb-33-3268533,close,0,close,1,0,Automatic Programmable Polisher (PAPR),Kacendra Dion,Struers Limited
+672,cb-33-5102255,close,0,close,1,0,Ozone Analyzers,Mitchell Palmer,
+673,cb-331-13823179,close,0,close,1,0,Digital vertical milling Machine,NRC-CNRC,Sirco Machinery Ltd.
+674,cb-335-2777837,close,0,close,1,0,"FILTER ELEMENT, FLUID",Department of National Defence (DND),Felix Technology Inc
+675,cb-338-29913907,close,0,close,1,0,Acoustic Mixing System,National Research Council of Canada (NRC),
+676,cb-343-97267643,close,0,close,1,0,"Supply, delivery, installation and training of an Automatic and Programmable cut off machine.",National Research Council of Canada,
+677,cb-344-62418333,close,0,close,0,0,QETE Three (3) Flash Point Testers,Department of National Defence,Canadawide Scientific
+678,cb-346-97890354,close,0,close,0,0,NPP – 2-ISED212010 – E60HN-16ELEC – Stream 2 - AC/DC Power Supplies (NCR),Department of Industry (ISED),GRAYBAR CANADA LIMITED
+679,cb-35-6563846,close,0,close,1,0,Notice of Proposed Procurement (NPP)- Spectrometric Probe,Natural Resources Canada,
+680,cb-35-95414431,close,0,close,1,0,"PARTS KIT, SEPARATOR",Department of National Defence (DND),Simex Defence Inc
+681,cb-353-81816333,close,0,close,1,0,Spray Coater,National Research Council of Canada (NRC),Felix Technology Inc.
+682,cb-355-58440981,close,0,close,1,0,Robotic Loading and Unloading Microwave Digestion Oven,National Research Council of Canada (NRC),CEM Corporation inc
+683,cb-356-55935720,close,0,close,1,0,Guildline 6540-B Hybrid Bridge,Department of National Defence (DND),
+684,cb-357-47560952,close,0,close,1,0,Growth Chambers (2) - St-Jean-sur-Richelieu Research and Development Center,Department of Agriculture and Agri-Food (AAFC),Gestion Imm-Tech Inc.
+685,cb-358-6281665,close,0,close,1,0,Purchase of one (1) Medium Freeze Dryer,Eastern Service Center )AAFC),Tekniscience
+686,cb-368-1150982,close,0,close,1,0,High Vacuum Cool Magnetron Sputter and Carbon Coating System.,Department of National Defence (DND),
+687,cb-370-70882805,close,0,close,1,0,Active Vibration Isolation System compatible with a Thermo Fisher Scientific Verios 5 Ultra High Resolution Scanning Ele,National Research Council of Canada (NRC),
+688,cb-372-54778950,close,0,close,1,0,Steam Sterilizer Autoclave.,Canadian Food Inspection Agency,
+689,cb-374-5829093,close,0,close,1,0,Autostainer,Canadian Food Inspection Agency (CFIA),
+690,cb-376-70830646,close,0,close,1,0,Electron Multiplying Charged-Coupled Device (EMCCD) camera for Adaptive Optics (AO),National Research Council of Canada (NRC),Nüvü Caméras
+691,cb-379-23884636,close,0,close,1,0,Potentiostat/Galvanostat (Vancouver),National Research Council Canada,Les Solutions Snowhouse 2014 Inc
+692,cb-380-64859505,close,0,close,1,0,Automated liquid handler with aptamer screening capabilities,National Research Council of Canada (NRC),
+693,cb-386-99132772,close,0,close,1,0,Ultra high-performance liquid chromatography system with diode array and fluorescence detection,Department of Health (HC),
+694,cb-388-52251139,close,0,close,1,0,Acquisition of Environmental Chambers Cyclic,National Research Council Canada,Rollan Tech Inc.
+695,cb-390-93072096,close,0,close,1,0,OPMI Pico Surgical Microscope or equivalent,Royal Canadian Mounted Police (RCMP),Opti-Tech Scientific Inc
+696,cb-393-24011224,close,0,close,1,0,Ultramicrotome Sample Preparation System,National Research Council of Canada (NRC),Leica Microsystems Canada
+697,cb-393-83500933,close,0,close,1,0,Purchase and delivery of an Atomic Force Microscope (AFM),National Research Council of Canada (NRC),
+698,cb-399-36776815,close,0,close,1,0,X-Ray Fluorescence Analyzer,Environment and Climate Change Canada (ECCC),
+699,cb-401-27530063,close,0,close,1,0,Growth Chamber,Canadian Food Inspection Agency (CFIA),
+700,cb-403-43482130,close,0,close,1,0,NANO X_RAY COMPUTED TOMOGRAPHY (CT),National Research Council of Canada (NRC),Soquelec
+701,cb-407-22943643,close,0,close,1,0,Wind Turbine Simulator - Amendment 003,National Research Council of Canada (NRC),FRONTWAVE SYSTEMS  LTD.
+702,cb-407-23663808,close,0,close,1,0,MULTICHANNEL POTENTIOSTAT FOR HIGH THROUGHPUT EXPERIMENTATION,National Research Council Canada,PalmSens BV
+703,cb-41-72429647,close,0,close,0,0,Benchtop Centrifuge,Canadian Food Inspection Agency,
+704,cb-418-91720961,close,0,close,0,0,Procurement of Two-Dimensional Gas Chromatography Scientific Equipment,Department of Natural Resources (NRCan),LECO INSTRUMENTS ULC
+705,cb-421-30984701,close,0,close,0,0,Digital Holographic Camera,Department of Fisheries and Oceans (DFO),Hoskin Scientific Limited
+706,cb-424-87236160,close,0,close,1,0,Electrochemical Quartz Crystal Microbalance System,National Research Council of Canada (NRC),
+707,cb-426-49289266,close,0,close,1,0,SA - Seventeen (17) Low Temperature Growth Chambers - AAFC Central Region,Department of Agriculture and Agri-Food (AAFC),
+708,cb-429-25663302,close,0,close,1,0,Scanning electrochemical microscopy system for HIGH Throughput Experimentation,National Research Council of Canada (NRC),Harvard BioScience
+709,cb-431-54773506,close,0,close,1,0,One (1) Autoclave Steam Sterilizer,Department of Agriculture and Agri-Food (AAFC),Lekter industrial Services Inc.
+710,cb-432-80204007,close,0,close,0,0,Carbon and Sulfur Analyzer,Natural Resources Canada,
+711,cb-436-6672806,close,0,close,1,0,Gas Compression Recovery System,National Research Council of Canada (NRC),
+712,cb-437-75747394,close,0,close,1,0,"Provide, install and commission a Film Casting Line",National Research Council of Canada (NRC),Collin Lab & Pilot Solutions
+713,cb-437-94629216,close,0,close,1,0,Liquid Dispensing Robot for High Throughput Experimentation,National Research Council of Canada (NRC),
+714,cb-438-949005,close,0,close,1,0,Acquisition of a Constant Climate Chamber.,National Research Council Canada,VWR International Co.
+715,cb-442-31324006,close,0,close,1,0,Electronic Tongue,National Research Council of Canada (NRC),Alpha MOS America Inc.
+716,cb-443-10410165,close,0,close,1,0,BATTERY MODULE CYCLER AND SIMULATOR,National Research Council of Canada (NRC),AVL TSI Canada inc.
+717,cb-446-82298053,close,0,close,1,0,Water Quality Monitoring Buoys,Environment and Climate Change Canada,Hoskin Scientific Ltd
+718,cb-4460-25119599,close,0,close,1,0,Environmental Chambers,DLP 8-2-2,Felix Technology Inc.
+719,cb-448-33241366,close,0,close,0,0,NPP - Optical Microscope,Department of Natural Resources (NRCan),
+720,cb-45-11838355,close,0,close,1,0,Supply and delivery of an automated DNA and RNA sample quality control (QC) instrument,Fisheries and Oceans Canada,
+721,cb-45-21805431,close,0,close,1,0,Purchase of Two (2) High Current Potentiostats,National Research Council of Canada,Northern Materials
+722,cb-458-96423742,close,0,close,1,0,Ergonomic Phase Microscope,Royal Canadian Mounted Police (RCMP),Opti-Tech Scientific Ltd.
+723,cb-462-68370553,close,0,close,1,0,Four (4) Reach-in Growth Chambers,Department of Agriculture and Agri-Food (AAFC),Scollard Maintenance Limited
+724,cb-465-3100567,close,0,close,1,0,Supply of Hardware and Software for Equipment Monitoring System,Health Canada,
+725,cb-4656-46760253,close,0,close,1,0,Handheld Raman Spectrometer,Royal Canadian Mounted Police,Levitt-Safety Limited
+726,cb-469-37549092,close,0,close,1,0,THERMOFORMING MACHINE,National Research Council of Canada (NRC),RAD GLOBAL  PROCUREMENT INC
+727,cb-473-50143177,close,0,close,1,0,Procurement of refurbished or demo Photovoltaic (PV) Array Simulators,National Research Council of Canada (NRC),Keysight Technologies Canada
+728,cb-476-45303937,close,0,close,1,0,Air Dryer Spares,National Defence,Altec Air LLC
+729,cb-480-18450980,close,0,close,0,0,Calibration of Vaisala HMP155A Sensors - Supply Arrangement (SA) E60PV-19EQUI,Department of the Environment (ECCC ),
+730,cb-483-56366637,close,0,close,1,0,Bio-capacitance probe system,National Research Council of Canada (NRC),
+731,cb-484-14397312,close,0,close,1,0,Mobile Hyperspectral Camera,National Research Council of Canada (NRC),Channel Systems Inc.
+732,cb-485-17155936,close,0,close,1,0,High throughput device for rapid cellular metabolic characterization,National Research Council of Canada (NRC),Biolog Inc.
+733,cb-485-58430599,close,0,close,1,0,Sanitizing Cabinets,Royal Canadian Mounted Police (RCMP),BALAJI ENTERPRISES INC.
+734,cb-49-12597740,close,0,close,1,0,Resonant Acoustic Mixer,National Research Council of Canada (NRC),
+735,cb-4940-34555060,close,0,close,1,0,Purchase of four (4) Growth Chambers,Agriculture and Agri-Food Canda,Bio Chambers Incorporated
+736,cb-495-58579648,close,0,close,1,0,Differential Scanning Fluorimetry,National Research Council of Canada (NRC),
+737,cb-495-60861984,close,0,close,1,0,Reactor System,Department of National Defence (DND),
+738,cb-495-91907435,close,0,close,1,0,Automated Microwave Synthesizer,National Research Council,Anton Paar Canada
+739,cb-498-96914414,close,0,close,1,0,Climate Chambers for High Throughput Experimentation,National Research Council of Canada (NRC),Felix Technology Inc
+740,cb-500-58796906,close,0,close,0,0,5.4 Professional Engineer – Level 3,National Research Council Canada,
+741,cb-503-2760470,close,0,close,1,0,Lab Equiptment,Mitchell Palmer,
+742,cb-503-72873549,close,0,close,0,0,Plant Grinder,Agriculture Agri-Food Canada,
+743,cb-503-83948548,close,0,close,1,0,Roll-to-Roll Slot-Die Coater,National Research Council of Canada (NRC),FOM Technologies
+744,cb-505-15721965,close,0,close,0,0,Measurements International Standard Resistor Oil Bath,DND QETE-5,
+745,cb-505-95917993,close,0,close,1,0,Guildline 7520 Voltage Divider,Department of National Defence (DND),
+746,cb-511-73649691,close,0,close,1,0,"Supply, delivery, installation and commissioning of one Differential Scanning Calorimeter System (DSC)",National Research Council of Canada,
+747,cb-513-33255253,close,0,close,1,0,Elemental analyzer CHNOS,fed gov't,
+748,cb-513-57995519,close,0,close,1,0,DR10 Heater Tube Deposit Rater with AK210-004 Range Thickness Reference Tube Equivalent,Department of National Defence (DND),
+749,cb-514-91213475,close,0,close,1,0,Ultrasonic Welder,National Research Council of Canada (NRC),Felix Dynamics Inc.
+750,cb-519-36933120,close,0,close,1,0,Existent Gum Content Tester,Department of National Defence (DND),
+751,cb-520-60395416,close,0,close,1,0,POLYMER INJECTION MOLDING MACHINE,National Research Council of Canada (NRC),KRAUSS-MAFFEI  CORPORATION
+752,cb-521-84134721,close,0,close,1,0,Charpy Test Machine,Department of National Defence (DND),
+753,cb-524-37880453,close,0,close,1,0,Diaphragm Burst Tester,Department of National Defence (DND),RollanTech Inc.
+754,cb-525-95476179,close,0,close,1,0,RAMAN Spectrometer,Environment and Climate Change Canada,
+755,cb-533-24257897,close,0,close,1,0,3D PRINTER,National Research Council of Canada (NRC),CLARICA GROUP INC
+756,cb-539-9569209,close,0,close,1,0,Rheometer,National Research Council Canada,TA Instruments  Waters LLC
+757,cb-541-59649965,close,0,close,1,0,Purchase of One (1) Liquid Chromatography System,Department of Agriculture and Agri-Food (AAFC),
+758,cb-544-1759279,close,0,close,1,0,Purchase of one (1) General-Purpose Laboratory Vacuum Vessel,National Research Council of Canada (NRC),
+759,cb-55-83403063,close,0,close,1,0,Chromatography Instrument,Department of Fisheries and Oceans (DFO),Thermo Fisher Scientific Inc.
+760,cb-551-45180862,close,0,close,1,1,Request for Proposal - Purchase of one (1) Real-time PCR System,Agriculture and Agri-Food Canada,ThermoFisher Scientific Inc
+761,cb-552-2019924,close,0,close,1,0,Notice of Proposed Procurement (NPP),Department of Agriculture and Agri-Food (AAFC),
+762,cb-5564-14949210,close,0,close,1,0,Freezers,Canadian Food Inspection Agency (CFIA),
+763,cb-5596-19181321,close,0,close,1,0,"NPP - Non-Stirred, Instrumented Pressure Vessel",Natural Resources Canada,
+764,cb-562-56089226,close,0,close,1,0,CYANOACRYLATE FUMING CHAMBER,Royal Canadian Mounted Police (RCMP),
+765,cb-563-69527459,close,0,close,1,0,Vector Network Analyzer,Department of Industry (ISED),GAP WIRELESS INC. (NWS CANADA)
+766,cb-566-5186432,close,0,close,1,0,THERMOFORMING MACHINE,National Research Council of Canada (NRC),RAD GLOBAL  PROCUREMENT INC
+767,cb-567-18489775,close,0,close,1,0,Battery cell and module cyclers,National Research Council of Canada (NRC),AVL TSI Canada Inc
+768,cb-568-76086053,close,0,close,1,0,-80 Freezers,Canadian Food Inspection Agency,
+769,cb-571-27400596,close,0,close,0,0,Procurement of Raman Microscope - Scientific Equipment,Department of Natural Resources (NRCan),
+770,cb-574-12858963,close,0,close,0,0,Procurement of Raman Microscope - Scientific Equipment,Department of Natural Resources (NRCan),
+771,cb-580-30634914,close,0,close,1,0,Fluke 9260 Mini Fixed-Point Cell furnace,Department of National Defence (DND),
+772,cb-580-37910828,close,0,close,0,0,Freeze Dryer System for Pacific Forestry Centre,Natural Resources Canada,
+773,cb-588-11207666,close,0,close,1,0,ANDEEN HAGERLING AH2700A CAPACITANCE BRIDGE,Department of National Defence (DND),
+774,cb-589-67135512,close,0,close,1,0,Bio Safety Cabinets,Canadian Food Inspection Agency (CFIA),
+775,cb-59-89793082,close,0,close,1,0,3D Printer,National Research Council of Canada (NRC),Dyze Design
+776,cb-590-62185326,close,0,close,1,0,Purchase and delivery of a Custom Optical Table configured as a Symmetric U Table Top System for ultrafast lasers and in,National Research Council of Canada (NRC),BiOptiPro Ltd.
+777,cb-600-43419060,close,0,close,1,0,Programmable Optical Processor,National Research Council Canada,Starvoy Technologies Inc.
+778,cb-601-65403978,close,0,close,0,0,Laboratory equipment - Analytical High Precision Microbalances,Natural Resources Canada,
+779,cb-602-43688694,close,0,close,1,0,Purchase of one (1) Growth Cabinet,Agriculture and Agri-Food Canada,GENOME QUEBEC
+780,cb-603-60294031,close,0,close,1,0,Elemental analyzer CHNOS,fed gov't,
+781,cb-606-16051814,close,0,close,0,0,Two (2) glassware wash machines,Department of the Environment (ECCC ),THERMO FISHER SCIENTIFIC INC
+782,cb-606-72645774,close,0,close,1,0,Gas Burning Velocity,National Research Council of Canada (NRC),
+783,cb-616-63768704,close,0,close,1,0,Fume Hood,Royal Canadian Mounted Police,
+784,cb-621-201328,close,0,close,1,0,Microscope and Camera,Department of Fisheries and Oceans (DFO),Nikon Canada Inc.
+785,cb-622-74904803,close,0,close,1,0,"Radio Frequency (RF) Shelter, including input/output (I/O) Plate, Electromagnetic Interference (EMI) Hardened Lights, Ve",Department of National Defence,Felix Technology Inc.
+786,cb-6247-17589596,close,0,close,1,0,Centrifuge,Canadian Food Inspection Agency (CFIA),
+787,cb-626-22531790,close,0,close,0,0,Laboratory and scientific equipment,Defence Research and Development Canada,
+788,cb-628-88132391,close,0,close,1,0,Rotary Degassing And Flux Injection System,National Research Council Canada,PyroTek
+789,cb-629-58355172,close,0,close,1,0,3D Printer,National Research Council of Canada (NRC),CLARICA GROUP INC
+790,cb-6317-1079718,close,0,close,1,0,Purchase of 1(one) Microtox LX Analyzer,Agriculture and Agrifood Canada,Les Installations Electriques R. Théberge
+791,cb-636-74982639,close,0,close,0,0,Autoclave double door,CFIA,
+792,cb-637-27095940,close,0,close,1,0,"Brunauer, Emmet, and Teller (BET) surface area analyzer",National Research Council of Canada (NRC),Anton Paar Canada Inc.
+793,cb-6405-78601019,close,0,close,1,0,"Radio Frequency (RF) Shelter, including input/output (I/O) Plate, Electromagnetic Interference (EMI) Hardened Lights, Ve",Department of National Defence,
+794,cb-643-22535310,close,0,close,0,0,Purchase of a medium freeze dryer,Agriculture and Agri-Food Canada (AAFC),Avantor Inc (VMR International Co.)
+795,cb-646-44657796,close,0,close,1,0,Notice of Proposed Procurement- Refinery gas analyzer system,Natural Resources Canada,
+796,cb-651-57508990,close,0,close,1,0,Fourier-transform Infrared Spectrometer (FTIR) instrument,Department of Health (HC),
+797,cb-656-32079924,close,0,close,1,0,REFRIGERATED INCUBATOR SHAKER,Canadian Food Inspection Agency (CFIA),
+798,cb-656-69659238,close,0,close,0,0,Shaker Cooling Systems Replacement,Department of National Defence (DND),
+799,cb-66-3358125,close,0,close,1,0,"Halifax class spares - SEPARATOR,OIL",Department of National Defence (DND),Unisource Technology Inc
+800,cb-667-47564452,close,0,close,1,0,E60PV-19EQUI - Chromatographic measuring instruments and accessories,Health Canada,Agilent Technologies Canada Inc.
+801,cb-6679-79043272,close,0,close,1,0,TSX Series Upright -80 Freezer (TSX 70086A),Canadian Food Inspection Agency,
+802,cb-669-40737794,close,0,close,1,0,CASTING AND MACHINING OF SUBMARINE DYNAMOMETER COMPONENTS,National Research Council of Canada (NRC),9104-4289 Quebec inc
+803,cb-672-82700245,close,0,close,1,0,Vapour Pressure Tester for Aviation Gasoline,Department of National Defence (DND),Parkes Scientific Canada Inc.
+804,cb-673-34109826,close,0,close,1,0,Narda Fieldman and Accessories,Department of National Defence (DND),
+805,cb-674-11724978,close,0,close,1,0,Benchtop X-ray Diffractometer,National Research Council of Canada (NRC),
+806,cb-675-24797315,close,0,close,1,0,Tangential Flow Filtration (TFF) System,National Research Council of Canada (NRC),Repligen
+807,cb-675-53692150,close,0,close,1,0,Fluorescence Spectrometer with Advanced Excitation Emission Matrix Spectroscopy (EEMS) Analysis Capabilities,National Research Council of Canada (NRC),VWR International Co.
+808,cb-6781-48999059,close,0,close,0,0,Molybdenum disilicide Furnace for polymer pre-ceramic pyrolysis,DND-DRDC Valcartier,
+809,cb-68-30066752,close,0,close,1,0,8.5’’Custom Stainless Steel Exhaust Hood,National Research Council Canada,
+810,cb-682-97951691,close,0,close,1,0,Two (2) multi-Global Navigation Satellite System (GNSS) and one (1) smart antenna equipment for ship-based field work,National Research Council of Canada (NRC),
+811,cb-6858-34506269,close,0,close,0,0,Spectrograph,NRC-CNRC,
+812,cb-695-86547750,close,0,close,0,0,Notice of Proposed Procurement,Natural Resources Canada,Thermo Fisher Scientific
+813,cb-696-74795793,close,0,close,0,0,Purchase of Automated Cell Viability Analyzer,National Research Council of Canada,Beckman Coulter
+814,cb-699-52673474,close,0,close,1,0,8.5’’Custom Stainless Steel Exhaust Hood,National Research Council Canada,SIC Experts inc
+815,cb-700-46574371,close,0,close,0,0,Floor model Ultra High Speed Refrigerated Centrifuge,Canadian Food Inspection Agency,
+816,cb-706-59676203,close,0,close,0,0,Two Tier Growth Chamber,Agriculture Agri-Food Canada,
+817,cb-706-60766018,close,0,close,1,0,Provision of a rheometer as well as training on its operation and  maintenance.,National Research Council of Canada (NRC),TA Instruments – Waters LLC
+818,cb-714-51073001,close,0,close,1,0,DAQ system for acoustic measurements and room controls,Conseil National de Recherche Canada,Testforce Systems Inc
+819,cb-724-21747049,close,0,close,0,0,Two (2) Senior Technicians (Applied Chemistry),Department of National Defence (DND),Altis Recruitment & Technology Inc.
+820,cb-725-56599469,close,0,close,1,0,NPP Mass Spectrometer based Gas Analysis system,Natural Resources Canada,CCR Process Products
+821,cb-7269-77124915,close,0,close,1,0,Cold Filter Plugging Point Instrument,Department of National Defence,Anton Paar
+822,cb-733-25647240,close,0,close,1,0,26-58113 Universal Testing Machine with non-contact Extensometer for polymer research,National Research Council of Canada (NRC),testworX Inc.
+823,cb-733-71702547,close,0,close,1,0,"High Resolution, Lithographic 3D Printing System for Metals, Ceramics and Polymers",National Research Council of Canada (NRC),
+824,cb-737-25025461,close,0,close,1,0,Large Slurry Mixer,National Research Council of Canada (NRC),
+825,cb-740-51380710,close,0,close,1,0,High Throughput Digital PCR Instrument,National Research Council Canada,Qiagen Inc
+826,cb-742-6929020,close,0,close,1,0,"26-58018 Laboratory Wind Wall System, Q&A 6, Amendment #7",National Research Council of Canada (NRC),
+827,cb-743-17003020,close,0,close,1,0,MANUAL PROBE STATION,National Research Council Canada,Yunyi Creation Ltd.
+828,cb-743-79393082,close,0,close,1,0,Roll-to-Roll Slot-Die Coater,National Research Council of Canada (NRC),FOM Technologies
+829,cb-747-26685857,close,0,close,1,0,Multichannel Quartz Crystal Microbalance System,National Research Council of Canada (NRC),
+830,cb-749-6129002,close,0,close,1,0,Vapour Pressure Tester for Aviation Gasoline,Department of National Defence (DND),
+831,cb-750-96470052,close,0,close,1,0,"FILTER UNIT,FLUID,PRESSURE",Department of National Defence (DND),GCPROC Ltd
+832,cb-751-71596749,close,0,close,0,0,Freeze dryer,Natural Resources Canada,
+833,cb-754-58069090,close,0,close,1,0,Electrical Load Banks,Department of National Defence (DND),
+834,cb-7543-47504520,close,0,close,1,0,Gas Permeability Tester,National Research Council of Canada,
+835,cb-755-12813197,close,0,close,1,0,100W Proton Exchange Membrane Fuel Cell (PEMFC) Test Station,National Research Council of Canada,Felix Technology Inc
+836,cb-757-7224035,close,0,close,0,0,One (1) Automated Liquid Handler System,Environment and Climate Change Canada,Fisher Scientific
+837,cb-764-82274307,close,0,close,1,0,Refrigerated and heated walk in environmental or growth chambers,National Research Council Canada,Rollan Tech Inc.
+838,cb-7644-7793254,close,0,close,0,0,ANOXOMAT III Gas Jar System,Canadian Food Inspection Agency (CFIA),
+839,cb-765-44503865,close,0,close,1,0,Plasma Cleaner,National Research Council Canada,PIE SCIENTIFIC LLC
+840,cb-7650-99561944,close,0,close,0,0,Real-Time PCR System,Agriculture and Agri-Food Canada,Bio-Rad Laboratories (Canada) Ltd
+841,cb-766-69576613,close,0,close,1,0,Confocal Cellular Imaging Reader,Department of Health (HC),Fisher Scientific
+842,cb-770-25860618,close,0,close,1,0,Request for Proposal - Purchase of three (3) Growth Chambers,Agriculture and Agri-Food Canada,Controlled Environments Limited
+843,cb-772-35752798,close,0,close,0,0,Purchase of a Cell Imager and Analyzer System,National Research Council of Canada,Synentec Inc.
+844,cb-772-88773791,close,0,close,0,0,PARTICLE SIZE AND ZETA POTENTIAL ANALYZER FOR HIGH  THROUGHPUT EXPERIMENTATION,National Research Council Canada,Anton Paar Canada Inc
+845,cb-772-91511043,close,0,close,0,0,Notice of Proposed Procurement-Anaerobic chamber system,Natural Resources Canada,Mandel Scientific Company Inc.
+846,cb-775-12568845,close,0,close,1,0,aluminum melting furnace with a vacuum dosing unit,National Research Council Canada,Felix Technology Inc.
+847,cb-7774-3851381,close,0,close,0,0,Purchase of Anaerobic Chamber,Agriculture and Agri-Food Canada (AAFC),GENEQ Inc.
+848,cb-785-83373862,close,0,close,1,0,Sanitizing Cabinets,Royal Canadian Mounted Police (RCMP),
+849,cb-788-19250552,close,0,close,1,0,"25-58054 LASER BAR STACKER AND UNSTACKER SYSTEM, Amendment #7",National Research Council of Canada (NRC),
+850,cb-789-24349870,close,0,close,1,0,Purchase and delivery of one (1) of a Spectrograph for dispersing short-wave infrared wavelengths,National Research Council of Canada (NRC),SnowHouse Solutions
+851,cb-7938-1678679,close,0,close,1,0,Dropping Point System Purchase,Canada Border Service Agency (CBSA),
+852,cb-794-65193229,close,0,close,1,0,Acquisition of a Particle Size Analyzer,National Research Council Canada,
+853,cb-795-45301897,close,0,close,1,0,single cylinder research engine,Federal Government,AVL Test Systems
+854,cb-798-65005999,close,0,close,1,0,NPP – RFP212758 – E60HN-16ELEC – E60HN-16ELEC – Stream 1 -  EMC/EMI compliance and pre-compliance testers (NCR),"Innovation, Science and Economic Development Canada",
+855,cb-8-95540181,close,0,close,1,0,Raman Spectrometer,National Research Council of Canada (NRC),Doreenex Solutions Inc.
+856,cb-801-59371300,close,0,close,1,0,High Resolution Sputter Coater,National Research Council of Canada (NRC),
+857,cb-804-83265662,close,0,close,1,0,Vehicular Equipment Components,Department of National Defence (DND),Aviation Ground Fueling Technologies
+858,cb-805-29552601,close,0,close,1,0,High-Pressure Dual Syringe Continuous Flow Pump,Department of Natural Resources (NRCan),
+859,cb-805-46379766,close,0,close,1,0,SA - Nineteen (19) Low Temperature Growth Chambers - AAFC Western Region,Department of Agriculture and Agri-Food (AAFC),
+860,cb-806-69633204,close,0,close,1,0,FILTERS FOR TANK AIRCRAFT REFUELLING,Department of National Defence (DND),
+861,cb-8161-63274123,close,0,close,0,0,Laboratory Mixer Mill,Agriculture Agri-Food Canada,
+862,cb-8176-40781587,close,0,close,0,0,Supply Arrangement E60PV-19EQUI  - Ultra Pure Water System,Health Canada,Fisher Scientific
+863,cb-8177-16461324,close,0,close,1,0,Supply Arrangement E60PV-19EQUI  - analytical balance for weighing purposes,Health Canada,
+864,cb-818-44688765,close,0,close,1,0,Growth Chamber,Canadian Food Inspection Agency,
+865,cb-8186-58468822,close,0,close,0,0,Supply Arrangement E60PV-19EQUI - Distek 2500 Dissolution Bath,Health Canada,
+866,cb-8213-33134468,close,0,close,0,0,Automated Capillary Electrophoresis System,Environment and Climate Change Canada,Agilent Technologies Canada Inc.
+867,cb-826-14525611,close,0,close,1,0,Anton Parr DMA 5002 Density Meter,Department of National Defence (DND),
+868,cb-827-24469529,close,0,close,1,0,Supply of a particle size analyzer E60PV-19EQUI,National Research Council of Canada,
+869,cb-828-62004759,close,0,close,1,0,Filters And O-Rings For Tank Aircraft Refuelling,Department of National Defence (DND),
+870,cb-830-43167780,close,0,close,1,0,Wet Processing Bench with Ductless Fume Hood,RCMP-GRC,
+871,cb-830-57725980,close,0,close,1,0,Simultaneous Thermal Analyzer (TGA/DSC),National Research Council Canada,TA Instruments Waters LLC
+872,cb-834-35311537,close,0,close,1,0,"Purchase, Installation, Training for Walk-In Chamber",National Research Council of Canada (NRC),Felix Technologies
+873,cb-835-43444899,close,0,close,1,0,"Fluid Filter Components Kit (Parts, Gauge & Filter Element)",Department of National Defence (DND),
+874,cb-835-86621604,close,0,close,1,0,Raman Spectrometer,National Research Council of Canada (NRC),Doreenex Solutions Inc.
+875,cb-838-25562851,close,0,close,1,0,Two Articulated Robots,National Research Council of Canada (NRC),Fanuc Canada Ltd
+876,cb-838-63677573,close,0,close,1,0,Elemental analyzer CHNOS,fed gov't,ATS Scientific
+877,cb-843-75222331,close,0,close,0,0,Growth Chamber,Canadian Food Inspection Agency,
+878,cb-844-37401577,close,0,close,0,0,Science equipment - Spectrometer (WD XRF) – Procurement Specification,Department of Natural Resources (NRCan),
+879,cb-8450-98769478,close,0,close,1,0,Autosampler for use on a Sotax AT Xtend Dissolution Bath,Health Canada,
+880,cb-848-92391172,close,0,close,1,0,17-4PH Stainless Plate,National Research Council of Canada (NRC),Loucon Metal Limited
+881,cb-85-53172905,close,0,close,0,0,Purchase of six (6) Fume Hoods,Environment and Climate Change Canada,
+882,cb-8541-37207898,close,0,close,1,0,Two (2) Fume Hoods,Environment and Climate Change Canada,
+883,cb-8569-10683197,close,0,close,0,0,Supply of Four (4) CO2 Cell Culture Incubators,Health Canada,
+884,cb-857-17281787,close,0,close,1,0,Automatic Distillation Unit,Department of National Defence,Parkes Scientific Canada
+885,cb-858-14428942,close,0,close,1,0,Battery Energy Storage System (BESS),National Research Council of Canada (NRC),
+886,cb-859-32995192,close,0,close,0,0,Laboratory equipment,Natural Resources Canada,
+887,cb-862-72996511,close,0,close,1,0,X-ray Nano Computed Tomography (Nano CT) system,National Research Council of Canada (NRC),Soquelec
+888,cb-8640-4631029,close,0,close,1,0,CO2 Electrolysis Test Station,National Research Council of Canada,Felix Technology Inc
+889,cb-871-99431573,close,0,close,1,0,Laboratory Clean Tent for Unertl Table,National Research Council of Canada (NRC),Perotech Sciences Inc.
+890,cb-872-38874859,close,0,close,1,0,Supply Arrangement E60PV-19EQUI - Freeze dryer with large bulk sample load - Kentville RDC,Department of Agriculture and Agri-Food (AAFC),
+891,cb-873-73132351,close,0,close,1,0,"Acquisition of Transient Plane Source, Hot Wire and Measuring Platform",National Research Council Canada,C-Therm Technologies Ltd
+892,cb-873-80348697,close,0,close,1,0,High Speed Centrifuge,Canadian Food Inspection Agency (CFIA),
+893,cb-876-97136695,close,0,close,1,0,Supply and Delivery of a metallic and polymeric materials impact tester,National Research Council of Canada,Ador Tech inc.
+894,cb-877-79054945,close,0,close,1,0,"Anton Paar Density Meter, P/N DMA 35 Ex Petrol",Department of National Defence (DND),
+895,cb-88-9095129,close,0,close,0,0,NPP Low Temperature Growth Chamber,Agriculture and Agri-Food Canada,RMaddock Electric
+896,cb-881-85355839,close,0,close,1,0,E60PV-19EQUI - Histology Equipment - Microtomes,Department of Health (HC),
+897,cb-882-74564484,close,0,close,1,0,PARTIAL PRESSURE VACUUM SINTERING FURNACE FOR BOUND-METAL ADDITIVE MANUFACTURING,National Research Council of Canada (NRC),
+898,cb-884-46791039,close,0,close,0,0,Auto-Dilution Sample Prep Systems,Natural Resources Canada,
+899,cb-885-45819967,close,0,close,1,0,Brand Name Bending Beam Rheometer (BBR) System,National Research Council Canada,Hoskin Scientific Ltd.
+900,cb-8873-35699527,close,0,close,0,0,Supply Arrangement E60PV-19EQUI - two (2) Peristaltic Pumps,Health Canada,Fisher Scientific
+901,cb-8881-56645268,close,0,close,0,0,Purchase of one (1) Centrifugal Mill,Agriculture and Agri-Food Canada,ATS Scientific Inc
+902,cb-89-70059468,close,0,close,1,0,Low Temperature  Automatic Viscometer,Department of National Defence (DND),
+903,cb-890-15555730,close,0,close,0,0,Molybdenum disilicide Furnace for polymer pre-ceramic pyrolysis,DRDC Valcartier,
+904,cb-8901-87637590,close,0,close,1,0,Automatic Programmable Polisher (PAP),Kacendra Dion,Struers Limited
+905,cb-893-42823314,close,0,close,0,0,Request for Proposal - Purchase of lyophilizer,Agriculture and Agri-Food Canada,Fisher Scientific
+906,cb-894-96137307,close,0,close,1,0,Laboratory-Scale Gas Atomizer,National Research Council of Canada (NRC),
+907,cb-8948-86123557,close,0,close,1,0,Refrigerated Benchtop Centrifuge,CFIA (Canadian Food Inspection Agency) Procurement,
+908,cb-895-51198004,close,0,close,1,0,Simultaneous Thermal Analyzer (TGA/DSC),National Research Council Canada,
+909,cb-895-5623586,close,0,close,0,0,Fume Hood Installation,Health Canada (HC),
+910,cb-8957-38635093,close,0,close,1,0,Acquisition of a Real-time Portable Formaldehyde Analyzer,National Research Council Canada,WESTECH INDUSTRIAL LTD
+911,cb-898-22541160,close,0,close,1,0,Pharmacy Refrigerators,Director Services Contracting,
+912,cb-9-21247306,close,0,close,1,0,Supply of an Automated Liquid Handler,National Research Council of Canada,
+913,cb-90-69152046,close,0,close,1,0,Two (2) Identical Biological Safety Cabinets,Department of the Environment (ECCC ),Fisher Scientific
+914,cb-908-32375127,close,0,close,1,0,Reagent Dispenser,Canadian Food Inspection Agency (CFIA),
+915,cb-91-32802218,close,0,close,1,0,Notice of Proposed Procurement (NPP),Department of Agriculture and Agri-Food (AAFC),
+916,cb-910-37852054,close,0,close,0,0,Purchase of one (1) Real-Time PCR,Eastern Service Center (AAFC),FroggaBio Inc.
+917,cb-910-63711046,close,0,close,0,0,Gantry System,Department of National Defence (DND),
+918,cb-9120-98566790,close,0,close,1,0,Health Canada has a requirement for the supply of two (2) light scattering airborne particle counters,Health Canada,
+919,cb-9135-4917147,close,0,close,1,0,Microwave digestion system,Environment and Climate Change Canada,ATS Scientific Inc.
+920,cb-915-401846,close,0,close,1,0,X-ray Diffraction System (XRD),National Research Council of Canada (NRC),
+921,cb-915-61134486,close,0,close,1,0,Optical spectrum analyzer,National Research Council Canada (NRC),Testforce Systems Inc.
+922,cb-9156-84041580,close,0,close,0,0,LABORTORY CONSUMABLES AND EQUIPMENT,RDDC Totonto,
+923,cb-921-51743946,close,0,close,1,0,Laboratory-Scale Gas Atomizer,National Research Council of Canada (NRC),
+924,cb-922-2222247,close,0,close,1,0,Forensic Microscopes,Royal Canadian Mounted Police,ADOR TECH
+925,cb-9226-18737732,close,0,close,0,0,Low Temperature Growth Chamber,Agriculture Agri-Food Canada,
+926,cb-923-73140898,close,0,close,0,0,Aethalometer- Supply Arrangement (SA) E60PV-19EQUI,Department of the Environment (ECCC ),
+927,cb-923-87915035,close,0,close,1,0,Fast Electronic Spectrum analyzer,National Research Council of Canada (NRC),Rohde & Schwarz Canada Inc.
+928,cb-927-97529616,close,0,close,1,0,500W PEMFC Test Stations,National Research Council of Canada,Greenlight Innovation Corp
+929,cb-93-88972402,close,0,close,1,0,ACCELERATING RATE CALORIMETER (ARC) SYSTEM,National Research Council of Canada (NRC),
+930,cb-930-58658564,close,0,close,0,0,"Laboratory Scientific Equipment, SA E60PV-19EQUI, Oscilloscopes","Department of National Defence, Combat Training Centre",
+931,cb-9304-72069430,close,0,close,1,0,Laboratory and Scientific Equipment - Cytometer for Guelph Research and Development Centre,Agriculture and Agri Food Canda,
+932,cb-935-39544010,close,0,close,1,0,High Capacity Load Cell,National Research Council of Canada (NRC),
+933,cb-9369-59374160,close,0,close,1,0,"Supply and Install a Binder Jetting 3D Printer and associated equipment, as specified.",National Research Council of Canada,
+934,cb-939-53044514,close,0,close,1,0,Two Alkaline Exchange Membrane Water Electrolysis (AEMWE) Test Station,National Research Council of Canada (NRC),Scribner LLC
+935,cb-94-76460679,close,0,close,1,0,Wind Tunnel data acquisition (DAQ) hardware,National Research Council of Canada (NRC),TestForce
+936,cb-942-38382411,close,0,close,1,0,Fume Hood,Royal Canadian Mounted Police (RCMP),Fisher Scientific Company
+937,cb-944-95821340,close,0,close,1,0,Chroma Systems 18207,Department of National Defence (DND),
+938,cb-948-35905648,close,0,close,1,0,Two (2) Fume Hoods,Environment and Climate Change Canada,
+939,cb-952-79777327,close,0,close,0,0,Triple Quadrupole Inductively Coupled Plasma Mass Spectrometer,Department of Natural Resources (NRCan),
+940,cb-953-14257984,close,0,close,0,0,Science equipment - Magnetic Characterization Instrument VSM – Procurement Specification,Department of Natural Resources (NRCan),
+941,cb-954-16355481,close,0,close,1,0,X‑ray Fluorescence (XRF) Analyzer,Department of Fisheries and Oceans (DFO),MFE Inspection Solutions
+942,cb-958-43769373,close,0,close,1,0,Sheet-to-Sheet Slot-Die Coater,National Research Council Canada,FOM Technologies
+943,cb-960-16351701,close,0,close,0,0,Validation Specialist for Clinical Trial Material Facility,National Research Council,Consultation ADM
+944,cb-962-34442937,close,0,close,1,0,Down Converter Module,National Research Council Canada,Felix Technology Inc.
+945,cb-963-4717116,close,0,close,0,0,Reverberation Chamber and Radio Frequency Shielded Control Room,National Research Council Canada (NRC),
+946,cb-963-73320677,close,0,close,1,0,One (1) Growth Chamber,Department of Agriculture and Agri-Food (AAFC),Lekter industrial Services Inc.
+947,cb-970-79186953,close,0,close,1,0,Vessels Reactors,National Research Council of Canada (NRC),Ceretest Inc.
+948,cb-970-95172102,close,0,close,1,0,Reverberation Chamber and Radio Frequency Shielded Control Room,National Research Council of Canada (NRC),Testforce Systems
+949,cb-973-17064731,close,0,close,1,0,AUTOMATED ROTARY MICROTOME,Canadian Food Inspection Agency (CFIA),
+950,cb-976-32375559,close,0,close,1,0,Submarine Dynamometer and Sword Components,National Research Council of Canada (NRC),
+951,cb-976-95646102,close,0,close,1,0,"High Resolution, Lithographic 3D Printing System for Metals, Ceramics and Polymers",National Research Council of Canada (NRC),
+952,cb-977-56701534,close,0,close,0,0,Cryogenic-UltraMicrotome System,National Research Council Canada,Leica Microsystems Inc.
+953,cb-983-4673269,close,0,close,0,0,RFSO_DNA Sequencing,National Research Council of Canada (NRC),GIFS Ag Tech Entreprise Inc.
+954,cb-986-52415404,close,0,close,1,0,Two Stereomicroscopes and workstations,Royal Canadian Mounted Police,
+955,cb-994-1862592,close,0,close,1,0,Notice of proposed procurement- Raman spectrophotometer,Department of Natural Resources (NRCan),
+956,cb-994-73806882,close,0,close,0,0,Hydrogen concentration measurement system,NRC-CNRC,EMC Hycal Limited
+957,cb-997-61067536,close,0,close,1,0,Purchase and delivery of a Custom Optical Table configured as a Symmetric U Table Top System for ultrafast lasers and in,National Research Council of Canada (NRC),BiOptiPro Ltd.
