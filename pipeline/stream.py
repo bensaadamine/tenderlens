@@ -11,9 +11,17 @@
 One tender alone, every component's reasoning: python tenderlens.py tender <ref>.
 
 HOW A RUN WORKS
-  New tenders = notices of the group not yet in the register (plus tenders
-  registered without documents whose text has since been extracted).
-  They are processed in PUBLICATION-DATE order. For each one:
+  Tenders to check = notices of the group not yet in the register, plus
+  those registered still open, with no award found, or without documents
+  whose text has since been extracted. Each is first GATED, cheaply, from
+  the notice, the award file and the list of extracted files
+  (one_tender.gate): only an AWARDED tender WITH DOCUMENTS is processed.
+  The others are only recorded - not an audit case (cancelled, RFI, supply
+  arrangement), still open, no documents, or award not found: that last
+  list (award_not_found.jsonl) is for the inspector to check by hand, with
+  the brand names the level-1 rules find required. Open and award-not-found
+  tenders are gated again on every run. The tenders to process go in
+  PUBLICATION-DATE order. For each one:
     1. extract its numeric requirements (prepare/census.py's own steps: section
        scoping, number parsing, band collapse, unit conversion, restatements)
     2. run the four components, with the BASE as level 2's peers - so a tender
@@ -30,6 +38,9 @@ STORAGE  reports/kb/<group>/  - append-only, so a crash loses at most the
     observations.csv  every requirement extracted, RAW label, tagged run_id
     register.csv      one event per line; a tender's state = its last event.
                       pile = base | quarantine | none
+    award_not_found.jsonl  tenders closed with documents but no award in the
+                      award file: the notice's facts and the brand names
+                      the rules find required (no model)
     feedback.csv      filled in by the auditor: reference, verdict, note
                         verdict clean     -> back to the base
                         verdict confirmed -> stays out; a real test case
@@ -93,6 +104,7 @@ REG_COLS = ["at", "reference", "run_id", "pub_date", "event", "status",
             "pile", "score", "observations", "note"]
 FB_COLS = ["reference", "verdict", "note", "reviewer", "date"]
 QUARANTINE_ROUTES = {"alert", "watch"}
+RECHECK = {"still_open", "award_not_found"}     # gated again on every run
 # Each case goes to cases.jsonl BEFORE its register event, so a crash never
 # leaves a tender registered as done with no case anywhere (the next run
 # would skip it).
@@ -106,6 +118,7 @@ class KB:
         self.reg = os.path.join(self.dir, "register.csv")
         self.fb = os.path.join(self.dir, "feedback.csv")
         self.case_log = os.path.join(self.dir, "cases.jsonl")
+        self.unawarded = os.path.join(self.dir, "award_not_found.jsonl")
         self.batches = os.path.join(self.dir, "batches")
         os.makedirs(self.batches, exist_ok=True)
         for path, cols in ((self.obs, OBS_COLS), (self.reg, REG_COLS),
@@ -146,6 +159,10 @@ class KB:
                 cut = f.read(1) != b"\n"
         with io.open(self.case_log, "a", encoding="utf-8") as f:
             f.write(("\n" if cut else "") + line + "\n")
+
+    def append_unawarded(self, entry):
+        with io.open(self.unawarded, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
     def cases(self):
         """Every logged case, in order. A line cut by a crash is skipped."""
@@ -236,6 +253,22 @@ def extract_tender(ref, row, group, run_id, level2_on=True):
     return docs, out
 
 
+def unawarded_entry(ref, row, s):
+    """What the "Award not found" list shows for a tender: the notice's
+    facts, and the brand names the level-1 rules find required (no model,
+    no level 2), so that those can be checked first."""
+    m2 = m2_spec_auditor.audit(ref, rows=[], online=s.online, agent=False,
+                               title=row.get(m1_screener.C_TITLE) or "",
+                               level2_on=False)
+    return {"reference": ref, "at": time.strftime("%Y-%m-%d %H:%M"),
+            "title": (row.get(m1_screener.C_TITLE) or "").strip(),
+            "buyer": (row.get(m1_screener.C_ENTITY) or "").strip(),
+            "published": (row.get(m1_screener.C_PUB) or "")[:10],
+            "closing": (row.get(m1_screener.C_CLOSE) or "")[:10],
+            "brands": [n["name"] for n in m2.get("names") or []
+                       if n.get("result") == "finding"]}
+
+
 def comparable(rows, amap):
     """Raw rows of ONE tender -> level-2 rows: map, drop 'unknown', dedup."""
     out = []
@@ -267,7 +300,7 @@ def todo_list(notices, group, state, until=None):
         ev = state.get(ref)
         if ev and not ((ev["status"] == "no_documents"
                         and documents.tender_documents(ref))
-                       or ev["status"] == "still_open"):
+                       or ev["status"] in RECHECK):
             continue
         _, date = notice_meta(notices[ref])
         if until and (not date or date > until):
@@ -313,6 +346,9 @@ def run(a):
     s = Settings.from_args(a)
     amap = load_map()
     notices, wstats, _, graph = one_tender.load_shared(level2_on=False)
+    if graph is None:
+        sys.exit("the award file selects the tenders to process: run "
+                 "python tenderlens.py awards --fetch first")
     state = kb.state()
     if a.reprocess:
         # Only the tenders named: new ones wait for a plain run, so re-running
@@ -327,7 +363,7 @@ def run(a):
     n_base = len({r["reference"] for r in base})
     print(f"knowledge base: {n_base} tender(s) in base, "
           f"{sum(1 for e in state.values() if e['pile'] == 'quarantine')} "
-          f"in quarantine | new tenders to process: {len(todo)}")
+          f"in quarantine | tenders to check: {len(todo)}")
     if not todo:
         return
 
@@ -345,10 +381,24 @@ def run(a):
                               for p in llm.PROVIDERS},
                    "share": llm.SHARE},
                   f, indent=1)
-    cases, piles = [], collections.Counter()
+    cases, piles, gated = [], collections.Counter(), collections.Counter()
     for i, ref in enumerate(todo, 1):
         run_id = f"{stamp}-{i:04d}"
         row = notices[ref]
+        verdict, why = one_tender.gate(ref, row, graph)
+        if verdict != "process":
+            ev = state.get(ref)
+            if ev and ev["status"] == verdict:
+                continue                 # unchanged since the last run
+            if verdict == "award_not_found":
+                kb.append_unawarded(unawarded_entry(ref, row, s))
+            kb.append_event(reference=ref, run_id=run_id,
+                            pub_date=notice_meta(row)[1], event="gated",
+                            status=verdict, pile="none", score=0,
+                            observations=0, note=why)
+            base = [r for r in base if r["reference"] != ref]
+            gated[verdict] += 1
+            continue
         docs, raw = extract_tender(ref, row, a.group, run_id, s.level2)
         mine = comparable(raw, amap)
         peers = [r for r in base if r["reference"] != ref] + mine
@@ -363,12 +413,7 @@ def run(a):
                   f"reset); it continues from this tender.")
             break
         route = case["route"]
-        if not docs:
-            status = "no_documents"
-        elif case.get("no_contract") == "the tender is still open":
-            status = "still_open"        # read again in the next batch
-        else:
-            status = route
+        status = route if docs else "no_documents"
         pile = ("quarantine" if route in QUARANTINE_ROUTES
                 else "base" if docs else "none")
         case["pile"] = pile
@@ -388,7 +433,12 @@ def run(a):
         if i % 25 == 0:
             print(f"  {i:4d}/{len(todo)}  base now {len({r['reference'] for r in base})}")
 
+    if gated:
+        print("  not processed: " + ", ".join(
+            f"{one_tender.GATE[k]} {n}" for k, n in gated.most_common()))
     if not cases:
+        if not gated:
+            print("  nothing changed: every tender checked is as it was")
         return
     meta = {"scope": f"UNSPSC-4 {a.group}, incremental batch {stamp}",
             "generated": time.strftime("%Y-%m-%d %H:%M"),

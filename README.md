@@ -91,6 +91,8 @@ python tenderlens.py run --group 2510 --online        # the four components, ten
 
 Open `reports/kb/2510/batches/<date>_queue.html`.
 
+**Which tenders are processed.** Only a tender that was **awarded** (it has a row in the award file) and **whose documents we hold** goes through M1–M4 and can reach the queue. A cheap check decides it first, from the notice and the award file, before any text is read. The others are only recorded: cancelled tenders, requests for information and supply arrangements are not audit cases; open tenders are checked again on every run; a tender that closed with documents but **no award found** goes on the family's **Award not found** list, for the inspector to check the award by hand (sorted by date, or with the tenders where the rules find a required brand first). When its award appears in the file, the next run processes it. On today's data: 108 of 205 readable tenders in 2510, 288 of 487 in 4110.
+
 **Weekly update** — one command downloads the latest notices, awards and documents, then runs only the tenders not yet in each category's knowledge base (rules only, no model called):
 
 ```bash
@@ -137,6 +139,7 @@ A sidebar lists each family with its number of cases to review, and the system's
 - **Mode** (bottom of the sidebar) for every command: **Rules** (no model called); **Hybrid**: rules + the M2 and M3 agents and M4's checks, live (uses the model's daily quota; you confirm first); **Replay**: the same hybrid run, with the agents' answers from the cache (no network, no quota: the demo).
 - **Overview:** each family's cases to review, confirmed, in the base, without documents; get new tenders; re-run a family. Recent commands, with their live output (`reports/jobs/`).
 - **Queue:** the cases ranked, each with its reason in one sentence and who decided it (Rules or Agent), with **Mark clean** / **Confirm**.
+- **Award not found:** per family, the tenders that closed with documents but no award in the award file: published and closing dates, the brand names the rules find required, the documents, and a link to the CanadaBuys notice to check the award.
 - **Case:** the evidence (a quote opens the document at that line), the brand names checked and who settled each, and how each component reached the case: an agent's steps as a table (the tool the model chose, what it asked, what it got back). On the side: the verdict, **Run this tender again** in the chosen mode, the facts, the documents.
 - **Families of tenders:** the 20 families in scope, each with **Start** (you confirm first: time, disk).
 - **Rules vs agents:** the demo's seven tenders, three setups side by side; where the agents changed the outcome is marked.

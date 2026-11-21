@@ -282,6 +282,32 @@ def pick_award(recs):
     return order[0], winners
 
 
+def find_award(reference, notice_row, graph):
+    """The award rows of this tender, and how they were found: by
+    solicitation number, else by reference number, else by the solicitation
+    number without its /A, /B or version suffix, same buyer only. ([], "")
+    when none. The selection of tenders (pipeline/one_tender.gate) uses the
+    same lookup, so "awarded" means the same thing everywhere."""
+    if graph is None:
+        return [], ""
+    sol = norm_sol((notice_row or {}).get(C_SOL_TENDER))
+    recs = graph["by_sol"].get(sol, []) if sol else []
+    if recs:
+        return recs, "solicitation number"
+    recs = graph["by_ref"].get(reference, [])
+    if recs:
+        return recs, "reference number"
+    if sol and graph.get("by_base"):
+        buyer = norm_name((notice_row or {}).get(
+            "contractingEntityName-nomEntitContractante-eng"))
+        recs = [r for r in graph["by_base"].get(base_sol(sol), [])
+                if buyer and r["buyer"] == buyer]
+        if recs:
+            return recs, ("solicitation number, ignoring its /A, /B or "
+                          "version suffix")
+    return [], ""
+
+
 def _merged(graph, sup, same):
     """The winner plus the spellings the agent judged the same company."""
     return [sup] + [n for n in same if n != sup]
@@ -308,18 +334,8 @@ def investigate(reference, notice_row=None, graph=None, agent=False,
         return {"reference": reference, "available": False,
                 "award": None, "findings": [], "trace": trace}
 
+    recs, via = find_award(reference, notice_row, graph)
     sol = norm_sol((notice_row or {}).get(C_SOL_TENDER))
-    recs = graph["by_sol"].get(sol, []) if sol else []
-    via = "solicitation number"
-    if not recs:
-        recs = graph["by_ref"].get(reference, [])
-        via = "reference number"
-    if not recs and sol and graph.get("by_base"):
-        buyer = norm_name((notice_row or {}).get(
-            "contractingEntityName-nomEntitContractante-eng"))
-        recs = [r for r in graph["by_base"].get(base_sol(sol), [])
-                if buyer and r["buyer"] == buyer]
-        via = "solicitation number, ignoring its /A, /B or version suffix"
     if not recs:
         trace.append(f"no award notice found for this tender (tried "
                      f"solicitation {sol or '-'} and reference)")

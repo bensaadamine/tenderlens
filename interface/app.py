@@ -222,10 +222,12 @@ def home():
             f"<div class=todo><b>{s['to_review']}</b><span>to review</span></div>"
             f"<div><b>{s['confirmed']}</b><span>confirmed</span></div>"
             f"<div><b>{s['base']}</b><span>in the base</span></div>"
-            f"<div><b>{s['none']}</b><span>without documents</span></div></div>"
+            f"<div><b>{s['none']}</b><span>not processed</span></div></div>"
             f"<p class='small muted'>Last run {when(s['last_run'])}</p></div>"
             f"<div class=acts><a class='btn primary' href='/group/{g}'>{review}"
-            f"</a><a class=btn href='/group/{g}/base'>Knowledge base</a>"
+            f"</a><a class=btn href='/group/{g}/unawarded'>Award not found ("
+            f"{s['no_award']})</a>"
+            f"<a class=btn href='/group/{g}/base'>Knowledge base</a>"
             f"<button class=btn onclick=\"run('rerun','{g}')\">Re-run every "
             f"tender</button></div>{old}</div>")
     recent = []
@@ -316,9 +318,57 @@ def queue(g: str, show: str = "review"):
         "Alert first, then watch; within each, the higher score first. The "
         "score orders the queue, it is not a probability. Mark clean sends a "
         "tender back to the base; Confirm keeps it apart as a real case.",
-        f"<nav class=tabs>{tabs}</nav><a class=btn href='/group/{g}/base'>"
+        f"<nav class=tabs>{tabs}</nav><a class=btn href='/group/{g}/"
+        f"unawarded'>Award not found</a><a class=btn href='/group/{g}/base'>"
         f"Knowledge base</a>")
     return layout(f"{g} queue", head, body, g)
+
+
+SORTS = {"date": "By date", "brands": "Brands first"}
+
+
+@app.get("/group/{g}/unawarded", response_class=HTMLResponse)
+def unawarded(g: str, sort: str = "date"):
+    known(g)
+    sort = sort if sort in SORTS else "date"
+    rows = sorted(data.unawarded(g), key=lambda t: t.get("published") or "",
+                  reverse=True)
+    if sort == "brands":
+        rows.sort(key=lambda t: -len(t.get("brands") or []))
+    tabs = "".join(f"<a href='?sort={k}'{' class=on' if k == sort else ''}>"
+                   f"{v}</a>" for k, v in SORTS.items())
+    lines = []
+    for t in rows:
+        ref = t["reference"]
+        brands = (f"<span class='who rules'>Rules</span> "
+                  f"{e(', '.join(t['brands']))}" if t.get("brands") else
+                  "<span class=muted>none found</span>")
+        docs = data.document_names(ref)
+        doc_links = "".join(
+            f"<li><a href='/doc/{quote(ref)}?file={quote(d, safe='')}'>"
+            f"{e(d)}</a></li>" for d in docs[:3]) + (
+            f"<li class=muted>and {len(docs) - 3} more</li>"
+            if len(docs) > 3 else "")
+        lines.append(
+            f"<tr><td><b>{e(t.get('title')) or e(ref)}</b><div class='small "
+            f"muted'>{e(t.get('buyer'))}</div><div class=mono>{e(ref)}</div>"
+            f"</td><td>{e(t.get('published'))}</td><td>{e(t.get('closing'))}"
+            f"</td><td>{brands}</td><td><ul class=docs>{doc_links}</ul></td>"
+            f"<td><a class='btn small' href='{e(t['url'])}' target=_blank "
+            f"rel=noopener>Notice</a></td></tr>")
+    head = page_head(
+        f"{g} award not found",
+        "These tenders closed and their documents are held, but no award "
+        "notice in the award file matches them, so they are not processed. "
+        "Check the award in your own system. When an award appears in the "
+        "file, the next update processes the tender. Brands first: the "
+        "tenders where the rules (no model) found a required brand name.",
+        f"<nav class=tabs>{tabs}</nav><a class=btn href='/group/{g}'>Queue</a>")
+    body = (tbl(["Tender", "Published", "Closed", "Brand names required",
+                 "Documents", ""], lines) if lines else
+            "<div class='queue empty'>No tender is waiting for an award "
+            "check in this family.</div>")
+    return layout(f"{g} award not found", head, body, g)
 
 
 PILES = {"all": "All", "quarantine": "Quarantine", "base": "Base",

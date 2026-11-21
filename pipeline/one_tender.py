@@ -87,6 +87,36 @@ def no_contract_reason(row):
     return None
 
 
+# Which tenders are audit cases (user decision 2026-11-21): only a tender
+# that was AWARDED (its row in the award file) and whose DOCUMENTS we hold
+# goes through M1-M4 and can reach the queue. Decided from the notice row,
+# the award file and the list of extracted files - before any text is read
+# or any model is asked. The others are only recorded:
+GATE = {
+    "process": "awarded, with documents: an audit case",
+    "not_audit": "not an audit case",          # cancelled, RFI, supply arrangement
+    "still_open": "still open: checked again on every run",
+    "no_documents": "no documents to read",
+    "award_not_found": "award not found: to check by hand",
+}
+
+
+def gate(ref, row, graph):
+    """(one of GATE, why). Cheap: no text is read."""
+    why = no_contract_reason(row)
+    if why == "the tender is still open":
+        return "still_open", why
+    if why:
+        return "not_audit", why
+    if not m1_screener.has_documents(ref):
+        return "no_documents", "no documents held for this tender"
+    recs, via = m3_investigator.find_award(ref, row, graph)
+    if not recs:
+        return ("award_not_found", "closed, documents held, but no award "
+                "notice matches it in the award file")
+    return "process", f"award found via {via}"
+
+
 # Raised when --agent is on and no model answers; a run stops on them and
 # the next run resumes from that tender.
 AGENT_DOWN = (m2_spec_auditor.AgentUnavailable,

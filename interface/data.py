@@ -112,7 +112,9 @@ def summary(group):
     batches = sorted(glob.glob(os.path.join(KB_ROOT, group, "batches",
                                             "*_settings.json")))
     last = os.path.basename(batches[-1])[:15] if batches else ""
+    unawarded = sum(t["status"] == "award_not_found" for t in rows)
     return {"group": group, "name": NAMES.get(group, ""),
+            "no_award": unawarded,
             "tenders": len(rows), "base": piles["base"],
             "quarantine": piles["quarantine"], "none": piles["none"],
             "to_review": sum(map(to_review, rows)),
@@ -120,6 +122,29 @@ def summary(group):
             "no_case": sum(to_review(t) and not t["case"] for t in rows),
             "last_run": (f"{last[:4]}-{last[4:6]}-{last[6:8]} "
                          f"{last[9:11]}:{last[11:13]}") if last else "never"}
+
+
+NOTICE = "https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/"
+
+
+def unawarded(group):
+    """The family's "Award not found" list: tenders closed with documents
+    but no award in the award file, as the run recorded them (the notice's
+    facts, the brand names the rules found required), each with a link to
+    its notice."""
+    kb = KB(group, KB_ROOT)
+    state = kb.state()
+    latest = {}
+    if os.path.exists(kb.unawarded):
+        with io.open(kb.unawarded, encoding="utf-8") as f:
+            for line in f:
+                try:
+                    e = json.loads(line)
+                except ValueError:
+                    continue            # a line cut by a crash
+                latest[e["reference"]] = e
+    return [dict(e, url=NOTICE + e["reference"]) for ref, e in latest.items()
+            if (state.get(ref) or {}).get("status") == "award_not_found"]
 
 
 def find(group, ref):
@@ -141,7 +166,9 @@ def record_verdict(group, ref, verdict, note=""):
 
 
 def document_names(ref):
-    return [d["document"] for d in documents.tender_documents(ref)]
+    """The names of a tender's extracted documents; no text is read."""
+    paths = glob.glob(os.path.join(documents.TEXT_DIR, "*", ref + "__*.txt"))
+    return sorted(os.path.basename(p)[len(ref) + 2:-4] for p in paths)
 
 
 def document(ref, name):
