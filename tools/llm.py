@@ -13,6 +13,10 @@ install: urllib only.
 Keys go in .env (never committed):
 
     GROQ_API_KEY=gsk_...      (free: console.groq.com)
+    GROQ_API_KEY2=gsk_...     (optional: a second Groq account. Same model, so
+                              verdicts do not change; each call goes to the
+                              key that can take it soonest - twice the calls
+                              a minute, twice the daily quota)
     GEMINI_API_KEY=...        (optional, used only with TENDERLENS_SHARE=1)
 
 With no key, ask() raises NoProvider; when every provider fails, a
@@ -55,9 +59,11 @@ ERRORS_PATH = "reports/llm_errors.csv"
 # 429 costs the Retry-After wait plus a round trip, and the retry spends the
 # tokens again.
 BUDGETS = {"groq": 5500, "gemini": 5500}
-_windows = {}         # provider -> [(unix_time, tokens)]
-_last_call = {}       # provider -> unix_time
-_down_until = {}      # provider -> unix_time; a provider that errored rests
+# Throttle, rest and quota are counted per KEY (_id): two Groq keys are two
+# accounts, each with its own limits.
+_windows = {}         # key -> [(unix_time, tokens)]
+_last_call = {}       # key -> unix_time
+_down_until = {}      # key -> unix_time; a key that errored rests
 DOWN_FOR = 60         # seconds
 DAY_OUT = 6 * 3600    # seconds a provider is skipped after "quota per day"
 # Groq only, by default: two models answer differently, so mixing them made
@@ -70,17 +76,19 @@ SHARE = os.environ.get("TENDERLENS_SHARE") == "1"
 # agents read, so a JSON reply still works. Before it, about half the agent
 # steps were lost on tools that don't exist or wrong argument names. A
 # provider that rejects tools is asked again without them.
-_no_tools = set()     # providers that rejected a tools request this run
+_no_tools = set()     # keys whose provider rejected a tools request this run
 
 # THE MODELS, pinned: the same model gives the same verdicts, and every
 # measurement was made with these. They are the models the cache was filled
 # with, so cached answers keep working (whichever key is set). A model the
 # provider has retired is an error that says so - never a silent switch to
-# another model.
+# another model. A second Groq key is the same provider and model under
+# another account: same name (logs, cache, provenance), its own "key" id.
+GROQ = {"name": "groq", "base": "https://api.groq.com/openai/v1",
+        "fast": "openai/gpt-oss-20b", "strong": "openai/gpt-oss-120b"}
 PROVIDERS = [
-    {"name": "groq", "env": "GROQ_API_KEY",
-     "base": "https://api.groq.com/openai/v1",
-     "fast": "openai/gpt-oss-20b", "strong": "openai/gpt-oss-120b"},
+    dict(GROQ, env="GROQ_API_KEY"),
+    dict(GROQ, env="GROQ_API_KEY2", key="groq#2"),
     {"name": "gemini", "env": "GEMINI_API_KEY", "shared_only": True,
      "base": "https://generativelanguage.googleapis.com/v1beta/openai",
      "fast": "models/gemini-2.5-flash",
@@ -90,6 +98,11 @@ PROVIDERS = [
 
 def _auth(provider):
     return "Bearer " + os.environ[provider["env"]]
+
+
+def _id(provider):
+    """The key a call goes through: throttle, rest and quota are per key."""
+    return provider.get("key", provider["name"])
 
 
 def tool(name, description, properties=None, required=None):
@@ -273,14 +286,15 @@ def _wait_needed(name, est, now=None):
 
 
 def _order(provs, est):
-    """Groq first; with SHARE, the provider that can take this call
-    soonest first."""
-    if not SHARE or len(provs) < 2:
+    """The key that can take this call soonest first: one not resting, with
+    room in its minute, used least recently. (Groq's keys only, unless
+    sharing with Gemini.)"""
+    if len(provs) < 2:
         return provs
     now = time.time()
-    return sorted(provs, key=lambda p: (_down_until.get(p["name"], 0) > now,
-                                        _wait_needed(p["name"], est, now),
-                                        _last_call.get(p["name"], 0)))
+    return sorted(provs, key=lambda p: (_down_until.get(_id(p), 0) > now,
+                                        _wait_needed(_id(p), est, now),
+                                        _last_call.get(_id(p), 0)))
 
 
 def _throttle_p(name, est, verbose=False):
@@ -457,8 +471,8 @@ def ask(system, user, strong=False, max_tokens=1500, temperature=0.0,
     est = _estimate(system + user) + max_tokens // 4
     errors = []
     for p in _order(provs, est):
-        if _down_until.get(p["name"], 0) - time.time() > DOWN_FOR:
-            errors.append(f"{p['name']}: daily quota used")
+        if _down_until.get(_id(p), 0) - time.time() > DOWN_FOR:
+            errors.append(f"{_id(p)}: daily quota used")
             continue
         answer, error = _ask_one(p, system, user, sys_key, strong, max_tokens,
                                  temperature, timeout, retries, verbose, tag,
@@ -499,10 +513,10 @@ def _ask_one(p, system, user, sys_key, strong, max_tokens, temperature,
     """One provider, with its retries. (answer, None) - the answer is
     cached - or (None, why it failed)."""
     model = models_for(p)[1 if strong else 0]
-    use_tools = tools if p["name"] not in _no_tools else None
+    use_tools = tools if _id(p) not in _no_tools else None
     for attempt in range(retries + 1):
         try:
-            _throttle_p(p["name"], est, verbose)
+            _throttle_p(_id(p), est, verbose)
             answer, usage = _post(p, model, system, user, max_tokens,
                                   temperature, timeout, use_tools)
         except urllib.error.HTTPError as e:
@@ -517,9 +531,9 @@ def _ask_one(p, system, user, sys_key, strong, max_tokens, temperature,
                 return None, value
             answer, usage = value, {}    # a tool call recovered from the error
         except Exception as e:
-            _log_error(tag, p["name"], model, type(e).__name__, e)
-            _down_until[p["name"]] = time.time() + DOWN_FOR
-            return None, f"{p['name']}: {type(e).__name__}"
+            _log_error(tag, _id(p), model, type(e).__name__, e)
+            _down_until[_id(p)] = time.time() + DOWN_FOR
+            return None, f"{_id(p)}: {type(e).__name__}"
         _log_usage(tag, p["name"], model, usage, False,
                    _estimate(system + user + answer))
         if not answer.strip():
@@ -534,15 +548,15 @@ def _ask_one(p, system, user, sys_key, strong, max_tokens, temperature,
                 continue
             # Never cache or return an empty answer (it reads as "no JSON"
             # upstream); the next provider is tried instead.
-            _log_error(tag, p["name"], model, "empty answer",
+            _log_error(tag, _id(p), model, "empty answer",
                        detail=json.dumps(_last_empty))
-            return None, f"{p['name']}: empty answer"
+            return None, f"{_id(p)}: empty answer"
         cache = _load_cache()
         cache[_key(model, sys_key, user)] = {"provider": p["name"],
                                              "model": model, "answer": answer}
         _save_cache(cache)
         if verbose:
-            print(f"    [{p['name']}/{model}]")
+            print(f"    [{_id(p)}/{model}]")
         return answer, None
     return None, None
 
@@ -553,11 +567,11 @@ def _http_error(e, p, model, tag, attempt, retries, use_tools, verbose):
     text) - the model's tool call, recovered from the error body -, or
     ("fail", why)."""
     body = _http_body(e)
-    _log_error(tag, p["name"], model, f"HTTP {e.code}", e, body)
+    _log_error(tag, _id(p), model, f"HTTP {e.code}", e, body)
     slip = _tool_slip(body) if e.code == 400 else None
     if (e.code == 400 and use_tools and not slip
             and re.search(r"tool|function", body, re.I)):
-        _no_tools.add(p["name"])
+        _no_tools.add(_id(p))
         if verbose:
             print(f"    [{p['name']}] no native tools, retrying with JSON")
         return "no_tools", None
@@ -568,8 +582,8 @@ def _http_error(e, p, model, tag, attempt, retries, use_tools, verbose):
     if e.code == 429 and re.search(r"PerDay|per day", body, re.I):
         # a daily quota will not come back in a minute: drop the provider
         # for this run instead of retrying every call
-        _down_until[p["name"]] = time.time() + DAY_OUT
-        return "fail", f"{p['name']}: daily quota used"
+        _down_until[_id(p)] = time.time() + DAY_OUT
+        return "fail", f"{_id(p)}: daily quota used"
     if e.code == 429 and attempt < retries:
         # honour Retry-After when the server sends one
         try:
@@ -585,8 +599,8 @@ def _http_error(e, p, model, tag, attempt, retries, use_tools, verbose):
         return "fail", (f"{p['name']}: pinned model {model} is not served "
                         f"any more (HTTP {e.code}) - update PROVIDERS in "
                         f"tools/llm.py and re-run the evals")
-    _down_until[p["name"]] = time.time() + DOWN_FOR
-    return "fail", f"{p['name']}: HTTP {e.code}"
+    _down_until[_id(p)] = time.time() + DOWN_FOR
+    return "fail", f"{_id(p)}: HTTP {e.code}"
 
 
 class NotCached(RuntimeError):
@@ -673,7 +687,7 @@ def main():
           + (" (sharing calls: TENDERLENS_SHARE=1)" if SHARE else "") + ":")
     for p in provs:
         fast, strong = models_for(p)
-        print(f"  {p['name']:10s} fast={fast}  strong={strong}")
+        print(f"  {_id(p):10s} fast={fast}  strong={strong}")
 
     print("\ntesting the first one ...")
     try:

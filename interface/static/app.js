@@ -8,8 +8,8 @@ const MODE_NOTES = {
 const CONFIRM_NOTES = {
   rules: "No model is called.",
   hybrid: "The M2 and M3 agents and M4's checks call the model (Groq). Its free quota " +
-    "is about 200,000 tokens a day: one tender takes about a minute, a whole family can " +
-    "take several days. A run that spends the quota stops; the next one resumes there.",
+    "is about 200,000 tokens a day per key: one tender takes about a minute, a whole " +
+    "family can take days. A run that spends the quota stops; the next one resumes there.",
   replay: "The agents' answers come from the cache: no network, no quota, the same " +
     "result every time. A tender the agents have never seen stops the run.",
 };

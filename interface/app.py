@@ -655,7 +655,9 @@ def agents():
     u, (err_counts, last_err), runs = (data.usage(), data.errors(),
                                        data.agent_runs())
     t = u["today"]
-    used = min(100, round(100 * t["groq_tokens"] / data.GROQ_DAILY))
+    keys = data.groq_keys()
+    quota = data.GROQ_DAILY * keys
+    used = min(100, round(100 * t["groq_tokens"] / quota))
     per_agent = [
         f"<tr><td>{e(name)}</td><td class=r>{a['calls']:,}</td><td class=r>"
         f"{round(100 * a['cached'] / a['calls'])}%</td><td class=r>"
@@ -669,7 +671,7 @@ def agents():
                        for k, v in u["days"][day].most_common() if v)
         days.append(f"<tr><td>{e(day)}</td><td class=r>{spent:,}</td><td>"
                     f"<div class=bar><i style='width:"
-                    f"{min(100, round(100 * spent / data.GROQ_DAILY))}%'></i>"
+                    f"{min(100, round(100 * spent / quota))}%'></i>"
                     f"</div></td><td class='small muted'>{e(by)}</td></tr>")
     run_rows = [
         f"<tr><td>{e(k)}</td><td class=r>{v['runs']}</td><td class=r>"
@@ -692,8 +694,9 @@ def agents():
         f"<section><h2>Per agent, since the start</h2>"
         + tbl(["Agent", "Calls", "From the cache", "Tokens paid", "Last call"],
               per_agent, right=(1, 2, 3))
-        + "</section><section><h2>Tokens paid per day</h2><p class=muted>The "
-          "bar is the share of Groq's free daily quota, 200,000 tokens.</p>"
+        + f"</section><section><h2>Tokens paid per day</h2><p class=muted>The "
+          f"bar is the share of today's free daily quota: {keys} Groq key"
+          f"{'s' if keys > 1 else ''}, {quota:,} tokens.</p>"
         + tbl(["Day", "Tokens", "Share of the quota", "By agent"], days,
               right=(1,))
         + "</section><section><h2>How the investigations ended</h2><p "

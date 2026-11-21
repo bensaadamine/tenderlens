@@ -191,6 +191,13 @@ def _log(path):
         return list(csv.DictReader(line.replace("\0", "") for line in f))
 
 
+def groq_keys():
+    """How many Groq keys are set (.env): each has its own daily quota."""
+    from tools import llm
+    return max(1, sum(1 for p in llm.PROVIDERS
+                      if p["name"] == "groq" and os.environ.get(p["env"])))
+
+
 def agent_name(tag):
     return AGENTS.get(tag) or tag or "other (before calls were tagged)"
 

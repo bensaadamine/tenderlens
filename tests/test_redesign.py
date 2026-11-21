@@ -134,7 +134,7 @@ def test_llm():
     # sharing): not used live; used by an offline replay, which says so
     saved = {k: getattr(llm, k) for k in ("_post", "_load_cache", "_log_usage",
                                           "available")}
-    gem = llm.PROVIDERS[1]["strong"]
+    gem = llm.PROVIDERS[-1]["strong"]                # Gemini
     llm._load_cache = lambda path=None: {llm._key(gem, "s", "q"):
                                          {"answer": '{"from": "gemini"}'}}
     llm._log_usage = lambda *a, **k: None
@@ -175,7 +175,7 @@ def test_llm():
     llm._log_usage = llm._log_error = lambda *a, **k: None
     llm._throttle_p = lambda *a, **k: None
     time.sleep = lambda s: None
-    g, m = llm.PROVIDERS
+    g, m = llm.PROVIDERS[0], llm.PROVIDERS[-1]      # Groq, Gemini
     llm.available = lambda: [g, m]
     llm.SHARE = False                    # fixed order: Groq, then Gemini
 
@@ -196,6 +196,8 @@ def test_llm():
             script[:] = list(steps)
             seen.clear()
             llm._down_until.clear()
+            llm._last_call.clear()        # no key used yet: list order holds
+            llm._windows.clear()
             try:
                 return llm.ask("s", q, max_tokens=100)
             except RuntimeError as e:
@@ -230,13 +232,16 @@ def test_llm():
         for k, v in saved.items():
             setattr(llm, k, v)
 
-    groq, gemini = llm.PROVIDERS
+    groq, groq2, gemini = llm.PROVIDERS
     check("the pinned models are the ones the cache was filled with",
           llm.models_for(groq) == ("openai/gpt-oss-20b",
                                    "openai/gpt-oss-120b")
+          and llm.models_for(groq2) == llm.models_for(groq)
           and llm.models_for(gemini)[1] == "models/gemini-3-flash-preview")
-    keys = {k: os.environ.get(k) for k in ("GROQ_API_KEY", "GEMINI_API_KEY")}
+    keys = {k: os.environ.get(k) for k in ("GROQ_API_KEY", "GROQ_API_KEY2",
+                                           "GEMINI_API_KEY")}
     os.environ.update(GROQ_API_KEY="g", GEMINI_API_KEY="m")
+    os.environ.pop("GROQ_API_KEY2", None)
     try:
         only = [p["name"] for p in llm.available()]
         llm.SHARE = True
@@ -260,6 +265,23 @@ def test_llm():
         llm.SHARE = False
         llm._windows.clear()
         llm._windows.update(saved_win)
+
+    # A second Groq key: same provider and model, its own limits.
+    saved_down = dict(llm._down_until)
+    llm._windows["groq"] = [(time.time(), 10 ** 6)]     # key 1's minute is full
+    try:
+        check("two Groq keys: the call goes to the key with room",
+              llm._order([groq, groq2], 100) == [groq2, groq]
+              and groq2["name"] == "groq")
+        llm._windows.clear()
+        llm._down_until["groq#2"] = time.time() + llm.DAY_OUT
+        check("a key whose daily quota is spent goes last",
+              llm._order([groq2, groq], 100) == [groq, groq2])
+    finally:
+        llm._windows.clear()
+        llm._windows.update(saved_win)
+        llm._down_until.clear()
+        llm._down_until.update(saved_down)
 
 
 # ------------------------------------------------------------------ M2
