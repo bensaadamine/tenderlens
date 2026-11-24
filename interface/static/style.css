@@ -202,8 +202,6 @@ a.quote:hover{background:var(--blue-soft)}
 .bar{height:8px;background:var(--rules-soft);border-radius:4px;min-width:140px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--blue);border-radius:4px}
 .bar.big{height:12px;border-radius:6px;max-width:520px}
-.changed{background:var(--agent-soft)}
-.changed small{display:block;color:var(--agent);font-size:12px;font-weight:600;margin-top:3px}
 
 dialog{border:1px solid var(--rule);border-radius:12px;background:var(--surface);color:var(--ink);
   max-width:540px;width:calc(100% - 32px);padding:22px 24px}

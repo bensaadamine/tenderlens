@@ -75,16 +75,6 @@ function run(name, group, ref, title, html) {
       (html || "") + `<p><b>Mode: ${MODE_NAMES[m]}.</b> ${CONFIRM_NOTES[m]}</p>`, go);
 }
 
-function askStart(d) {
-  run("start", d.g, "", `Start ${d.g} ${d.name}?`,
-    `<p>This downloads the documents of the family's <b>${d.n}</b> tenders, extracts their ` +
-    `text, then runs every tender through the four components, oldest first.</p><ul>` +
-    `<li><b>Time:</b> from tens of minutes to a few hours, depending on the number of ` +
-    `documents. <b>Disk:</b> a few hundred MB (2510 took about 370 MB, 4110 about 550 MB).</li>` +
-    `<li>It runs in the background, and verdicts wait until it ends. Stopping it is safe: ` +
-    `starting it again picks up where it stopped.</li></ul>`);
-}
-
 // A command's output, followed while it runs.
 (function () {
   const log = document.getElementById("log");

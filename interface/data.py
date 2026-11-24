@@ -32,35 +32,15 @@ AGENTS = {"m2_agent": "M2 agent - brand names",
           "attribute_map": "label map (data preparation)",
           "facts": "facts tool (removed 2026-11-04)",
           "selftest": "connection test"}
-NAMES = {"2510": "Motor vehicles", "4110": "Laboratory and scientific equipment"}
-SCOPE = "reports/selected_unspsc4.json"          # the families in scope
-COUNTS = "reports/category_counts.json"          # tenders with documents
-# Families in scope by count, but whose specification is a part number or a
-# size code, not requirements to read (decision 9).
-NOT_READABLE = {"2520": "aircraft tires: part numbers and size codes, "
-                        "not a specification to read"}
+NAMES = {"2510": "Motor vehicles", "4110": "Laboratory and scientific equipment",
+         "5610": "Furniture", "4111": "Measuring and recording instruments",
+         "4014": "Valves", "2410": "Lifting equipment"}
 JUDGED = {"reviewed_clean": "clean", "confirmed": "confirmed"}
 
 
 def groups():
     """Every category that has a knowledge base."""
     return known_groups(KB_ROOT)
-
-
-def families():
-    """The goods families in scope: code, description, tenders with
-    documents, whether work has started on it, why not if it cannot be."""
-    with open(SCOPE, encoding="utf-8") as f:
-        codes = json.load(f)
-    counts = {}
-    if os.path.exists(COUNTS):
-        with open(COUNTS, encoding="utf-8") as f:
-            counts = json.load(f)
-    started = set(groups())
-    return [{"group": g, "usable": counts.get("usable", {}).get(g, 0),
-             "name": NAMES.get(g) or counts.get("labels", {}).get(g, ""),
-             "started": g in started, "not_readable": NOT_READABLE.get(g)}
-            for g in codes]
 
 
 _logged = {}

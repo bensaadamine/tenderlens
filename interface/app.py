@@ -8,8 +8,6 @@
     /group/<g>/case/<ref>   one case: its evidence, how each component
                             (rules or agent) reached it, the verdict
     /doc/<ref>              a document's text, the quoted line marked
-    /families               the families in scope; start a new one
-    /compare                rules vs agents on the demo's chosen tenders
     /agents                 what the agents did: calls, tokens, quota, errors
     /synth                  the synthetic test's results
     /jobs/<id>              a command started from the page, its output live
@@ -50,12 +48,10 @@ def command(name, g, ref, mode):
     """What a button runs, as a person would type it; None when the mode
     makes no sense for it (new tenders are in no cache to replay)."""
     agents = AGENT_FLAGS if mode != "rules" else []
-    if name in ("update", "start"):
+    if name == "update":
         if mode == "replay":
             return None
-        args = (["update"] if name == "update" else
-                ["update", "--groups", g, "--no-download"])
-        return args + (["--rules-only"] if mode == "rules" else [])
+        return ["update"] + (["--rules-only"] if mode == "rules" else [])
     if name in ("rerun", "tender"):
         args = ["run", "--group", g, "--reprocess",
                 "all" if name == "rerun" else ref] + agents
@@ -63,14 +59,11 @@ def command(name, g, ref, mode):
     if name == "synth":
         args = ["eval", "synth", "--run"] + (["--agent"] if agents else [])
         return ["--offline"] + args if mode == "replay" else args
-    if name == "demo":           # its three setups always include the agents
-        return ["demo"] + ([] if mode == "hybrid" else ["--offline"])
     return None
 
 
 COMMAND_NAMES = {"update": "Get new tenders", "rerun": "Re-run every tender",
-                 "tender": "Run one tender again", "synth": "Synthetic test",
-                 "demo": "Compare rules and agents", "start": "Start a family"}
+                 "tender": "Run one tender again", "synth": "Synthetic test"}
 
 
 # ------------------------------------------------------------- small parts
@@ -154,9 +147,7 @@ def layout(title, head, body, on=""):
         fams.append(f"<a href='/group/{g}'{' class=on' if on == g else ''}>"
                     f"<span>{g} {e(data.NAMES.get(g, ''))}</span><span class="
                     f"'count{' hot' if n else ''}'>{n}</span></a>")
-    tools = [("families", "/families", "Families of tenders"),
-             ("compare", "/compare", "Rules vs agents"),
-             ("agents", "/agents", "Agent activity"),
+    tools = [("agents", "/agents", "Agent activity"),
              ("synth", "/synth", "Synthetic test")]
     tool_links = "".join(f"<a href='{u}'{' class=on' if on == k else ''}>"
                          f"<span>{t}</span></a>" for k, u, t in tools)
@@ -244,12 +235,6 @@ def home():
     body = (
         f"<section>{''.join(fams)}</section>"
         f"<section><div class=tools>"
-        f"<div><h3>Start another family</h3><p>Twenty families of goods are "
-        f"in scope. Starting one downloads its documents and runs every "
-        f"tender.</p><a class=btn href=/families>See the families</a></div>"
-        f"<div><h3>Rules vs agents</h3><p>Seven chosen tenders, run with rules "
-        f"alone and with the agents, side by side.</p><a class=btn "
-        f"href=/compare>Compare</a></div>"
         f"<div><h3>Synthetic test</h3><p>Brand names planted in copies of real "
         f"tenders: does the system find them, without false alarms?</p>"
         f"<a class=btn href=/synth>See the results</a></div></div></section>"
@@ -606,116 +591,6 @@ def doc(ref: str, file: str):
 
 
 # ------------------------------------------------------ the system's pages
-@app.get("/families", response_class=HTMLResponse)
-def families():
-    rows = []
-    for f in data.families():
-        if f["started"]:
-            what = "<span class='pill ok'>Started</span>"
-            act = f"<a class='btn small' href='/group/{f['group']}'>Open</a>"
-        elif f["not_readable"]:
-            what = (f"<span class=pill>Not readable</span> <span class='small "
-                    f"muted'>{e(f['not_readable'])}</span>")
-            act = ""
-        else:
-            what = "<span class=muted>Not started</span>"
-            act = (f"<button class='btn small' data-g='{f['group']}' "
-                   f"data-name='{e(f['name'])}' data-n='{f['usable']}' "
-                   f"onclick='askStart(this.dataset)'>Start</button>")
-        rows.append(f"<tr><td class=mono>{f['group']}</td><td>{e(f['name'])}"
-                    f"</td><td class=r>{f['usable']}</td><td>{what}</td>"
-                    f"<td class=r>{act}</td></tr>")
-    head = page_head(
-        "Families of tenders",
-        "The twenty families of goods in scope, by product code (the first "
-        "four digits of UNSPSC). Starting one downloads its documents, "
-        "extracts their text and runs every tender; you are asked to confirm "
-        "first.")
-    body = tbl(["Code", "What is bought", "Tenders with documents", "State",
-                ""], rows, right=(2, 4))
-    return layout("Families", head, body, "families")
-
-
-SETUPS = {"rules": ("Rules only", "No model is called."),
-          "recheck": ("Rules + re-check", "The rules, then M4 sends every "
-                      "flagged brand back to the M2 agent before ranking."),
-          "agents": ("Every agent", "The M2 agent judges every open brand "
-                     "name, the M3 agent the winner's spellings, M4 "
-                     "re-checks the rest.")}
-
-
-@app.get("/compare", response_class=HTMLResponse)
-def compare(run: str = ""):
-    from pipeline.demo import TENDERS
-    runs = data.demo_runs()
-    stamp = run if run in runs else (runs[0] if runs else "")
-    cases, summary = data.demo(stamp) if stamp else ({}, "")
-    setups = [s for s in SETUPS if s in cases]
-    rows = []
-    for ref, why in TENDERS:
-        first = (cases.get("rules") or {}).get(ref)
-        cells = []
-        for s in setups:
-            c = cases[s].get(ref)
-            if not c:
-                cells.append("<td class=muted>not run</td>")
-                continue
-            changed = (s != "rules" and first and c["route"] != first["route"])
-            cells.append(
-                f"<td{' class=changed' if changed else ''}><a href='/compare/"
-                f"{stamp}/{s}/{quote(ref)}'>{sev(c)}</a>"
-                + ("<small>changed by the agents</small>" if changed else "")
-                + "</td>")
-        title = next((cases[s][ref]["title"] for s in setups
-                      if ref in cases[s]), ref)
-        rows.append(f"<tr><td><b>{e(title)}</b><div class='small muted'>"
-                    f"{e(why)}</div></td>{''.join(cells)}</tr>")
-    picker = ("<select onchange=\"location.href='?run='+this.value\">"
-              + "".join(f"<option value={s}{' selected' if s == stamp else ''}"
-                        f">{when(s)}</option>" for s in runs[:10])
-              + "</select>" if runs else "")
-    head = page_head(
-        "Rules vs agents",
-        "The hybrid system on seven chosen tenders, run three ways. Where a "
-        "column differs from the rules, the agents changed the outcome: a "
-        "lock-in the rules miss, a false alarm they clear. Open a cell to "
-        "see that case and each agent's steps.",
-        f"{picker}<button class='btn primary' onclick=\"run('demo')\">Run the "
-        f"comparison</button>")
-    body = (
-        "<dl class=setups>" + "".join(f"<dt>{a}</dt><dd>{b}</dd>"
-                                      for a, b in SETUPS.values()) + "</dl>"
-        + tbl(["Tender"] + [SETUPS[s][0] for s in setups], rows)
-        + (f"<section style='margin-top:22px'><details class=component>"
-           f"<summary><b>The run's own summary</b></summary><div class=inner>"
-           f"<pre class=report>{e(summary)}</pre></div></details></section>"
-           if summary else ""))
-    return layout("Rules vs agents", head, body, "compare")
-
-
-@app.get("/compare/{stamp}/{setup}/{ref}", response_class=HTMLResponse)
-def compare_case(stamp: str, setup: str, ref: str):
-    if stamp not in data.demo_runs():
-        raise HTTPException(404, "unknown run")
-    c = data.demo(stamp)[0].get(setup, {}).get(ref)
-    if not c:
-        raise HTTPException(404, "unknown case")
-    docs = data.document_names(ref)
-    others = "".join(
-        f"<a class='btn small' href='/compare/{stamp}/{s}/{quote(ref)}'>{a}</a>"
-        for s, (a, _) in SETUPS.items() if s != setup)
-    side = (f"<div class=box><h3>Setup</h3><p><b>{SETUPS[setup][0]}</b>. "
-            f"{SETUPS[setup][1]}</p><p class='small muted'>The same tender in "
-            f"the other setups:</p><div class=row>{others}</div></div>"
-            if setup in SETUPS else "")
-    body = (f"<div class=case><div>{case_main(c, ref, docs)}</div>"
-            f"<aside class=panel>{side}{facts_box(c, ref)}{docs_box(ref, docs)}"
-            f"</aside></div>")
-    head = page_head(c["title"], f"<a href='/compare?run={stamp}'>Rules vs "
-                     f"agents</a>, run of {when(stamp)}")
-    return layout(c["title"], head, body, "compare")
-
-
 @app.get("/agents", response_class=HTMLResponse)
 def agents():
     u, (err_counts, last_err), runs = (data.usage(), data.errors(),
@@ -856,12 +731,9 @@ async def api_job(name: str, request: Request):
     b = await request.json()
     g, ref, mode = (b.get("group") or "", b.get("reference") or "",
                     b.get("mode") or "rules")
-    startable = {f["group"] for f in data.families()
-                 if not f["started"] and not f["not_readable"]}
     if (mode not in MODES
             or (name in ("rerun", "tender") and g not in data.groups())
-            or (name == "tender" and not data.find(g, ref))
-            or (name == "start" and g not in startable)):
+            or (name == "tender" and not data.find(g, ref))):
         return refuse("Unknown command.")
     args = command(name, g, ref, mode)
     if not args:

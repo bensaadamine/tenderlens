@@ -144,11 +144,9 @@ A sidebar lists each family with its number of cases to review, and the system's
 
 - **Mode** (bottom of the sidebar) for every command: **Rules** (no model called); **Hybrid**: rules + the M2 and M3 agents and M4's checks, live (uses the model's daily quota; you confirm first); **Replay**: the same hybrid run, with the agents' answers from the cache (no network, no quota: the demo).
 - **Overview:** each family's cases to review, confirmed, in the base, without documents; get new tenders; re-run a family. Recent commands, with their live output (`reports/jobs/`).
-- **Queue:** the cases ranked, each with its reason in one sentence and who decided it (Rules or Agent), with **Mark clean** / **Confirm**.
+- **Queue:** the cases ranked (cases flagged at installation, rules only, in a block apart), each with its reason in one sentence and who decided it (Rules or Agent), with **Mark clean** / **Confirm**.
 - **Award not found:** per family, the tenders that closed with documents but no award in the award file: published and closing dates, the brand names the rules find required, the documents, and a link to the CanadaBuys notice to check the award.
 - **Case:** the evidence (a quote opens the document at that line), the brand names checked and who settled each, and how each component reached the case: an agent's steps as a table (the tool the model chose, what it asked, what it got back). On the side: the verdict, **Run this tender again** in the chosen mode, the facts, the documents.
-- **Families of tenders:** the 20 families in scope, each with **Start** (you confirm first: time, disk).
-- **Rules vs agents:** the demo's seven tenders, three setups side by side; where the agents changed the outcome is marked.
 - **Agent activity:** model calls and tokens per agent and per day against the daily quota, answers from the cache, how investigations ended, failed calls.
 - **Synthetic test:** its results, and a button to run it.
 
