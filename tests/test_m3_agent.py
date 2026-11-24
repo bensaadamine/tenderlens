@@ -142,7 +142,7 @@ def main():
           and "variants" not in m3_agent.FINAL_SYSTEM.split("Reply")[1])
 
     # --- the counts in m3_investigator use the decisions
-    row = {m3_investigator.C_SOL_TENDER: "S1",
+    row = {m3_investigator.C_SOL_TENDER: "S1", "title-titre-eng": "Lab instrument",
            "contractingEntityName-nomEntitContractante-eng": BUYER}
     plain = m3_investigator.investigate("t", row, g, agent=False)
     real = m3_agent.aliases_for

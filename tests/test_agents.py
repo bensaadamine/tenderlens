@@ -27,7 +27,7 @@ def check(name, cond):
 
 
 def awards_file(path, rows=None):
-    h = ["referenceNumber-numeroReference",
+    h = ["title-titre-eng", "referenceNumber-numeroReference",
          "solicitationNumber-numeroSollicitation",
          "supplierLegalName-nomLegalFournisseur-eng",
          "supplierLegalName-nomLegalFournisseur-fra",
@@ -37,18 +37,18 @@ def awards_file(path, rows=None):
          "contractAwardDate-dateAttributionContrat", "unspsc"]
     dnd = "Department of National Defence"
     rows = rows or [
-        ("A1", "W8476-001", "PALFINGER INC.", "x", dnd, "x", "250000",
+        ("Crane truck", "A1", "W8476-001", "PALFINGER INC.", "x", dnd, "x", "250000",
          "2025-03-01", "25101900"),
-        ("A2", "W8476-002", "Palfinger Inc", "x", dnd, "x", "180000",
+        ("Crane truck", "A2", "W8476-002", "Palfinger Inc", "x", dnd, "x", "180000",
          "2025-06-01", "25101900"),
-        ("A3", "W8476-003", "PALFINGER INC.", "x", dnd, "x", "90000",
+        ("Crane truck", "A3", "W8476-003", "PALFINGER INC.", "x", dnd, "x", "90000",
          "2025-09-01", "25101900"),
-        ("A4", "W8476-004", "Other Cranes Ltd", "x", dnd, "x", "70000",
+        ("Crane truck", "A4", "W8476-004", "Other Cranes Ltd", "x", dnd, "x", "70000",
          "2025-10-01", "25101900"),
         # the same award re-published with an amendment
-        ("A4", "W8476-004", "Other Cranes Ltd", "x", dnd, "x", "70000",
+        ("Crane truck", "A4", "W8476-004", "Other Cranes Ltd", "x", dnd, "x", "70000",
          "2025-10-02", "25101900"),
-        ("A5", "X-9", "PALFINGER INC.", "x", "City of Ottawa", "x", "50000",
+        ("Crane truck", "A5", "X-9", "PALFINGER INC.", "x", "City of Ottawa", "x", "50000",
          "2024-01-01", "25101900"),
     ]
     with open(path, "w", newline="", encoding="utf-8") as f:
@@ -72,7 +72,7 @@ def main():
           g["bsg"][("DEPARTMENT OF NATIONAL DEFENCE", "PALFINGER",
                     "2510")] == 3)
     notice = {"solicitationNumber-numeroSollicitation": "w8476-002",
-              "unspsc": "25101900"}
+              "unspsc": "25101900", "title-titre-eng": "Crane truck"}
     r = m3.investigate("cb-x", notice, g)
     check("joins on solicitation number, case-insensitive",
           bool(r["award"]) and r["award"]["supplier"] == "Palfinger Inc")
@@ -80,6 +80,9 @@ def main():
           "(3 of its 4 awards from this buyer)",
           bool(r["findings"]) and
           r["findings"][0]["kind"] == "dependent_supplier")
+    other = dict(notice, **{"title-titre-eng": "Paving project"})
+    check("a reused solicitation number with an unrelated title is not "
+          "the award", m3.find_award("cb-x", other, g) == ([], ""))
     check("depth 2 ran and the trace says so",
           any("depth 2" in t for t in r["trace"]))
     check("M3 findings are context, not evidence (decision 4)",
@@ -92,16 +95,16 @@ def main():
           m3.investigate("cb-x", {}, None)["available"] is False)
 
     # Audit finding 2026-11-01: the winner depended on the file's row order
-    split = [("S1", "W-SPLIT", "Alpha Trucks Ltd", "x", "DND", "x", "1",
+    split = [("Dump trucks", "S1", "W-SPLIT", "Alpha Trucks Ltd", "x", "DND", "x", "1",
               "2025-01-10", "25101900"),
-             ("S2", "W-SPLIT", "Bravo Trucks Ltd", "x", "DND", "x", "1",
+             ("Dump trucks", "S2", "W-SPLIT", "Bravo Trucks Ltd", "x", "DND", "x", "1",
               "2025-03-05", "25101900")]
     picks = []
     for order in (split, split[::-1]):
         p2 = os.path.join(tempfile.mkdtemp(), "awards.csv")
         awards_file(p2, order)
         a = m3.investigate("cb-s", {"solicitationNumber-numeroSollicitation":
-                                    "W-SPLIT"}, m3.load_graph(p2))["award"]
+                                    "W-SPLIT", "title-titre-eng": "Dump trucks"}, m3.load_graph(p2))["award"]
         picks.append((a["supplier"], a["winners"]))
     check("the winner no longer depends on the file's row order",
           picks[0] == picks[1] and picks[0][0] == "Bravo Trucks Ltd")

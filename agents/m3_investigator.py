@@ -67,6 +67,10 @@ AWARDS_URL = ("https://canadabuys.canada.ca/opendata/pub/"
               "awardNoticeComplete-avisAttributionComplet.csv")
 
 C_SOL_TENDER = "solicitationNumber-numeroSollicitation"
+C_TITLE_TENDER = "title-titre-eng"
+# Words too common in titles to show two notices are the same purchase.
+TITLE_COMMON = {"with", "from", "services", "supply", "delivery", "canada",
+                "national", "various", "equipment"}
 C_UNSPSC_TENDER = "unspsc"
 
 # The award is the NEWEST award row (ties: supplier name), and every
@@ -282,16 +286,32 @@ def pick_award(recs):
     return order[0], winners
 
 
+def title_words(title):
+    """The meaningful words of a title: 4 letters or more, common ones out."""
+    return set(re.findall(r"[a-z]{4,}", (title or "").lower())) - TITLE_COMMON
+
+
+def same_purchase(notice_row, recs):
+    """The award rows whose title shares a meaningful word with the tender's.
+    Buyers reuse solicitation numbers (NRC's 25-58191 is both laboratory
+    equipment and an inspection contract), so a number alone is not proof."""
+    words = title_words((notice_row or {}).get(C_TITLE_TENDER))
+    return [r for r in recs if words & title_words(r.get("title"))]
+
+
 def find_award(reference, notice_row, graph):
     """The award rows of this tender, and how they were found: by
     solicitation number, else by reference number, else by the solicitation
-    number without its /A, /B or version suffix, same buyer only. ([], "")
-    when none. The selection of tenders (pipeline/one_tender.gate) uses the
-    same lookup, so "awarded" means the same thing everywhere."""
+    number without its /A, /B or version suffix, same buyer only. A match by
+    solicitation number counts only if the titles share a word
+    (same_purchase). ([], "") when none. The selection of tenders
+    (pipeline/one_tender.gate) uses the same lookup, so "awarded" means the
+    same thing everywhere."""
     if graph is None:
         return [], ""
     sol = norm_sol((notice_row or {}).get(C_SOL_TENDER))
-    recs = graph["by_sol"].get(sol, []) if sol else []
+    recs = same_purchase(notice_row,
+                         graph["by_sol"].get(sol, []) if sol else [])
     if recs:
         return recs, "solicitation number"
     recs = graph["by_ref"].get(reference, [])
@@ -300,8 +320,9 @@ def find_award(reference, notice_row, graph):
     if sol and graph.get("by_base"):
         buyer = norm_name((notice_row or {}).get(
             "contractingEntityName-nomEntitContractante-eng"))
-        recs = [r for r in graph["by_base"].get(base_sol(sol), [])
-                if buyer and r["buyer"] == buyer]
+        recs = same_purchase(notice_row, [
+            r for r in graph["by_base"].get(base_sol(sol), [])
+            if buyer and r["buyer"] == buyer])
         if recs:
             return recs, ("solicitation number, ignoring its /A, /B or "
                           "version suffix")
