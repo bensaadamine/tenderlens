@@ -9,23 +9,8 @@ with pickup trucks), so results are low confidence.
 """
 
 
-import argparse
 import collections
-import csv
-import io
-import json
-import os
 import statistics
-import sys
-
-csv.field_size_limit(10_000_000)
-
-try:
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-except Exception:
-    pass
-
-CENSUS = "reports/census_2510_mapped.csv"
 
 MIN_PEERS = 8
 BAND_RATIO = 0.25
@@ -46,20 +31,9 @@ def mad(values, med=None):
     return 1.4826 * statistics.median([abs(v - med) for v in values])
 
 
-def load_observations(census=CENSUS):
-    """Load the mapped census; key each row by (family, dimension, attribute)."""
-    if not os.path.exists(census):
-        raise SystemExit(f"missing {census} - run prepare/census.py --map first")
-    with io.open(census, encoding="utf-8", errors="replace", newline="") as f:
-        return prepare(csv.DictReader(f))
-
-
 def prepare(rows):
-    """Keep rows with a converted value; add _v, _lo, _hi and the peer key.
-
-    Shared by the batch census and the incremental knowledge base
-    (pipeline/stream.py), so both compare tenders the same way.
-    """
+    """Keep rows with a converted value; add _v, _lo, _hi and the peer key
+    (family, dimension, attribute)."""
     out = []
     for r in rows:
         if not r.get("base_value"):
@@ -168,10 +142,10 @@ def within_document(rows_for_tender):
             "share": round(two / float(total), 3)}
 
 
-def tight_requirements(reference, census=CENSUS, min_peers=MIN_PEERS,
-                       _rows=None):
-    """Level 2 for one tender: findings, attributes with too few peers, within-document share."""
-    rows = load_observations(census) if _rows is None else _rows
+def tight_requirements(reference, rows, min_peers=MIN_PEERS):
+    """Level 2 for one tender: findings, attributes with too few peers,
+    within-document share. `rows`: the tender's own rows and its peers'
+    (pipeline/stream.py: the knowledge base)."""
     mine = [r for r in rows if r["reference"] == reference]
     if not mine:
         return {"reference": reference, "error": "no observations - is this "
@@ -222,85 +196,3 @@ def tight_requirements(reference, census=CENSUS, min_peers=MIN_PEERS,
         "not_tight": loose,
         "within_document": within_document(mine),
     }
-
-
-def rank_all(census=CENSUS, limit=50):
-    """Rank every tender in the knowledge base, most tight first."""
-    rows = load_observations(census)
-    refs = sorted({r["reference"] for r in rows})
-    out = []
-    for ref in refs:
-        res = tight_requirements(ref, census=census, _rows=rows)
-        out.append(res)
-    out.sort(key=lambda r: (-r["score"],
-                            -r["within_document"]["share"]))
-    return out[:limit] if limit else out
-
-
-def main():
-    """CLI: --tender REF or --rank."""
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--tender", help="reference number")
-    ap.add_argument("--census", default=CENSUS)
-    ap.add_argument("--rank", action="store_true",
-                    help="rank every tender in the knowledge base")
-    ap.add_argument("--limit", type=int, default=25)
-    ap.add_argument("--json", action="store_true")
-    ap.add_argument("--signal", choices=["both", "band", "position"],
-                    default="both", help="which signal to score on")
-    args = ap.parse_args()
-    SIGNALS.clear()
-    SIGNALS.update({"band", "position"} if args.signal == "both"
-                   else {args.signal})
-
-    if args.rank:
-        q = rank_all(args.census, limit=args.limit)
-        if args.json:
-            print(json.dumps(q, indent=2))
-            return
-        print(f"\n{'score':>5} {'wdoc':>5}  tender                 attributes")
-        print("-" * 74)
-        for r in q:
-            attrs = ", ".join(f["attribute"] for f in r["findings"][:4])
-            print(f"{r['score']:5d} {r['within_document']['share']:5.2f}  "
-                  f"{r['reference']:22} {attrs[:34]}")
-        n = sum(1 for r in q if r["score"] >= CONJUNCTION)
-        print(f"\n{n} of {len(q)} shown reach the conjunction bar "
-              f"({CONJUNCTION}+ tight attributes).")
-        return
-
-    if not args.tender:
-        ap.error("--tender or --rank")
-    res = tight_requirements(args.tender, census=args.census)
-    if args.json:
-        print(json.dumps(res, indent=2))
-        return
-    if res.get("error"):
-        print(res["error"])
-        return
-    print(f"\n{res['reference']}   score={res['score']}  "
-          f"verdict={res['verdict']}")
-    wd = res["within_document"]
-    print(f"within-document baseline: {wd['two_sided']}/{wd['requirements']} "
-          f"requirements two-sided ({wd['share']:.0%})\n")
-    for f in res["findings"]:
-        print(f"  TIGHT  {f['attribute']}  ({f['kind']})")
-        if f["kind"] == "narrow_band":
-            print(f"         band {f['band_width']} {f['unit']} vs peer "
-                  f"spread {f['peer_spread']} -> {f['ratio']:.0%}")
-        else:
-            print(f"         {f['value']} {f['unit']} vs peer median "
-                  f"{f['peer_median']} (n={f['peer_n']}, "
-                  f"z={f['restrictive_z']})")
-        print(f"         {f['section']}")
-        print(f"         \"{(f['source_line'] or '')[:96]}\"")
-        print(f"         {f['file']}\n")
-    if res["not_tight"]:
-        print(f"  {len(res['not_tight'])} attribute(s) compared and not tight")
-    if res["insufficient_peers"]:
-        print(f"  {len(res['insufficient_peers'])} attribute(s) with too few "
-              f"peers to judge")
-
-
-if __name__ == "__main__":
-    main()

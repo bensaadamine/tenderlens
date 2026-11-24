@@ -16,7 +16,8 @@ import os
 import re
 import time
 
-from pipeline.stream import FB_COLS, KB, apply_verdict, known_groups
+from pipeline.stream import (FB_COLS, KB, apply_verdict, installation,
+                             known_groups)
 from tools import documents
 from tools.report import ROUTE_ORDER
 
@@ -27,7 +28,7 @@ USAGE, ERRORS = "reports/llm_usage.csv", "reports/llm_errors.csv"
 GROQ_DAILY = 200_000           # Groq's free tier, tokens a day (tools/llm.py)
 AGENTS = {"m2_agent": "M2 agent - brand names",
           "m3_agent": "M3 agent - supplier spellings",
-          "m4_agent": "M4 model coordinator (experiment)",
+          "m4_agent": "M4 model coordinator (experiment, removed 2026-11-24)",
           "attribute_map": "label map (data preparation)",
           "facts": "facts tool (removed 2026-11-04)",
           "selftest": "connection test"}
@@ -79,16 +80,6 @@ def _cases(kb):
     return _logged[kb.case_log][1]
 
 
-def _installation(kb):
-    """Stamps of the batches that installed the base (run --install)."""
-    out = set()
-    for path in glob.glob(os.path.join(kb.batches, "*_settings.json")):
-        with open(path, encoding="utf-8") as f:
-            if json.load(f).get("settings", {}).get("install"):
-                out.add(os.path.basename(path)[:15])
-    return out
-
-
 def tenders(group):
     """Every registered tender: where it is now, the auditor's verdict, the
     case the register points to (None for a tender processed before cases
@@ -96,7 +87,7 @@ def tenders(group):
     installation (rules only) put it there."""
     kb = KB(group, KB_ROOT)
     cases = _cases(kb)
-    installed = _installation(kb)
+    installed = installation(kb)[0]
     out = []
     for ref, ev in kb.state().items():
         case = cases.get(ref, {}).get(ev["run_id"])

@@ -1,40 +1,20 @@
 """
-The census: every numeric requirement in a category's tender documents.
+Every numeric requirement in a tender's documents.
 
-Reads the requirements section of each document, extracts every
-(label, comparator, value, unit), cleans the rows (bands, unit conversion,
-metric/imperial restatements, repeats). The level-2 peer comparison reads
-these rows (tools/level2.py), and the attribute map is built from them
-(prepare/attribute_map.py). The same extraction runs on each new tender in
-`python tenderlens.py run` (pipeline/stream.py).
+Reads the requirements section of each document and extracts every
+(label, comparator, value, unit), then cleans the rows: bands, unit
+conversion, metric/imperial restatements, repeats. `python tenderlens.py run`
+(pipeline/stream.py) runs these steps on each tender and stores the rows in
+the knowledge base; level 2 (tools/level2.py) compares them with the peers'.
 
 Labels are kept as the tender writes them; prepare/attribute_map.py merges
-synonyms into one attribute, and --map applies its map here.
-
-Run:
-    python tenderlens.py prepare census --group 2510 [--map]
-
-Writes reports/census_<grp>[_mapped].csv, one row per observation.
+synonyms into one attribute, applied when the base is read.
 """
 
-
-import argparse
-import csv
-import io
-import json
-import os
 import re
-import sys
 from collections import defaultdict
 
 from tools.sections import (RE_ADMIN_SECTION, alpha_count, scope_mask, section_index)
-
-csv.field_size_limit(10_000_000)
-
-try:
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-except Exception:
-    pass
 
 # unit -> physical dimension (length, mass...)
 DIMENSION = {}
@@ -504,189 +484,3 @@ def dedup(rows, cut):
         seen[k] = r
         out.append(r)
     return out
-
-
-def tender_meta(tenders_path, refs):
-    """reference -> (8-digit UNSPSC code, publication date), read from the
-    notices file.
-    """
-    C_REF = "referenceNumber-numeroReference"
-    C_UN = "unspsc"
-    C_PUB = "publicationDate-datePublication"
-    meta = {}
-    if not os.path.exists(tenders_path):
-        print(f"  WARNING: {tenders_path} not found - no product family or "
-              f"date. Census will group on the 4-digit category only.")
-        return meta
-    with io.open(tenders_path, encoding="utf-8-sig", errors="replace",
-                 newline="") as f:
-        for row in csv.DictReader(f):
-            ref = (row.get(C_REF) or "").strip()
-            if ref not in refs:
-                continue
-            raw = row.get(C_UN) or ""
-            code = ""
-            for t in re.split(r"[\r\n,;|\s]+", raw):
-                d = re.sub(r"\D", "", t)
-                if len(d) >= 4:
-                    code = d
-                    break
-            meta[ref] = (code[:8], (row.get(C_PUB) or "").strip()[:10])
-    return meta
-
-
-CENSUS_COLS = ["reference", "unspsc8", "pub_date", "label", "raw_label",
-               "label_src", "comparator", "comp_src", "value", "value_text",
-               "unit", "unit_resolved", "dimension",
-               "base_value", "base_unit", "value_lo", "value_hi", "base_lo",
-               "base_hi", "band_width", "restated", "also_stated_as",
-               "soft_unit", "part_number_line", "scope", "file", "line_no",
-               "section", "source_line", "context"]
-
-
-def parse_args():
-    """The command-line options."""
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--group", default="4110")
-    ap.add_argument("--text-dir", default="reports/text")
-    ap.add_argument("--tenders", default="data/tenders.csv")
-    ap.add_argument("--out", default="reports")
-    ap.add_argument("--map", nargs="?", const="reports/attribute_map.json",
-                    default="",
-                    help="apply the attribute map (prepare/attribute_map.py): "
-                         "synonyms count as one attribute, 'unknown' is dropped")
-    return ap.parse_args()
-
-
-def main():
-    """The census of one category, step by step:
-    read the text -> extract every numeric requirement -> clean (bands,
-    units, restatements) -> join the notices (family, date) -> apply the
-    label map -> one observation per tender -> write the rows."""
-    args = parse_args()
-    if args.map and not os.path.exists(args.map):
-        sys.exit(f"missing {args.map} - run prepare/attribute_map.py first")
-
-    tdir, files = text_files(args.text_dir, args.group)
-    rows = extract_documents(tdir, files)
-    rows = clean_rows(rows)
-    refs = {r["reference"] for r in rows}
-    print(f"\n{len(rows):,} candidates from {len(refs):,} tenders")
-    join_notices(rows, args.tenders, args.group)
-    if args.map:
-        rows = apply_map(rows, args.map)
-    before = len(rows)
-    rows = dedup(rows, 8)
-    print(f"dedup: {before:,} -> {len(rows):,} observations "
-          f"({before - len(rows):,} restatements folded)")
-
-    sfx = "_mapped" if args.map else ""
-    full = os.path.join(args.out, f"census_{args.group}{sfx}.csv")
-    write_rows(rows, full)
-    print(f"\n  every observation -> {full}")
-
-
-def text_files(text_dir, group):
-    """(folder, the category's extracted .txt files) - or exit saying
-    which preparation step is missing."""
-    tdir = os.path.join(text_dir, group)
-    if not os.path.isdir(tdir):
-        sys.exit(f"missing {tdir} - run prepare/fetch_docs.py --only {group} "
-                 f"--per-cat 0, then prepare/extract_text.py")
-    files = sorted(f for f in os.listdir(tdir) if f.endswith(".txt"))
-    if not files:
-        sys.exit(f"no cached text in {tdir}")
-    print(f"{len(files):,} cached documents in {tdir}")
-    return tdir, files
-
-
-def extract_documents(tdir, files):
-    """The rows of every document of the category, each tagged with its
-    tender and file.
-    """
-    rows = []
-    for n, fn in enumerate(files, 1):
-        ref = fn.split("__", 1)[0]
-        try:
-            with io.open(os.path.join(tdir, fn), encoding="utf-8",
-                         errors="replace") as fh:
-                txt = fh.read()
-        except Exception as e:
-            print(f"  unreadable {fn}: {e}")
-            continue
-        got = extract(txt)
-        for r in got:
-            r["reference"] = ref
-            r["file"] = fn
-        rows.extend(got)
-        if n % 100 == 0:
-            print(f"  {n:5d}/{len(files)} ...")
-    if not rows:
-        sys.exit("no candidates extracted - check the text cache")
-    return rows
-
-
-def clean_rows(rows):
-    """Bands to one row, values to base units, metric/imperial
-    restatements to one row.
-    """
-    rows, nb = collapse_bands(rows)
-    print(f"  {nb:,} two-sided bands collapsed to one observation each")
-    nc = convert_units(rows)
-    print(f"  {nc:,}/{len(rows):,} converted to a base unit "
-          f"({len(rows)-nc:,} left unconverted - ambiguous unit, "
-          f"decision 15)")
-    rows, nf = fold_restatements(rows)
-    print(f"  {nf:,} metric/imperial restatements of one requirement "
-          f"folded")
-    return rows
-
-
-def join_notices(rows, tenders_path, group):
-    """Each row gets its tender's 8-digit UNSPSC family and publication
-    date from the notices file."""
-    print(f"joining {tenders_path} for the 8-digit family and date ...")
-    meta = tender_meta(tenders_path, {r["reference"] for r in rows})
-    for r in rows:
-        u8, date = meta.get(r["reference"], ("", ""))
-        r["unspsc8"] = u8 or group
-        r["pub_date"] = date
-
-
-def apply_map(rows, map_path):
-    """Rename each label to its attribute from the map; drop the rows the
-    map calls 'unknown'. raw_label keeps the tender's wording.
-    """
-    with io.open(map_path, encoding="utf-8") as f:
-        m = json.load(f)
-    m = m.get("map", m)
-    unknown = kept = renamed = 0
-    out = []
-    for r in rows:
-        canon = m.get(r["label"])
-        if canon == "unknown":
-            unknown += 1
-            continue
-        if canon and canon != r["label"]:
-            r["label"] = canon
-            renamed += 1
-        kept += 1
-        out.append(r)
-    print(f"map applied: {renamed:,} rows renamed, {unknown:,} dropped "
-          f"as boilerplate, {kept:,} kept")
-    if not out:
-        sys.exit("the map dropped every row - check it by hand")
-    return out
-
-
-def write_rows(rows, path):
-    """Write the rows to a CSV file."""
-    with io.open(path, "w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=CENSUS_COLS, extrasaction="ignore")
-        w.writeheader()
-        for r in rows:
-            w.writerow(r)
-
-
-if __name__ == "__main__":
-    main()

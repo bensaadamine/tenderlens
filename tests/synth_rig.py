@@ -351,7 +351,7 @@ def run(a):
     documents.TEXT_DIR = SYN_TEXT
     m1_screener.TEXT_DIR = SYN_TEXT
 
-    notices, wstats, _, graph = one_tender.load_shared(level2_on=False)
+    notices, wstats, _, graph = one_tender.load_shared()
     kb = stream.KB(GROUP)
     state = kb.state()
     amap = stream.load_map()

@@ -1,19 +1,17 @@
 """
-Do M4's checks earn their cost, and does a model choosing them do better?
+Do M4's checks earn their cost?
 Runs the labelled tenders (tests/m2_labels.csv
-and tests/m2_holdout.csv) three ways and compares the routes:
+and tests/m2_holdout.csv) two ways and compares the routes:
 
     off     M4 rules only
-    fixed   every M4 follow-up, in a fixed order, no model choosing
-    model   a model chooses the follow-ups (experiments/)
+    fixed   every M4 follow-up, in a fixed order
 
 M2 runs on rules only, so M4's follow-ups (re-reading a finding, the
 winner's spellings) are what changes a case. A tender counts as "should be
 flagged" when one of its names is labelled f (brand required, no
-equivalent); "flagged" means watch or alert. If `model` gives the same
-routes as `fixed`, keep `fixed`: the model's choices add cost, not value.
+equivalent); "flagged" means watch or alert.
 
-    python tenderlens.py eval m4 --online                 # all three (Windows)
+    python tenderlens.py eval m4 --online                 # both (Windows)
     python tenderlens.py eval m4 --modes off              # offline baseline
 
 Writes reports/m4_eval/<stamp>/cases.csv and summary.txt; never overwrites.
@@ -30,10 +28,11 @@ import time
 from tools import llm
 from tests import m2_eval
 from pipeline import one_tender
+from pipeline import stream
 from pipeline.settings import Settings
 
 OUT_DIR = os.path.join("reports", "m4_eval")
-MODES = ("off", "fixed", "model")
+MODES = ("off", "fixed")
 
 
 def main():
@@ -49,6 +48,10 @@ def main():
         want[lab["reference"]].add(lab["letter"])
     refs = sorted(want)[:a.limit or None]
     shared = one_tender.load_shared(verbose=False)
+    # level 2's peers: the installation's base, frozen (same numbers whatever
+    # was run since)
+    per_tender = {ref: stream.with_peers(shared, ref, frozen=True)
+                  for ref in refs}
     stamp = time.strftime("%Y%m%d-%H%M%S")
     out_dir = os.path.join(OUT_DIR, stamp)
     os.makedirs(out_dir, exist_ok=True)
@@ -58,7 +61,7 @@ def main():
         start = len(llm.usage_rows())
         for ref in refs:
             try:
-                c = one_tender.run_one(ref, shared, Settings(
+                c = one_tender.run_one(ref, per_tender[ref], Settings(
                     online=a.online,
                     m4_checks=None if mode == "off" else mode))
                 route = c["route"]
@@ -96,12 +99,6 @@ def main():
                      f"without one {len(flag) - hit}; agent tokens "
                      f"{tokens.get(m, 0):,}; agent did not run on "
                      f"{len(rs) - len(ran)}")
-    if "fixed" in by and "model" in by:
-        diff = [ref for ref in refs
-                if by["fixed"][ref]["route"] != by["model"][ref]["route"]]
-        lines += ["", f"model vs fixed: {len(refs) - len(diff)}/{len(refs)} "
-                      f"same route" + (f"; differ on {', '.join(diff)}"
-                                       if diff else "")]
     text = "\n".join(lines)
     with io.open(os.path.join(out_dir, "summary.txt"), "w",
                  encoding="utf-8") as f:

@@ -16,7 +16,7 @@ TENDERLENS - the one command. Every part of the system starts here.
                                                    and documents, then run the new
                                                    tenders (rules only)
     python tenderlens.py awards --fetch            download the award notices (once)
-    python tenderlens.py prepare profile|docs|text|census|labels [...]
+    python tenderlens.py prepare profile|docs|text|labels [...]
                                                    data preparation, in that order
     python tenderlens.py llm [--usage]             the pinned models; tokens spent
 
@@ -53,7 +53,6 @@ EVALS = {"m2": "tests.m2_eval",
 PREPARE = {"profile": "prepare.profile_tenders", 
            "docs": "prepare.fetch_docs",
            "text": "prepare.extract_text", 
-           "census": "prepare.census",
            "labels": "prepare.attribute_map"}
 
 

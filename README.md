@@ -25,7 +25,7 @@ A **hybrid multi-agent workflow**: four components look at one tender at a time,
 | **M3 Investigator** | rules + **agent** (`--m3-agent`) | award history | who won, whether this buyer keeps choosing the same supplier — the agent decides which spellings are the same company | [docs/agents/M3_investigator.md](docs/agents/M3_investigator.md) |
 | **M4 Case Builder** | rules + fixed checks (`--m4-checks`) | M1 + M2 + M3 | checks every claim has a source, scores it, decides alert / watch / close; before ranking a brand case it sends the finding back to the M2 agent and the winner's spellings to the M3 agent | [docs/agents/M4_case_builder.md](docs/agents/M4_case_builder.md) |
 
-M4's checks run in a fixed order: a version where a model chose them was measured and not chosen (0 false alarms with the fixed order, 2 with the model choosing, on 73 labelled tenders) — it is kept in `experiments/`. What M2 and M3 hand to M4 is defined once, in `agents/evidence.py`.
+M4's checks run in a fixed order: a version where a model chose them was measured and not chosen (0 false alarms with the fixed order, 2 with the model choosing, on 73 labelled tenders). What M2 and M3 hand to M4 is defined once, in `agents/evidence.py`.
 
 **Routing in one line:** only something found **in the documents** can raise an **alert**; what the buyer **declared** on the notice only ranks a case; award history is **context**.
 
@@ -41,9 +41,8 @@ agents/                M1–M4; m4_checks.py = M4's checks; agent_loop.py = the 
 tools/                 documents.py (a tender's text), sections.py (where the requirements section is),
                        brands.py (brand rules), wikidata.py, level2.py (peer comparison), llm.py (LLM access),
                        report.py (the queue pages), names.py (how brand and company names are compared)
-prepare/               data preparation, in order: profile → docs → text → census → labels
+prepare/               data preparation, in order: profile → docs → text → labels
 tests/                 offline tests (test_*.py), evaluations (m2_eval.py, m4_eval.py), synth_rig.py
-experiments/           measured and not chosen: m4_model_coordinator.py (a model choosing M4's checks)
 docs/agents/           one page per component
 docs/DECISIONS.md      the numbered decisions the code cites ("decision 15")
 data/                  not in git: tenders.csv, awards.csv, downloaded documents

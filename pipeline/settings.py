@@ -23,7 +23,7 @@ class Settings:
     online: bool = False      # check unknown brand names on Wikidata (else its cache)
     agent: bool = False       # the M2 agent letters the brand names left open
     m3_agent: bool = False    # the M3 agent decides which spellings are the winner's
-    m4_checks: Optional[str] = None  # M4's checks: None, "fixed", "model" (experiment)
+    m4_checks: Optional[str] = None  # M4's checks: None or "fixed"
     level2: bool = True       # level 2: numbers against peer tenders (dormant)
     on_outage: str = "stop"   # no model answering: "stop" the run (the next run
     #                           resumes there) or "keep" the rules' result
@@ -46,13 +46,10 @@ def add_args(ap):
     ap.add_argument("--m3-agent", action="store_true",
                     help="the M3 agent decides which other spellings of the "
                          "winner are the same company (LLM, Windows)")
-    ap.add_argument("--m4-checks", nargs="?", const="fixed",
-                    choices=["fixed", "model"],
+    ap.add_argument("--m4-checks", action="store_const", const="fixed",
                     help="before ranking a case with a brand finding, M4 "
                          "sends the finding back to the M2 agent and the "
-                         "winner's spellings to the M3 agent (LLM, Windows). "
-                         "'model': a model chooses the checks (experiment, "
-                         "measured worse)")
+                         "winner's spellings to the M3 agent (LLM, Windows)")
     ap.add_argument("--no-level2", action="store_true",
                     help="skip level 2 (numbers against peer tenders; "
                          "dormant): no numbers extracted, none compared")

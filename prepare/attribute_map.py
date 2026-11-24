@@ -1,7 +1,8 @@
 """
-CANADA - STEP 5: the attribute map.
+The attribute map.
 
-The census leaves every requirement label exactly as the tender wrote it, so
+The knowledge base keeps every requirement label exactly as the tender wrote
+it, so
 one attribute arrives as five strings:
 
     capacity | payload | gvwr | trailer payload capacity | vehicle payload
@@ -31,7 +32,11 @@ attributes and every finding built on that group is wrong.
 Run (on Windows - api.groq.com is blocked from the agent's shells):
     python tenderlens.py prepare labels --group 2510
     python tenderlens.py prepare labels --group 2510 --dry-run    # cost, no calls
-    python tenderlens.py prepare census --group 2510 --map               # re-measure with it
+
+Reads the installation's rows of the group's knowledge base, written by
+    python tenderlens.py run --group 2510 --export-labels
+(only the installation: the map must not learn from the tenders that play the
+new ones). The map is applied when the base is read, so no re-run is needed.
 
 Writes:
     reports/attribute_map.json      {raw_label: canonical}, frozen + additive
@@ -168,7 +173,8 @@ def save_map(mapping, meta, path=MAP_PATH):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--group", default="2510")
-    ap.add_argument("--census", default="")
+    ap.add_argument("--rows", default="",
+                    help="default: reports/kb/<group>/labels_raw.csv")
     ap.add_argument("--out", default=MAP_PATH)
     ap.add_argument("--min-tenders", type=int, default=2,
                     help="only canonicalize labels seen in at least this many "
@@ -180,7 +186,7 @@ def main():
                          "per minute, and a long list also makes the model "
                          "sloppier about rule 2.")
     ap.add_argument("--family", choices=["unspsc8", "unspsc6", "unspsc4"],
-                    default="unspsc6", help="must match prepare/census.py")
+                    default="unspsc6", help="product family the labels are grouped by")
     ap.add_argument("--strong", action="store_true",
                     help="use the larger model; worth it here, the merge "
                          "decisions are the whole value of this step")
@@ -203,9 +209,10 @@ def main():
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
 
-    census = args.census or f"reports/census_{args.group}.csv"
-    if not os.path.exists(census):
-        sys.exit(f"missing {census} - run prepare/census.py --group {args.group}")
+    rows_path = args.rows or f"reports/kb/{args.group}/labels_raw.csv"
+    if not os.path.exists(rows_path):
+        sys.exit(f"missing {rows_path} - run: python tenderlens.py run --group "
+                 f"{args.group} --export-labels")
 
     cut = {"unspsc8": 8, "unspsc6": 6, "unspsc4": 4}[args.family]
 
@@ -219,7 +226,7 @@ def main():
     sections = defaultdict(Counter)
     contexts = defaultdict(Counter)
     rows_cache = []
-    with io.open(census, encoding="utf-8", newline="") as f:
+    with io.open(rows_path, encoding="utf-8", newline="") as f:
         for r in csv.DictReader(f):
             fam = (r.get("unspsc8") or args.group)[:cut] or args.group
             k = (fam, r["dimension"], r["label"])
@@ -286,7 +293,7 @@ def main():
           f"label pairs proven to be different attributes")
 
     keep = {k: v for k, v in tenders.items() if len(v) >= args.min_tenders}
-    print(f"{len(tenders):,} distinct labels in {census}")
+    print(f"{len(tenders):,} distinct labels in {rows_path}")
     print(f"{len(keep):,} seen in >= {args.min_tenders} tenders "
           f"-> these are the only ones worth canonicalizing")
     print(f"{len(tenders)-len(keep):,} singletons skipped (cannot form a peer "
@@ -528,7 +535,7 @@ def main():
             # A label being re-asked was already judged `unknown`. If this
             # pass does not improve on that, it must STAY unknown - falling
             # back to "maps to itself" would quietly promote boilerplate
-            # back into the census, undoing the judgement rather than
+            # back into the rows, undoing the judgement rather than
             # declining to revise it.
             prev = mapping.get(lab)
             fallback = "unknown" if prev == "unknown" else lab
@@ -660,7 +667,6 @@ def main():
     with io.open(out, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     print(f"\n  report -> {out}")
-    print("  then:  python tenderlens.py prepare census --group %s --map" % args.group)
 
 
 if __name__ == "__main__":

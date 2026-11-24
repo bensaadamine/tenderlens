@@ -27,6 +27,7 @@ import time
 from tools import llm
 from tools import report
 from pipeline import one_tender
+from pipeline import stream
 from pipeline.settings import Settings
 
 TENDERS = [
@@ -64,7 +65,11 @@ def main():
     if a.offline:                     # model answers from the cache only
         os.environ["TENDERLENS_OFFLINE"] = "1"
 
-    shared = one_tender.load_shared(verbose=False, level2_on=not a.no_level2)
+    shared = one_tender.load_shared(verbose=False)
+    # level 2's peers: the installation's base, frozen, so the demo gives the
+    # same result whatever was run since
+    per_tender = {ref: stream.with_peers(shared, ref, frozen=True)
+                  if not a.no_level2 else shared for ref, _ in TENDERS}
     stamp = time.strftime("%Y%m%d-%H%M%S")
     out_dir = os.path.join("reports", "demo", stamp)
     os.makedirs(out_dir, exist_ok=True)
@@ -75,7 +80,7 @@ def main():
         cases = []
         for ref, _why in TENDERS:
             try:
-                c = one_tender.run_one(ref, shared, Settings(
+                c = one_tender.run_one(ref, per_tender[ref], Settings(
                     online=online, level2=not a.no_level2, **SETUPS[name]))
                 routes[name, ref] = f"{c['route']} {c['score']}"
                 cases.append(c)

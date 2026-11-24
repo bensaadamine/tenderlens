@@ -47,7 +47,7 @@ The code cites these by number ("decision 15"). Each is settled and measured; th
 36. Share package (deprioritised): one zip of caches, knowledge bases and labels.
 37. Evaluation reports a tuning set (cases rules or prompts were fixed on — flattered) and a held-out set (never used for tuning — the score to quote). Every run writes its own dated folder; never overwrite.
 38. M3 agent: "same company" needs a postal code shared with the winner itself (no chains); a decision applies to the whole group of spellings.
-39. M4's checks run in a fixed order on cases with a brand finding: the M2 agent re-reads each finding, the M3 agent checks the winner's spellings, the winner's other award titles are shown. A model choosing the checks was measured worse (2 false alarms vs 0) and is kept as an experiment.
+39. M4's checks run in a fixed order on cases with a brand finding: the M2 agent re-reads each finding, the M3 agent checks the winner's spellings, the winner's other award titles are shown. A model choosing the checks was measured worse (2 false alarms vs 0) and was removed (2026-11-24).
 40. M2 agent, the supply test: "f" only if the bidder must supply that brand's product; if the purchase must connect to it, be controlled by it or be based on it, it is "c". Before its first step the agent is shown what the tender buys and every sentence about equipment the buyer already has.
 41. A hybrid multi-agent workflow: agents where judgement is needed (M2, M3), rules where exactness matters (M1, scoring, routing, quote checks), each choice measured. No model call is added just to make a component an agent.
 42. Level 2 is kept, dormant, behind one switch (`--no-level2` skips its extraction and comparison).

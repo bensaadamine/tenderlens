@@ -24,8 +24,7 @@ tenders, M2 on rules only, 2026-11-04):
     model        4            2 of 12                2          14k
 
 The model saved tokens by skipping the re-read on two tenders, and their
-false alarms stayed. Its version is kept, measured and not chosen:
-experiments/m4_model_coordinator.py (--m4-checks model).
+false alarms stayed: the fixed order was chosen.
 
 With the M2 agent on (--agent) every finding is already lettered, so check 1
 has nothing to do: the re-read matters when M2 runs on rules alone (the

@@ -35,7 +35,7 @@ What stays in code: all scoring and routing (`build_case`, unchanged); M2's and 
 | model (the model chooses) | 4 | 2 of 12 | 2 | 14k |
 
 - Re-reading every finding removes all 7 false alarms and keeps both real lock-ins.
-- Letting the model choose saves tokens but it skipped two re-reads, and those false alarms stayed. So the main path is the fixed order; the model version is kept as a measured experiment (`experiments/m4_model_coordinator.py`, `--m4-checks model`: decide → act → re-score loop, 4 steps, LangGraph or plain loop).
+- Letting the model choose saves tokens but it skipped two re-reads, and those false alarms stayed. So the fixed order was chosen, and the model version was removed (2026-11-24).
 - No mode finds a lock-in the rules missed: M4 only re-checks what is already flagged. Finding the others is the M2 agent's job (8 of 8 on the held-out set).
 
 ## How it decides
@@ -70,7 +70,7 @@ The pipeline (`pipeline/one_tender.py`, `pipeline/stream.py`, through `tools/rep
 ## Run it
 Through the pipeline (`python tenderlens.py tender <ref>`, `python tenderlens.py run --group <code>`). Add `--m4-checks` for the checks (LLM, Windows), or `--m4-checks model` for the experiment. Without the flag, M4 is rules only. No model answering → the run stops and resumes from that tender (`Settings(on_outage="keep")` ranks the case as it stands).
 
-Tests (no data, no network): `python -m tests.test_agents` (rules), `python -m tests.test_m4_checks` (the checks, fake M2/M3), `python -m tests.test_m4_model_coordinator` (the experiment, scripted fake model).
+Tests (no data, no network): `python -m tests.test_agents` (rules), `python -m tests.test_m4_checks` (the checks, fake M2/M3).
 
 ## Rules it must keep
 - Never writes "fraud". Strongest wording: *"the competition on this contract does not appear to have been genuine, for these reasons, at these locations."*

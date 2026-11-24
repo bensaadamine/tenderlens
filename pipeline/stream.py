@@ -23,7 +23,7 @@ HOW A RUN WORKS
   the brand names the level-1 rules find required. Open and award-not-found
   tenders are gated again on every run. The tenders to process go in
   PUBLICATION-DATE order. For each one:
-    1. extract its numeric requirements (prepare/census.py's own steps: section
+    1. extract its numeric requirements (tools/requirements.py: section
        scoping, number parsing, band collapse, unit conversion, restatements)
     2. run the four components, with the BASE as level 2's peers - so a tender
        is compared only with tenders processed before it
@@ -69,6 +69,7 @@ STORAGE  reports/kb/<group>/  - append-only, so a crash loses at most the
 import argparse
 import collections
 import csv
+import glob
 import io
 import json
 import os
@@ -83,7 +84,6 @@ from agents import m3_investigator
 from agents import m2_spec_auditor
 from agents import m4_case_builder
 from tools import report
-from tools import brands
 from tools import documents
 from pipeline import one_tender
 from pipeline import settings
@@ -94,9 +94,10 @@ try:
 except Exception:
     pass
 
-from prepare import census
+from tools import requirements
 
 MAP_PATH = "reports/attribute_map.json"
+LABELS_RAW = "labels_raw.csv"      # run --export-labels -> prepare labels
 OBS_COLS = ["run_id", "reference", "unspsc8", "pub_date", "label",
             "raw_label", "label_src", "comparator", "comp_src", "value",
             "value_text", "unit", "unit_resolved", "dimension", "base_value",
@@ -234,22 +235,22 @@ def notice_meta(row):
 
 
 def extract_tender(ref, row, group, run_id, level2_on=True):
-    """Raw observations for one tender, through prepare/census.py's own
-    steps. Level 2 off: the documents only, no observation."""
+    """Raw observations for one tender (tools/requirements.py).
+    Level 2 off: the documents only, no observation."""
     docs = documents.tender_documents(ref)
     if not level2_on:
         return docs, []
     rows = []
     for d in docs:
-        got = census.extract(d["text"])
+        got = requirements.extract(d["text"])
         for r in got:
             r["reference"] = ref
             r["file"] = f"{ref}__{d['document']}.txt"
         rows.extend(got)
     if rows:
-        rows, _ = census.collapse_bands(rows)
-        census.convert_units(rows)
-        rows, _ = census.fold_restatements(rows)
+        rows, _ = requirements.collapse_bands(rows)
+        requirements.convert_units(rows)
+        rows, _ = requirements.fold_restatements(rows)
     u8, date = notice_meta(row)
     out = []
     for r in rows:
@@ -287,17 +288,62 @@ def comparable(rows, amap):
         if canon:
             r["label"] = canon
         out.append(r)
-    out = census.dedup(out, 8)
+    out = requirements.dedup(out, 8)
     return level2.prepare(out)
 
 
-def base_rows(kb, state, amap, level2_on=True):
+def base_rows(kb, state, amap, level2_on=True, until=None):
+    """Level-2 rows of the tenders now in the base; with `until`, only those
+    published by then."""
     if not level2_on:
         return []
     rows = []
     for ref, rs in kb.observations(state, "base").items():
+        if until and state[ref]["pub_date"] > until:
+            continue
         rows.extend(comparable(rs, amap))
     return rows
+
+
+def installation(kb):
+    """(stamps of the batches that installed the base, last publication date
+    they read) - from the batches' settings (run --install)."""
+    stamps, until = set(), None
+    for path in glob.glob(os.path.join(kb.batches, "*_settings.json")):
+        with io.open(path, encoding="utf-8") as f:
+            st = json.load(f).get("settings", {})
+        if st.get("install"):
+            stamps.add(os.path.basename(path)[:15])
+            until = st.get("until")
+    return stamps, until
+
+
+_bases = {}
+
+
+def peers_for(ref, row, frozen=False, root="reports/kb"):
+    """Level-2 rows for one tender judged outside a run (`tender`, the demo,
+    the evaluations): the base of its group, without the tender itself, plus
+    the tender's own rows. frozen=True keeps only the installation's tenders,
+    so an evaluation gives the same numbers whatever was run since."""
+    group = m3_investigator.first_unspsc4(row.get(m1_screener.C_UNSPSC))
+    amap = load_map()
+    if (group, frozen) not in _bases:
+        rows = []
+        if group in known_groups(root):
+            kb = KB(group, root)
+            until = installation(kb)[1] if frozen else None
+            rows = base_rows(kb, kb.state(), amap, until=until)
+        _bases[group, frozen] = rows
+    _, raw = extract_tender(ref, row, group, "outside-a-run")
+    return ([r for r in _bases[group, frozen] if r["reference"] != ref]
+            + comparable(raw, amap))
+
+
+def with_peers(shared, ref, frozen=False):
+    """one_tender.load_shared's data, with this tender's level-2 peers."""
+    notices, wstats, _, graph = shared
+    return notices, wstats, peers_for(ref, notices[ref], frozen), graph
 
 
 # ------------------------------------------------------------------ commands
@@ -364,7 +410,7 @@ def run(a):
     kb = KB(a.group, a.kb_root)
     s = Settings.from_args(a)
     amap = load_map()
-    notices, wstats, _, graph = one_tender.load_shared(level2_on=False)
+    notices, wstats, _, graph = one_tender.load_shared()
     if graph is None:
         sys.exit("the award file selects the tenders to process: run "
                  "python tenderlens.py awards --fetch first")
@@ -594,20 +640,25 @@ def status(a):
 
 
 def export_labels(a):
-    """Raw rows of every registered tender, as prepare/attribute_map.py --census reads them."""
+    """Raw rows of the installation's tenders, for prepare/attribute_map.py.
+    Only the installation: the label map must not learn from the tenders that
+    play the new ones."""
     kb = KB(a.group, a.kb_root)
     state = kb.state()
-    out = os.path.join(kb.dir, "census_raw.csv")
+    until = installation(kb)[1]
+    out = os.path.join(kb.dir, LABELS_RAW)
     n = 0
     with io.open(out, "w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=OBS_COLS, extrasaction="ignore")
         w.writeheader()
         for pile in ("base", "quarantine"):
-            for rs in kb.observations(state, pile).values():
+            for ref, rs in kb.observations(state, pile).items():
+                if until and state[ref]["pub_date"] > until:
+                    continue
                 w.writerows(rs)
                 n += len(rs)
     print(f"{n:,} rows -> {out}")
-    print(f"next: python tenderlens.py prepare labels --group {a.group} --census {out}")
+    print(f"next: python tenderlens.py prepare labels --group {a.group}")
 
 
 def main():

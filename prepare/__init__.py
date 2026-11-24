@@ -1,1 +1,1 @@
-"""Data preparation, in order: profile, docs, text, census, labels."""
+"""Data preparation, in order: profile, docs, text, then labels (after run --install)."""

@@ -286,9 +286,7 @@ def _finish(reference, rows, l1, trace, docs=None, level2_on=True):
         l2 = {"off": True}
         trace.append("level 2: off (--no-level2)")
     else:
-        if rows is None:
-            rows = level2.load_observations()
-        l2 = level2.tight_requirements(reference, _rows=rows)
+        l2 = level2.tight_requirements(reference, rows or [])
     if l2.get("off"):
         pass
     elif l2.get("error"):

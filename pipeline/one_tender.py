@@ -23,8 +23,9 @@ notice. Letting M1 close it would make the system blind to its own target.
 So every tender with documents gets M2.
 
 Each component works on one tender; batching belongs to the tools, so
-the shared data - notices, observations, awards - is loaded once here and
-handed to each component.
+the shared data - notices, awards - is loaded once here and handed to each
+component. Level 2's peers come from the knowledge base
+(pipeline/stream.py: the run builds them; with_peers for one tender).
 """
 
 
@@ -33,7 +34,6 @@ import sys
 import time
 
 from tools import brands
-from tools import level2
 from agents import m1_screener
 from agents import m2_spec_auditor
 from agents import m3_investigator
@@ -47,22 +47,18 @@ try:
 except Exception:
     pass
 
-def load_shared(verbose=True, level2_on=True):
+def load_shared(verbose=True):
+    """(notices, method windows, level-2 peers - none yet, awards)."""
     t = time.time()
     notices = m1_screener.load_notices()
     wstats = m1_screener.method_windows(notices)
     if verbose:
         print(f"notices: {len(notices):,} ({time.time()-t:.0f}s)")
-    try:
-        rows = level2.load_observations() if level2_on else []
-    except SystemExit as e:
-        print(f"level 2 knowledge base unavailable: {e}")
-        rows = []
     graph = m3_investigator.load_graph()
     if verbose:
-        print(f"level-2 observations: {len(rows):,} | awards: "
+        print(f"awards: "
               f"{'%s rows' % format(graph['rows'], ',') if graph else 'NOT LOADED (run m3_investigator.py --fetch)'}")
-    return notices, wstats, rows, graph
+    return notices, wstats, [], graph
 
 
 # Tenders that never became a contract (user decision 2026-10-22): cancelled,
@@ -128,8 +124,7 @@ def run_one(ref, shared, s=None):
     """The four components on one tender, with one run's settings
     (pipeline/settings.py; default: rules only). s.m4_checks: None (M4
     rules only), "fixed" (M4's checks before ranking a case with a brand
-    finding, agents/m4_checks.py) or "model" (a model chooses those checks
-    - the measured experiment, experiments/m4_model_coordinator.py)."""
+    finding, agents/m4_checks.py)."""
     s = s or Settings()
     notices, wstats, rows, graph = shared
     m1 = m1_screener.screen(ref, notices, wstats)
@@ -152,11 +147,7 @@ def run_one(ref, shared, s=None):
     if s.m4_checks and not why_none:
         hooks = m4_checks.default_hooks(ref, notices.get(ref), graph, m3,
                                         s.online, s.on_outage)
-        if s.m4_checks == "model":
-            from experiments import m4_model_coordinator
-            case = m4_model_coordinator.coordinate(ref, m1, m2, m3, hooks)
-        else:
-            case = m4_checks.check_case(ref, m1, m2, m3, hooks)
+        case = m4_checks.check_case(ref, m1, m2, m3, hooks)
     else:
         case = m4_case_builder.build_case(m1, m2, m3)
     case["m1_route"] = m1.get("route")
@@ -190,8 +181,12 @@ def main():
     a = ap.parse_args()
     s = Settings.from_args(a)
 
+    from pipeline import stream      # here: stream imports this module
+    shared = load_shared()
+    if s.level2:                     # peers: the knowledge base as it is now
+        shared = stream.with_peers(shared, a.tender)
     try:
-        c = run_one(a.tender, load_shared(level2_on=s.level2), s)
+        c = run_one(a.tender, shared, s)
     except AGENT_DOWN as e:
         print(f"\nstopped: {e}")
         return 1
