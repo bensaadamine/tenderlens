@@ -27,10 +27,12 @@ import sys
 import argparse
 import json
 import re
+import string
 
 from tools.documents import (amendment_view, is_amendment, question_mask,
                        requirement_view, tender_documents)
 from tools.wikidata import load_cache, verify_brand
+from tools.requirements import UNIT
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -72,6 +74,32 @@ RE_MODEL_NEXT = re.compile(
 # Capitalised because a sentence begins here, mid-line: "column 76. Ensure".
 RE_YEAR = re.compile(r"(?:19|20)\d\d")
 
+# A measurement is not a model code: "(ENVIRON 610MM EN HAUTEUR)" is French
+# for "about 610 mm high", "HG LAMP 350W" a lamp's power, "Optimized 5mm" a
+# probe's size (2026-11-24: all three were read as brands). One digit and a
+# one-letter unit is a model as often as a size ("Form 4L", a 3D printer), so
+# a one-letter unit needs two digits or more.
+RE_MEASURE = re.compile(r"(\d[\d.,]*)\s?(" + UNIT + r")(?![A-Za-z])", re.I)
+
+
+# One-letter units, in their own case: "m" is metres, "M" is not ("AKTApure
+# 150M" is a model).
+ONE_LETTER_UNITS = {c for c in string.ascii_letters
+                    if re.fullmatch("(?:" + UNIT + ")", c)}
+
+
+def is_measure(token):
+    """A number and its unit. A one-letter unit counts in its own case and
+    after two digits or more ("350W"; "Form 4L" is a model)."""
+    m = RE_MEASURE.match(token)
+    if not m:
+        return False
+    unit = m.group(2)
+    if len(unit) > 1:
+        return True
+    return (unit in ONE_LETTER_UNITS
+            and sum(ch.isdigit() for ch in m.group(1)) > 1)
+
 RE_SENTENCE_START = re.compile(r"[.!?;:]\s+$")
 
 RE_TRADEMARK = re.compile(r"[®™]")
@@ -89,6 +117,35 @@ RE_OR_EQUIV = re.compile(
     r"|\bequivalent\s+(?:product|model|item)s?\b", re.I)
 
 RE_EQUIV_TO = re.compile(r"equivalent\s+to\b|équivalent\s+à\b", re.I)
+
+# The buyer accepting other products in other words than "or equivalent"
+# (2026-11-24): "Equivalent table bases from other manufacturers will be
+# accepted", "or products that meet the same technical and performance
+# specifications". Like the blanket clause, it clears every brand of the
+# tender; read outside bidders' questions only.
+RE_EQUIV_ACCEPTED = re.compile(
+    r"(?<!\bno\s)(?<!\bnot\s)\bequivalents?\b[^.?\n]{0,80}"
+    r"\b(?:will|shall|may)\s+be\s+(?:accepted|considered)"
+    r"|\b(?:products?|items?|equipment)\s+(?:that|which)\s+meets?\s+the\s+same"
+    r"\s+(?:technical|specifications?)"
+    r"|\béquivalents?\b[^.?\n]{0,80}\bseront\s+(?:acceptée?s|considérée?s)",
+    re.I)
+
+
+# Not a clearance (decision 29): the defence purchase descriptions' definition
+# of "Equivalent" - "Substitutes and alternatives that are equivalent ... will
+# be considered" - the same documents make "must" mandatory, with no deviation.
+RE_DEFENCE_DEFINITION = re.compile(r"substitutes\s+and\s+alternatives", re.I)
+
+
+def accepts_equivalents(text):
+    """Does the buyer accept other products, in other words than "or
+    equivalent"? Bidders' questions are not the buyer speaking."""
+    lines = text.splitlines()
+    return any(RE_EQUIV_ACCEPTED.search(line)
+               and not RE_DEFENCE_DEFINITION.search(line)
+               for line, asked in zip(lines, question_mask(lines))
+               if not asked)
 
 # A blanket clause that legalises every brand mention in the document.
 RE_DOC_CLAUSE = re.compile(
@@ -300,6 +357,8 @@ def _candidates(text):
             mm = RE_MODEL_NEXT.match(tail)
             # "01 Dec 2025", "Edition 2023": a year is not a model code.
             if mm and RE_YEAR.fullmatch(mm.group(0).strip(" -")):
+                mm = None
+            if mm and is_measure(mm.group(0).strip(" -")):
                 mm = None
             if not (RE_TRADEMARK.search(tail[:3]) or mm):
                 continue
@@ -583,7 +642,7 @@ def brands_without_equivalent(reference, text_dir=None, window=200,
     lines_of = {d["document"]: d["text"].splitlines() for d in docs}
     for d in docs:
         text = d["text"]
-        clause = bool(RE_DOC_CLAUSE.search(text))
+        clause = bool(RE_DOC_CLAUSE.search(text)) or accepts_equivalents(text)
         blanket = blanket or clause
         equiv_clause = equiv_clause or bool(
             RE_EQUIV_CLAUSE.search(text))

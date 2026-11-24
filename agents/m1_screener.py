@@ -37,6 +37,18 @@ C_STATUS = "tenderStatus-appelOffresStatut-eng"
 
 RE_ACAN = re.compile(r"advance contract award", re.I)
 RE_LIMITED = re.compile(r"limited tendering|non-competitive", re.I)
+# Selective tendering: only suppliers already qualified (a supply arrangement,
+# a standing offer) may bid; they were put in competition when the list was
+# made, so a short window is normal there.
+RE_SELECTIVE = re.compile(r"selective tendering", re.I)
+
+
+def is_acan(row):
+    """An Advance Contract Award Notice: the buyer names its supplier in
+    advance and other suppliers may object."""
+    row = row or {}
+    return bool(RE_ACAN.search((row.get(C_METHOD) or "").strip())
+                or RE_ACAN.search((row.get(C_NOTICE) or "").strip()))
 
 # "None" is not a reason. 8,310 of 8,720 notices carrying this field say
 # exactly that, so a truthiness test makes the signal fire on a quarter of
@@ -138,7 +150,7 @@ def screen(reference, notices=None, wstats=None, text_dir=None):
     signals = []
 
     # ---- strong: the buyer has already said competition is limited
-    if RE_ACAN.search(method) or RE_ACAN.search(notice):
+    if is_acan(row):
         signals.append({
             "signal": "acan", "weight": "strong",
             "why": "Advance Contract Award Notice - the buyer names the "
@@ -162,7 +174,14 @@ def screen(reference, notices=None, wstats=None, text_dir=None):
     st = wstats.get(method)
     if d is not None and st and st["mad"] > 0:
         z = (d - st["median"]) / st["mad"]
-        if z <= WINDOW_Z:
+        if z <= WINDOW_Z and RE_SELECTIVE.search(method):
+            signals.append({
+                "signal": "short_window", "weight": "info",
+                "why": f"{d:.1f} days against a median of {st['median']}: "
+                       f"short, but normal in selective tendering (only "
+                       f"suppliers already qualified may bid).",
+                "evidence": f"z={z:.2f}"})
+        elif z <= WINDOW_Z:
             signals.append({
                 "signal": "short_window", "weight": "weak",
                 "why": f"{d:.1f} days against a median of {st['median']} "

@@ -69,6 +69,13 @@ def load_shared(verbose=True):
 NO_CONTRACT_TYPES = {"request for information", "request for supply arrangement"}
 
 
+# User decision 2026-11-24: an advance contract award notice names its
+# supplier in advance and gives other suppliers time to object; once awarded
+# to that supplier, no objection succeeded, and the auditor has nothing to add.
+ACAN_REASON = ("advance contract award notice: the supplier was announced in "
+               "advance and other suppliers could object")
+
+
 def no_contract_reason(row):
     """Why this tender cannot have a contract, or None."""
     row = row or {}
@@ -104,6 +111,8 @@ def gate(ref, row, graph):
         return "still_open", why
     if why:
         return "not_audit", why
+    if m1_screener.is_acan(row):
+        return "not_audit", ACAN_REASON
     if not m1_screener.has_documents(ref):
         return "no_documents", "no documents held for this tender"
     recs, via = m3_investigator.find_award(ref, row, graph)
@@ -157,6 +166,11 @@ def run_one(ref, shared, s=None):
         case["narrative"] = (f"Not an audit case: {why_none}, so there is no "
                              f"contract to audit. Read only to enrich the "
                              f"knowledge base.\n\n" + case["narrative"])
+    elif m1_screener.is_acan(notices.get(ref)):
+        case["route"] = "close"
+        case["not_audit"] = ACAN_REASON
+        case["narrative"] = (f"Not an audit case: {ACAN_REASON}.\n\n"
+                             + case["narrative"])
     return case
 
 

@@ -81,8 +81,8 @@ ALERT = 5
 # window, a recurring supplier ...).
 DECLARED = {"acan", "limited_tendering_method", "limited_tendering_reason"}
 # "No trade agreement" is context, not a sign: it only means the rule against
-# naming brands does not apply. User decision 2026-10-19: it no longer lifts
-# declared signals into WATCH on its own.
+# naming brands does not apply. It ranks a case but never lifts it to WATCH
+# (user decisions 2026-10-19 and 2026-11-24).
 CONTEXT_ONLY = {"no_trade_agreement"}
 # Brand vs winner: the brand is also checked against
 # the winner's other spellings that M3 accepted as the same company - a
@@ -335,7 +335,11 @@ def decide_route(claims, score):
                     and c["kind"] not in LEVEL2_KINDS)
     if doc_score >= ALERT and can_alert:
         return "alert"
-    if score >= WATCH and has_other:
+    # Context ("no trade agreement") ranks a case but never lifts it to
+    # WATCH: 10 furniture call-ups reached it as a short window + context.
+    bar = score - sum(c.get("points") or 0 for c in claims
+                      if c["kind"] in CONTEXT_ONLY)
+    if bar >= WATCH and has_other:
         return "watch"
     return "close"
 
