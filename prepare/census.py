@@ -1,45 +1,20 @@
 """
-CANADA - STEP 4: the vocabulary census.
+The census: every numeric requirement in a category's tender documents.
 
-This detects NOTHING. It counts, so that the level-2 design rests on a
-measurement instead of an assumption.
+Reads the requirements section of each document, extracts every
+(label, comparator, value, unit), cleans the rows (bands, unit conversion,
+metric/imperial restatements, repeats). The level-2 peer comparison reads
+these rows (tools/level2.py), and the attribute map is built from them
+(prepare/attribute_map.py). The same extraction runs on each new tender in
+`python tenderlens.py run` (pipeline/stream.py).
 
-Level 2 compares a requirement against THE SAME requirement in other tenders
-of the same product family. That only works if enough tenders state the same
-attribute. Nobody has measured whether they do.
-
-So this script pulls every (label, comparator, value, unit) candidate out of
-the cached text and answers four questions:
-
-  1. How many DISTINCT requirement labels are there per product family?
-  2. How many of them reach n >= 8 distinct tenders - the floor below which
-     an outlier test cannot tell "unusual" from "small sample"?
-  3. What is the date spread? A 2016 spec and a 2026 spec are different
-     populations for a performance attribute.
-  4. The WITHIN-DOCUMENT baseline: per tender, how many requirements are
-     thresholds (>=, <=) versus exact equalities? That test needs no peers
-     at all, and the peer model has to beat it to justify its cost.
-
-If most labels land below n = 8, the peer comparison is a bonus that fires
-occasionally and the within-document test is the primary detector. That is
-the decision this script exists to inform.
-
-Labels are NOT canonicalized here - that needs the LLM and costs tokens.
-This is the free pass that says whether paying is worth it. Read
-reports/census_<grp>_labels.csv afterwards: the raw vocabulary is the input
-to the attribute map, and the near-duplicates in it ("chamber volume" /
-"internal capacity") are exactly what the LLM has to merge.
-
-Reads the text cached by 03 - nothing is re-extracted, nothing downloaded.
+Labels are kept as the tender writes them; prepare/attribute_map.py merges
+synonyms into one attribute, and --map applies its map here.
 
 Run:
-    python tenderlens.py prepare census                      # group 4110
-    python tenderlens.py prepare census --group 2510 --min-peers 8
+    python tenderlens.py prepare census --group 2510 [--map]
 
-Writes:
-    reports/census_<grp>.csv          every extracted tuple, one per row
-    reports/census_<grp>_labels.csv   per label: tenders, comparator mix
-    reports/census_<grp>.txt          the summary printed below
+Writes reports/census_<grp>[_mapped].csv, one row per observation.
 """
 
 
@@ -49,9 +24,10 @@ import io
 import json
 import os
 import re
-import statistics
 import sys
-from collections import Counter, defaultdict
+from collections import defaultdict
+
+from tools.sections import (RE_ADMIN_SECTION, alpha_count, scope_mask, section_index)
 
 csv.field_size_limit(10_000_000)
 
@@ -60,20 +36,9 @@ try:
 except Exception:
     pass
 
-# --------------------------------------------------------------- the units
-# Each unit maps to a PHYSICAL DIMENSION. The dimension is half the grouping
-# key: "length" tells us a wheelbase and a cargo-box depth are at least
-# commensurable, where "volume" and "length" never are. It comes free from the
-# unit - no model, no ambiguity, reproducible.
-#
-# Deliberately NOT here: bare "t" (tonne/ton/short ton - three values), bare
-# "C" (matches prose), '"' (inches or a quote mark), "gal" (US vs Imperial,
-# 20% apart, and both conventions appear in bilingual procurement). Decision
-# 15: convert or drop, never guess. A dropped observation costs one data
-# point; a wrong conversion manufactures a false accusation.
+# unit -> physical dimension (length, mass...)
 DIMENSION = {}
 for _dim, _units in {
-    # Compound units FIRST - see the UNIT regex note below.
     "speed":       "km/h kph mph m/s",
     "length":      "mm cm dm m km nm um µm in inch inches ft",
     "mass":        "kg mg g lb lbs oz",
@@ -98,16 +63,11 @@ for _dim, _units in {
     for _u in _units.split():
         DIMENSION[_u] = _dim
 
-# Units whose reading is not certain from the token alone. "70 in" is inches,
-# but "70 in total" is a preposition; bare "m" and "l" and "g" collide with
-# abbreviations. Counted separately so the summary shows how much of the
-# corpus depends on resolving them, rather than silently trusting them.
+# units that can also be a word or an abbreviation (the soft_unit column)
 SOFT_UNITS = {"in", "inch", "inches", "m", "l", "g", "A", "cc"}
 
-# ORDER MATTERS. Python's alternation returns the first branch that matches
-# at a position, so every compound unit must come before the prefix it starts
-# with: km/h before km, m3 and m/s before m, ft3 before ft. Getting this wrong
-# filed "110 km/h" as 110 km of length and "0.566 m3" as 0.566 m.
+# a compound unit must come before its prefix (km/h before km): the first
+# branch that matches wins
 UNIT = (r"(?:km/h|kph|mph|m/s|m3|m³|cm3|cm³|mm3|ft3|ft³|"
         r"mm|cm|dm|km|m|nm|um|µm|in|inch|inches|ft|"
         r"kg|mg|g|lb|lbs|oz|"
@@ -120,23 +80,7 @@ UNIT = (r"(?:km/h|kph|mph|m/s|m3|m³|cm3|cm³|mm3|ft3|ft³|"
         r"GB|TB|MB|Mbps|Gbps|dpi|ppi|px|"
         r"Nm|BTU|CFM|lpm|gpm)")
 
-# The number. TWO shapes, and the first one must come first:
-#
-#   13,600   57 982   26 300        grouped thousands
-#   3.96     0,5      110           plain, decimal point OR decimal comma
-#
-# FOUND BY MEASUREMENT, 2026-10-14, and it had corrupted every census run
-# to date: the old pattern was `\d{1,6}([.,]\d+)?` and the value was stored
-# with `value.replace(",", ".")`, so `13,600 kg` became 13.6 kg. A truck's
-# GVWR entered the knowledge base a thousand times too small. It stayed
-# invisible until unit conversion put a base unit beside the number and the
-# GVWR median read 10.9 kg.
-#
-# The space-separated form was worse than wrong, it was silent: `26 300 kg`
-# matched only `300 kg`, so the observation was off by two orders of
-# magnitude with nothing odd-looking in the row. Canadian procurement is
-# bilingual and French convention groups thousands with a space, so this is
-# not a rare shape.
+# a number: grouped thousands (13,600 / 26 300) or plain (3.96 / 0,5)
 NUM = (r"\d{1,3}(?:[,   ]\d{3})+(?:\.\d+)?"
        r"|\d{1,6}(?:[.,]\d+)?")
 
@@ -148,12 +92,9 @@ RE_DEC_COMMA = re.compile(r"^\d+,\d{1,2}$")
 
 
 def parse_number(raw):
-    """Text -> canonical decimal string, or '' if it will not parse.
-
-    The rule for a comma is the digit count after it: three digits is a
-    thousands separator (`13,600`), one or two is a decimal comma
-    (`3,96 m`, French). `1,500` is genuinely ambiguous and is read as
-    1500 - the convention that is far commoner in this corpus.
+    """Number text -> decimal string, or '' if it is not a number.
+    A comma or space before 3 digits separates thousands (13,600 / 26 300);
+    a comma before 1 or 2 digits is a decimal comma (3,96).
     """
     s = raw.strip()
     if RE_GROUPED.match(s):
@@ -167,10 +108,8 @@ def parse_number(raw):
         return ""
     return s
 
-# ---------------------------------------------------------- the comparator
-# THIS is the signal. Peers write ">= 70 cm"; the rigged tender writes
-# "= 78 cm". Direction matters: a band (both bounds) is a different claim
-# from a single threshold, and an equality is a different claim again.
+
+# comparator words: at least / at most / a band / exactly
 RE_GE = re.compile(r"""
     ≥|>=
   | \bmin\.?\b|\bminimum\b|\bminimale?\b
@@ -189,19 +128,15 @@ RE_LE = re.compile(r"""
 
 RE_RANGE = re.compile(r"±|\+/-|\bbetween\b|\bentre\b|\btolerance\b", re.I)
 
-# "38 mm to 100 mm", "0 degC - 40 degC" - a two-sided band.
 RE_INTERVAL = re.compile(
     r"\d{1,6}(?:[.,]\d+)?\s?" + UNIT + r"?\s*(?:to|through|–|—|à)\s*"
     r"\d{1,6}(?:[.,]\d+)?\s?" + UNIT + r"\b", re.I)
 
-# An exact value where a threshold belongs. The negative lookbehind keeps
-# ">=" and "<=" out - without it every threshold reads as an equality.
 RE_EQ = re.compile(
     r"(?<![<>=!≥≤])=\s*\d|\bexactly\s+\d|\bprecisely\s+\d", re.I)
 
-# Administrative numbers that look like requirements: bid file size limits,
-# page counts, payment terms, insurance, delivery deadlines. Lifted from 03,
-# where dropping these was worth several points of precision.
+# lines about the bid, payment, packaging, people's body sizes or a clause
+# number - not the product
 RE_BOILERPLATE = re.compile(
     r"(?:file|e-?mail|attachment|message|upload|submission)s?\b.{0,40}"
     r"\b(?:KB|MB|GB)\b"
@@ -212,35 +147,22 @@ RE_BOILERPLATE = re.compile(
     r"|\bGST\b|\bHST\b|\bQST\b|\bwithholding\b"
     r"|\b(?:calendar|business|working) days?\b|\bwithin \d+ days?\b"
     r"|\b\d+\s?% of the (?:contract|bid|total|value)"
-    # Standard-clause and solicitation references. In 4110 these produced the
-    # four most common "attributes" in the whole category: "General Conditions
-    # 2010A" read as 2010 amperes, and "W8703-270084A" likewise. Pure noise,
-    # and it outranked every real requirement.
     r"|general conditions|supplemental conditions|standard instructions"
     r"|conditions g\u00e9n\u00e9rales|instructions uniformis\u00e9es"
     r"|\b20\d{2}[A-Z]?\s*\(\d{4}-\d{2}-\d{2}\)"
     r"|\b[A-Z]\d{4,}-\d{5,}"
     r"|net.?zero|greenhouse gas|\bghg\b"
     r"|zip files|file attachments|inch format"
-    # Bid-formatting rules. "use 8.5 x 11 inch (216 mm x 279 mm) paper" was
-    # 57 rows and cleared the peer floor on its own.
     r"|8\.5\s?[xX]\s?11|letter.?size|\bpaper\b.{0,25}(?:mm|inch)"
-    # Packaging and shipping. Real requirements, but about the CRATE, not the
-    # product - pallet and skid dimensions pollute length and mass badly.
     r"|\bpallets?\b|\bskids?\b|\bcrates?\b|\bdunnage\b|\bISPM\b"
     r"|\bshipments?\b|\bpacking list\b|\bpackaging\b|\bcartons?\b"
     r"|\bstrap(?:ped|ping)?\b|\bshrink.?wrap\b|\bpalletiz"
-    # Anthropometric annex. A reused standard table of body measurements for
-    # cab sizing - dozens of "length" labels that describe a person.
     r"|\bpopliteal\b|\bbuttock\b|\bsitting height\b|\belbow rest\b"
     r"|\bchest (?:depth|circumference)\b|\bhip breadth\b|\bstature\b"
     r"|\banthropometric\b|\bbust circumference\b|\bwaist circumference\b"
-    # Returns / repair-and-overhaul admin.
     r"|repair and overhaul|\bRMA\b", re.I)
 
-# Part-number shapes, not measurements. Decision 9: a category specified by
-# part number has no threshold to compare, and "30x9.5R16" must never be
-# parsed as the number 30.
+# looks like a part number (30x9.5R16), not a measurement
 RE_PARTNUM = re.compile(
     r"\b\d{1,3}\s?[xX×]\s?\d{1,3}(?:\.\d)?\s?[A-Z]\s?\d{2}\b"
     r"|\b[A-Z]{1,3}\d{3,}[A-Z\d-]*\b"
@@ -248,11 +170,7 @@ RE_PARTNUM = re.compile(
 
 RE_PAGENUM = re.compile(r"^\s*(?:page\s*)?\d+\s*(?:of|/|de)\s*\d+\s*$", re.I)
 
-# Words that carry no attribute identity. Stripped before counting a label so
-# "minimum chamber depth" and "chamber depth shall be" are one string.
-# Comparator words go too - the comparator is recorded in its own column, and
-# leaving it in the label would split one attribute into a min- and a
-# max-flavoured copy.
+# words removed from a label before counting
 STOP = set("""
 a an the of for with and or to in on at by from as is are be being been
 shall must should will may can each per item no not nor than then that this
@@ -264,224 +182,24 @@ value values range ranges size sizes unit units qty quantity
 le la les des une un pour avec doit être au moins plus moins de du
 """.split())
 
-# A label that is only these is not an attribute - it is table furniture.
+# table furniture, not a label
 JUNK_LABELS = {"", "yes", "no", "n a", "na", "tbd", "see annex", "as per",
                "item", "description", "qty", "quantity", "unit", "units",
                "comply", "compliance", "y n", "oui non", "s o"}
 
-WINDOW = 2          # non-blank lines either side, matching 03
-MIN_LABEL_ALPHA = 3  # a label needs this many letters to be a label
+# lines either side searched for a comparator, and above for a label
+WINDOW = 2
+MIN_LABEL_ALPHA = 3
 
-# Lines either side kept as readable CONTEXT. Wider than WINDOW, which only
-# hunts a comparator. Context is not used to decide anything here - it is
-# carried so that the things downstream of this script can decide:
-#
-#   - the attribute map (05) names an attribute from a bare fragment today
-#     and answers `unknown` 55% of the time; a table row plus its heading is
-#     usually enough to name it (open item 9)
-#   - ambiguous units resolve on sight: "70 in total" against "70 in width"
-#     is obvious in context and impossible without (open item 10, 615 rows)
-#   - decision 3 owes the auditor the location AND the wording of a claim,
-#     and a 200-character fragment is not a quotation
-#   - decision 11 gives the LLM the judgement, and nothing can be judged
-#     from a fragment
+# lines either side saved with each row (its `context`), for the attribute
+# map's LLM and for a reader
 CONTEXT = 3
 CONTEXT_CHARS = 400
 
-# ------------------------------------------- the requirement section - dec 21
-# Canadian federal solicitations follow a fixed skeleton:
-#
-#   PART 1 GENERAL INFORMATION        PART 4 EVALUATION PROCEDURES
-#   PART 2 BIDDER INSTRUCTIONS        PART 5 CERTIFICATIONS
-#   PART 3 BID PREPARATION            PART 6 RESULTING CONTRACT CLAUSES
-#   ANNEX A - STATEMENT OF REQUIREMENT   <- the spec
-#   ANNEX B - BASIS OF PAYMENT           <- not the spec
-#
-# Measured on 2510: 96% of tenders carry a recognizable requirement heading,
-# and `PURCHASE DESCRIPTION` (the DND spelling) alone appears 431 times.
-# Parts 1, 2, 3, 5 and 6 are pure administration - and are exactly the text
-# the boilerplate regex above has been fighting one clause at a time. Cutting
-# them out attacks the noise at its source instead of filtering it afterwards.
-#
-# THE AUDIT RULE APPLIES HERE WITH FULL FORCE: boilerplate repeats across
-# tenders more than real requirements do, so if coverage goes UP after
-# scoping, the scoping is wrong.
-
-# Opens a requirement span.
-RE_SPEC_HEAD = re.compile(r"""
-    \bstatement\ of\ (?:requirements?|work)\b
-  | \bpurchase\ description\b
-  | \btechnical\ (?:specifications?|requirements?|description)\b
-  | \bmandatory\ (?:technical\ )?(?:requirements?|criteria)\b
-  | \bdescription\ of\ (?:the\ )?(?:requirements?|work|goods)\b
-  | \bscope\ of\ (?:work|the\ requirement)\b
-  | \bspecifications?\b
-  | \b(?:technical\ )?evaluation\ matrix\b
-  | \bdata\ table\b
-  | \b(?:énoncé\ des\ travaux|besoin\ technique|devis)\b
-    # A heading that is just "<adjective> REQUIREMENTS": CORE REQUIREMENTS,
-    # GENERAL REQUIREMENTS, VEHICLE REQUIREMENTS. Safe because the
-    # administrative ones - SECURITY REQUIREMENTS, INSURANCE REQUIREMENTS -
-    # are matched by RE_ADMIN_HEAD, which is tested first.
-  | ^(?:[a-zà-ÿ]+\ ){0,2}requirements?$
-""", re.I | re.X)
-
-# Closes it. Checked BEFORE the opener, because "SECURITY REQUIREMENTS" and
-# "INSURANCE REQUIREMENTS" are administration that happen to say the word.
-RE_ADMIN_HEAD = re.compile(r"""
-    \bsecurity\ requirements?\b | \binsurance\b
-  | \bbasis\ of\ (?:payment|selection)\b
-  | \bcertifications?\b | \bresulting\ contract\ clauses\b
-  | \bbidder\ instructions\b | \bbid\ preparation\b
-  | \bgeneral\ information\b | \bevaluation\ procedures\b
-  | \btable\ of\ contents\b | \blist\ of\ annexes\b
-  | \bterms\ of\ payment\b | \binvoicing\b | \bdeclaration\b
-  | \breciprocal\ procurement\b | \bapplicable\ documents\b
-  | \bgeneral\ conditions\b | \bstandard\ instructions\b
-  | \bintegrity\ provisions\b | \bsubmission\ of\ bids\b
-""", re.I | re.X)
-
-# A structural marker. ANNEX A opens only if it also names the spec; PART n
-# and ANNEX B always close, because the spec is never under them.
-RE_STRUCT_HEAD = re.compile(
-    r"^(?:part|partie|annex|annexe|appendix|appendice|attachment|section)"
-    r"\s*[-–—:]?\s*[A-Za-z0-9]{1,3}\b", re.I)
-
-# Running headers, not headings. `DLP 8-2-7` appears 1,431 times in 2510.
-RE_RUNNING_HEAD = re.compile(r"^(?:A/)?(?:DLP|DAAT|RDIMS|TBIPS|SACC|CCC)\b", re.I)
-
-# A table-of-contents entry: dot leaders or a trailing page number. These
-# name the spec section without being it, and would open a span inside the
-# contents page.
-RE_TOC_ENTRY = re.compile(r"(?:\.{3,}|…)\s*\d{1,4}$|\s{2,}\d{1,4}$")
-
-
-# A numbered clause heading: "10.  Evaluation Procedures." - DND style, title
-# case, but unmistakably a heading because of the leading clause number.
-RE_NUM_HEAD = re.compile(r"^\d{1,2}(?:\.\d{1,2})*\.?\s{2,}[A-Z]")
-
-
-def is_heading(line):
-    """Could this line be a section heading? Shape only, no meaning yet.
-
-    MEASURED THE HARD WAY: the first version asked only for a short line
-    with a few letters, and pdfminer emits paragraph text one fragment per
-    line, so "Annex A," and "Insurance." and a bare "requirements" inside a
-    sentence all read as headings. The state machine below was then driven
-    by cross-references in prose and flipped the span on and off at random:
-    it cut `jack load` and `lunette ring inner diameter` - both real
-    requirements, both plainly inside a spec - while keeping 11 of one
-    catalogue RFSO's 557 observations.
-
-    So a heading must LOOK like one: all upper case, or a numbered clause
-    title. Everything else is prose, whatever words it happens to contain.
-    A document whose headings are neither falls back to whole-document,
-    which is the safe direction.
-    """
-    s = line.strip()
-    if not (5 <= len(s) <= 90):
-        return False
-    if RE_RUNNING_HEAD.match(s) or RE_TOC_ENTRY.search(s):
-        return False
-    letters = [ch for ch in s if ch.isalpha()]
-    if len(letters) < 5:
-        return False
-    if sum(ch.isupper() for ch in letters) / len(letters) >= 0.85:
-        return True
-    return bool(RE_NUM_HEAD.match(s))
-
-
-def heading_title(body, i):
-    """The full heading at line i, re-joined if pdfminer split it.
-
-    "ANNEX C" and "TECHNICAL EVALUATION MATRIX" are one heading laid out on
-    two lines, and the second line is the one that says what the section is.
-    Classifying the bare marker alone closed the span immediately before the
-    Data Table - the densest, cleanest numeric requirements in the whole
-    corpus, the `GVWR | 13,600 kg (30,000 lbs)` rows - and cost three
-    tenders two attributes. Same lesson as the ±2 comparator window: the
-    line is not the unit of meaning, pdfminer just ends it there.
-    """
-    s = body[i].strip()
-    if RE_STRUCT_HEAD.match(s) and alpha_count(RE_STRUCT_HEAD.sub("", s, 1)) < 3:
-        for k in (i + 1, i + 2):
-            if k < len(body) and is_heading(body[k]):
-                return s + " - " + body[k].strip()
-    return s
-
-
-# A requirement sitting under one of these headings is about the CRATE, the
-# shipment or the paperwork, not the product - whatever its wording.
-#
-# Earned 2026-10-15. Giving 05 the context (decision 24) rescued 178 labels
-# from `unknown`, and one of them was `individual item length`, fed by "The
-# Contractor must secure individual items exceeding 1.22 m (48 in.) in
-# length" under `5.6. Palletization`. Reused across 17 tenders, so it
-# cleared the peer floor easily and inflated coverage from 58% to 66%.
-#
-# Rule 1 again, and a new wrinkle in it: context makes the model BETTER at
-# naming things, including things that should not be named. A clause that
-# reads like a requirement is not stopped by a better namer - it has to be
-# stopped by where it sits. The section is a fact about the document and
-# costs nothing, so it is the right place to decide this, not the prompt.
-RE_ADMIN_SECTION = re.compile(
-    r"palletiz|packag|\bpacking\b|transportation cost|carrier\b"
-    r"|\bshipping\b|\bshipment|\bmarking\b|preservation"
-    r"|basis of payment|invoic|\bwarrant(?:y|ies)\b", re.I)
-
-
-def section_index(body):
-    """For each line, the nearest heading at or above it.
-
-    The section a requirement sits under is the cheapest context there is -
-    it is already computed for scoping, and it tells a reader (or the LLM)
-    whether a number came from PURCHASE DESCRIPTION or from a packaging
-    annex, which is most of what they need to judge it.
-    """
-    heads, cur = [""] * len(body), ""
-    for i, line in enumerate(body):
-        if is_heading(line):
-            cur = heading_title(body, i)[:90]
-        heads[i] = cur
-    return heads
-
-
-def scope_mask(body):
-    """Per-line flag: is this line inside a requirement section?
-
-    A state machine over heading lines. Any spec heading opens the span, any
-    administrative or structural heading closes it. Returns (mask, mode);
-    mode is 'whole' when no requirement heading was found at all - the 4%
-    that have no skeleton, where cutting nothing is safer than guessing.
-    """
-    mask = [False] * len(body)
-    inside = False
-    found = False
-    for i, line in enumerate(body):
-        if is_heading(line):
-            s = heading_title(body, i)
-            if RE_ADMIN_HEAD.search(s):
-                inside = False
-            elif RE_SPEC_HEAD.search(s):
-                inside = True
-                found = True
-            elif RE_STRUCT_HEAD.match(s):
-                # "ANNEX A - STATEMENT OF REQUIREMENT" was caught above; a
-                # bare "PART 5" or "ANNEX B - BASIS OF PAYMENT" was not.
-                inside = False
-        mask[i] = inside
-    if not found:
-        return [True] * len(body), "whole"
-    return mask, "section"
-
 
 def norm_label(raw):
-    """Lowercase, drop numbers/units/punctuation/stopwords, collapse space.
-
-    Crude on purpose. This is a COUNTING key, not the canonical name - the
-    LLM produces that later. The near-duplicates this leaves behind
-    ("chamber volume" vs "internal capacity") are the census's finding, not
-    its bug: they are what the attribute map has to merge.
+    """A label as a counting key: lower case, no numbers, units,
+    punctuation or filler words.
     """
     s = raw.lower()
     s = RE_VALUE.sub(" ", s)
@@ -491,18 +209,9 @@ def norm_label(raw):
     return " ".join(toks)[:80]
 
 
-def alpha_count(s):
-    return sum(c.isalpha() for c in s)
-
-
 def label_from(text):
-    """(trimmed_raw, normalized) for a line, or None if it is not a label.
-
-    The test is on the NORMALIZED string. A value cell reading "minimum 70 L"
-    leaves the raw remainder "minimum", which passes a letter count but
-    normalizes to nothing - the comparator is a stopword. Judging the raw
-    form dropped every table-form requirement instead of looking one line up
-    for the header.
+    """(label as written, counting key) for a line, or None when no
+    label is left once its numbers are removed.
     """
     cand = re.sub(r"\s+", " ", RE_VALUE.sub(" ", text)).strip(" :;.-|\t")
     if alpha_count(cand) < MIN_LABEL_ALPHA:
@@ -514,10 +223,8 @@ def label_from(text):
 
 
 def classify(window_text):
-    """GE / LE / RANGE / EQ / NONE from the line and its neighbours.
-
-    Both bounds present is a BAND, not a threshold - a two-sided band can be
-    as narrow as an equality and is part of the same signal.
+    """The comparator a text states: GE (at least), LE (at most), RANGE
+    (both bounds or a band), EQ (exactly) or NONE.
     """
     ge = bool(RE_GE.search(window_text))
     le = bool(RE_LE.search(window_text))
@@ -534,30 +241,25 @@ def classify(window_text):
 
 
 def extract(txt):
-    """Every (label, comparator, value, unit) candidate in one document.
-
-    Candidates are emitted only from lines inside a requirement section
-    (decision 21c). The ±2 window still reads the full body, because the
-    header a bare value cell needs can sit one line above the section's
-    first line.
+    """Every (label, comparator, value, unit) in one document, read in its
+    requirements section - or in the whole document if that gives nothing.
     """
     lines = [l.strip() for l in txt.splitlines()]
     body = [l for l in lines if l and not RE_PAGENUM.match(l)]
     mask, mode = scope_mask(body)
     out = _harvest(body, mask, mode)
-
-    # A "requirement section" holding no numeric requirement at all was not
-    # the requirement section - the heading matched something else, or the
-    # spec is laid out in a way the state machine missed. Scoping is an
-    # enrichment step, so when it empties a document it has failed, and
-    # failing must cost nothing. Five tenders vanished outright before this
-    # existed, one of them with 110 observations.
     if not out and mode == "section":
         out = _harvest(body, [True] * len(body), "whole_empty")
     return out
 
 
 def _harvest(body, mask, mode):
+    """The rows of one document, from the lines `mask` keeps.
+    Tables give one cell per line, so a value with no comparator or label on
+    its line takes them from the WINDOW lines around it. Skipped: packaging,
+    shipping, payment and warranty sections, administrative lines, a bare `in`
+    that is not inches, and a year read as amperes (clause "2010A").
+    """
     out = []
     heads = section_index(body)
 
@@ -566,37 +268,20 @@ def _harvest(body, mask, mode):
             continue
         if heads[i] and RE_ADMIN_SECTION.search(heads[i]):
             continue
-        # 03 used an 8-character floor, which is right when the whole
-        # requirement is one sentence. Here it is wrong: a table cell reading
-        # "= 78 L" is six characters, and bare value cells are exactly where
-        # exact values hide. The label and boilerplate filters below carry the
-        # noise instead.
         if not (3 <= len(line) <= 300):
             continue
         if RE_BOILERPLATE.search(line):
             continue
-        # finditer, not findall: a bare `in` is resolved by the text that
-        # follows it, so the match position is part of the evidence.
         vals = [(m.group(1), m.group(2), line[m.end():m.end() + 12])
                 for m in RE_VALUE.finditer(line)]
         if not vals:
             continue
-
-        # Specs are TABLES and pdfminer emits one cell per line, so the
-        # comparator often sits in a neighbouring cell, not this one. 03
-        # measured that a same-line test discards 42% of real constraints.
         comparator = classify(line)
         comp_src = "inline"
         if comparator == "NONE":
             near = body[max(0, i - WINDOW):i + WINDOW + 1]
             comparator = classify(" | ".join(near))
             comp_src = "window" if comparator != "NONE" else "none"
-
-        # The label is this line with the numbers taken out. When nothing is
-        # left, the line is a bare table cell ("70 cm") and the label is the
-        # row or column header ABOVE it. label_src records which, so the
-        # summary can report how much of the vocabulary is inferred rather
-        # than read - inferred labels are the ones that go wrong.
         got = label_from(line)
         if got:
             raw_label, label, label_src = got[0], got[1], "inline"
@@ -618,9 +303,6 @@ def _harvest(body, mask, mode):
                 unit_resolved = resolve_in(tail)
                 if not unit_resolved:
                     continue
-            # "conditions 2010A" = clause 2010A, not 2010 amperes. pdfminer
-            # splits the cell so "general" is on another line and the
-            # boilerplate filter cannot see it; the shape is the only tell.
             if unit == "A" and re.fullmatch(r"(19|20)\d{2}", value_text):
                 continue
             value = parse_number(value_text)
@@ -660,11 +342,7 @@ def _harvest(body, mask, mode):
     return out
 
 
-# ------------------------------------------------ unit conversion - step 3
-# One base per dimension. The converted value is what peer statistics run
-# on; the original value, unit and source_line all survive beside it,
-# because decision 3 says the auditor must see what the tender actually
-# said, not what we made of it.
+# the base unit of each dimension, and each unit's factor to it
 BASE = {"length": "mm", "mass": "kg", "volume": "L", "temperature": "degC",
         "speed": "km/h", "pressure": "kPa", "power": "W", "voltage": "V",
         "current": "A", "frequency": "Hz", "rotation": "rpm", "ratio": "%",
@@ -692,44 +370,27 @@ FACTOR = {
     "degC": 1.0, "°C": 1.0,
 }
 
-# Decision 15: convert or drop, NEVER guess. These stay unconverted and so
-# never reach a peer statistic. `inch`/`inches` spelled out are safe; bare
-# `in` is a preposition as often as a unit ("70 in total"), and bare `m`,
-# `l`, `g`, `A`, `cc` collide with abbreviations. Open item 10 decides each
-# of them on evidence - until then a missing observation costs one data
-# point, and a wrong one manufactures a false accusation.
+# never converted: each can also be a word or an abbreviation
 AMBIGUOUS = {"in", "m", "l", "g", "A"}
 
-# `cc` is off the ambiguous list on evidence: every occurrence in 2510 is an
-# engine displacement (`599cc`, `must have a displacement of at least 825
-# cc`). Cubic centimetres, and leaving it out cost a whole attribute.
-#
-# Bare `in` is settled per row instead, by what FOLLOWS it (open item 10,
-# 887 rows). Measured on 2510:
-#
-#     788  inches        "250 cm (98 in);"   "10 in x 4 in"   "2 in (50.8 mm)"
-#      79  preposition   "Type 1 in 43-PG-17 Box"  -> not a measurement
-#      20  torque        "27,650 kg-m (2,400,000 in-lbs)" -> not a length
-#
-# The decisive shape is a closing bracket: three quarters of them are the
-# imperial twin inside `250 cm (98 in)`, so once resolved they convert and
-# then fold away as restatements of the metric value (decision 22). This
-# resolves units by context rather than by guessing, which is what decision
-# 15 asks for - the preposition and torque rows are DROPPED, not converted.
+# a bare `in` is inches when followed by ')', ',', end of line or 'x 4'
 RE_IN_UNIT = re.compile(r"^\s*\.?\s*(?:[)\];,]|$|[xX×]\s*\d|\(\s*\d)")
 RE_IN_TORQUE = re.compile(r"^\s*\.?\s*[-–]\s*lbs?\b", re.I)
 
 
 def resolve_in(tail):
-    """'inch' if this bare `in` is a unit, '' if it is not. `tail` is the
-    text immediately following the match."""
+    """'inch' when a bare `in` is a unit, '' when it is a word or part of
+    'in-lbs'. `tail` is the text right after it.
+    """
     if RE_IN_TORQUE.match(tail):
         return ""
     return "inch" if RE_IN_UNIT.match(tail) else ""
 
-# Fahrenheit is affine, not a scale factor, so it needs its own arm.
+
 def to_base(value, unit, dim):
-    """(base_value, base_unit) or ('', '') when the unit is not convertible."""
+    """(value in the dimension's base unit, base unit), or ('', '') when
+    the unit is ambiguous or unknown: convert or drop, never guess.
+    """
     base = BASE.get(dim)
     if not base or unit in AMBIGUOUS:
         return "", ""
@@ -746,7 +407,9 @@ def to_base(value, unit, dim):
 
 
 def convert_units(rows):
-    """Fill base_value / base_unit (and both band bounds) in place."""
+    """Fill each row's base_value / base_unit (and band bounds) in place;
+    returns how many rows were converted.
+    """
     done = 0
     for r in rows:
         u = r.get("unit_resolved") or r["unit"]
@@ -762,15 +425,8 @@ def convert_units(rows):
 
 
 def fold_restatements(rows, tol=0.02):
-    """"13,600 kg (30,000 lbs)" is one requirement, written twice.
-
-    Bilingual Canadian specs restate every dimension in metric and
-    imperial. Two rows on the SAME line of the SAME document, in the same
-    dimension, whose converted values agree within `tol`, are one
-    observation - and a catalogue RFSO restating 47 dimensions both ways
-    contributes 94 votes to a median that should hear 47. The metric row is
-    kept, because the base units are metric and keeping it avoids a second
-    rounding.
+    """One requirement written twice on the same line, metric and imperial
+    ("13,600 kg (30,000 lbs)"), becomes one row: the metric one.
     """
     groups = defaultdict(list)
     out = []
@@ -799,20 +455,9 @@ def fold_restatements(rows, tol=0.02):
     return out, folded
 
 
-# --------------------------------------------- collapse and dedup - dec 22
 def collapse_bands(rows):
-    """A two-sided band is ONE observation, not two.
-
-    The extractor emits a row per bound, so "between 1850 lbs to 2500 lbs"
-    arrives as two mass observations at 1850 and 2500. Fed to a median that
-    is two votes, both of them wrong: the tender requires neither value, it
-    requires the interval. Collapsed to value_lo / value_hi with the
-    midpoint as the single comparable value, and band_width - which IS the
-    signal for decision 17.2, an exact value being the zero-width case.
-
-    Only bounds from the SAME line of the SAME document are paired. Two
-    adjacent table rows that happen to read RANGE are not one band, and the
-    ±2 comparator window makes that mistake easy to arrive at.
+    """The two bounds of a band on the same line ("1850 to 2500 lbs")
+    become one row: value_lo, value_hi, band_width, and the midpoint as value.
     """
     out, pend = [], defaultdict(list)
     for r in rows:
@@ -829,10 +474,6 @@ def collapse_bands(rows):
                 vals.append(float(r["value"]))
             except ValueError:
                 pass
-        # Exactly two distinct bounds is a band. One value is a point that
-        # merely sits near the word "between"; three or more is a table row
-        # the line-splitting ran together, and guessing which two are the
-        # bounds would invent a requirement.
         if len(set(vals)) == 2 and len(vals) == 2:
             lo, hi = min(vals), max(vals)
             r = dict(group[0])
@@ -847,23 +488,11 @@ def collapse_bands(rows):
 
 
 def dedup(rows, cut):
-    """One observation per (tender, family, attribute, value, unit).
-
-    The same requirement is restated in the RFP, then in amendment 01, then
-    in amendment 02, and pdfminer repeats lines within one document on top
-    of that. Measured: 911 observations on the comparable attributes become
-    457, losing zero tenders and zero attributes, and the share held by the
-    two largest catalogue RFSOs falls from 38% to 21%.
-
-    `restated` keeps the count, because how emphatically a tender repeats a
-    requirement is evidence a human auditor may want - it is just not a
-    second data point.
+    """One row per tender, attribute and value. Repeats (amendments, lines
+    repeated in a document) only add to `restated`.
     """
     seen, out = {}, []
     for r in rows:
-        # Key on the CONVERTED value where there is one, so the same
-        # requirement written in kg by one document and lb by another
-        # folds; fall back to the raw pair when it could not be converted.
         v = r.get("base_value") or r["value"]
         u = r.get("base_unit") or r["unit"]
         k = (r["reference"], r["unspsc8"][:cut], r["label"], v, u,
@@ -877,13 +506,9 @@ def dedup(rows, cut):
     return out
 
 
-# ------------------------------------------------- the 8-digit family + date
 def tender_meta(tenders_path, refs):
-    """reference -> (unspsc8, pub_date). One streaming pass, stdlib csv.
-
-    The 8-digit code is the product family and it is already in the feed -
-    4110 is only the first four digits. No classifier is needed: the tree
-    exists and is official.
+    """reference -> (8-digit UNSPSC code, publication date), read from the
+    notices file.
     """
     C_REF = "referenceNumber-numeroReference"
     C_UN = "unspsc"
@@ -920,32 +545,16 @@ CENSUS_COLS = ["reference", "unspsc8", "pub_date", "label", "raw_label",
 
 
 def parse_args():
+    """The command-line options."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--group", default="4110")
     ap.add_argument("--text-dir", default="reports/text")
     ap.add_argument("--tenders", default="data/tenders.csv")
     ap.add_argument("--out", default="reports")
-    ap.add_argument("--min-peers", type=int, default=8,
-                    help="distinct tenders an attribute needs before an "
-                         "outlier test is allowed to speak. Below this the "
-                         "agent must return 'insufficient peers', not a weak "
-                         "score - decision 13.")
-    ap.add_argument("--family", choices=["unspsc8", "unspsc6", "unspsc4"],
-                    default="unspsc6",
-                    help="which level to group peers at. MEASURED on 2510: "
-                         "8-digit shatters into 42 groups with a median of 2 "
-                         "tenders; 6-digit gives 7 groups, 6 of them clearing "
-                         "n>=8. Pick the level from the data, once, and keep "
-                         "it fixed - adapting it per finding is decision 13.")
-    ap.add_argument("--top", type=int, default=40,
-                    help="labels to print in the summary")
     ap.add_argument("--map", nargs="?", const="reports/attribute_map.json",
                     default="",
-                    help="apply an attribute map built by prepare/attribute_map.py "
-                         "before counting, so synonyms count as one attribute "
-                         "and labels marked 'unknown' are dropped. Without "
-                         "this the census reports RAW labels, which is the "
-                         "honest pre-map floor.")
+                    help="apply the attribute map (prepare/attribute_map.py): "
+                         "synonyms count as one attribute, 'unknown' is dropped")
     return ap.parse_args()
 
 
@@ -953,12 +562,8 @@ def main():
     """The census of one category, step by step:
     read the text -> extract every numeric requirement -> clean (bands,
     units, restatements) -> join the notices (family, date) -> apply the
-    label map -> one observation per tender -> write the rows -> group by
-    attribute -> write the label table -> write the summary."""
+    label map -> one observation per tender -> write the rows."""
     args = parse_args()
-    # Fail before the expensive work, not after it: extraction plus the
-    # tenders.csv join is ~2 minutes, and erroring at the end of that is just
-    # two wasted minutes.
     if args.map and not os.path.exists(args.map):
         sys.exit(f"missing {args.map} - run prepare/attribute_map.py first")
 
@@ -967,34 +572,20 @@ def main():
     rows = clean_rows(rows)
     refs = {r["reference"] for r in rows}
     print(f"\n{len(rows):,} candidates from {len(refs):,} tenders")
-    family_of = join_notices(rows, args.tenders, args.group)
+    join_notices(rows, args.tenders, args.group)
     if args.map:
         rows = apply_map(rows, args.map)
-    cut = {"unspsc8": 8, "unspsc6": 6, "unspsc4": 4}[args.family]
-    # The same value restated in an amendment is not a second observation
-    # (decision 22).
     before = len(rows)
-    rows = dedup(rows, cut)
+    rows = dedup(rows, 8)
     print(f"dedup: {before:,} -> {len(rows):,} observations "
           f"({before - len(rows):,} restatements folded)")
 
     sfx = "_mapped" if args.map else ""
     full = os.path.join(args.out, f"census_{args.group}{sfx}.csv")
     write_rows(rows, full)
-    groups = group_by_attribute(rows, cut, args.group)
-    lab_path = os.path.join(args.out, f"census_{args.group}{sfx}_labels.csv")
-    write_label_table(groups, lab_path)
-    lines = summary(args, files, refs, rows, groups, family_of, cut)
-    out_txt = os.path.join(args.out, f"census_{args.group}{sfx}.txt")
-    with io.open(out_txt, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
-
-    print(f"\n  every candidate -> {full}")
-    print(f"  per label       -> {lab_path}   <- read this one")
-    print(f"  summary         -> {out_txt}")
+    print(f"\n  every observation -> {full}")
 
 
-# ------------------------------------------------------------ the steps
 def text_files(text_dir, group):
     """(folder, the category's extracted .txt files) - or exit saying
     which preparation step is missing."""
@@ -1010,8 +601,9 @@ def text_files(text_dir, group):
 
 
 def extract_documents(tdir, files):
-    """Every numeric requirement of every document (extract), tagged with
-    its tender and file."""
+    """The rows of every document of the category, each tagged with its
+    tender and file.
+    """
     rows = []
     for n, fn in enumerate(files, 1):
         ref = fn.split("__", 1)[0]
@@ -1035,9 +627,9 @@ def extract_documents(tdir, files):
 
 
 def clean_rows(rows):
-    """A two-sided band is one observation (value_lo, value_hi,
-    band_width); one base unit per dimension, ambiguous units left as they
-    are (decision 15); a metric/imperial restatement is one requirement."""
+    """Bands to one row, values to base units, metric/imperial
+    restatements to one row.
+    """
     rows, nb = collapse_bands(rows)
     print(f"  {nb:,} two-sided bands collapsed to one observation each")
     nc = convert_units(rows)
@@ -1052,22 +644,19 @@ def clean_rows(rows):
 
 def join_notices(rows, tenders_path, group):
     """Each row gets its tender's 8-digit UNSPSC family and publication
-    date from the notices file. Returns {reference: family}."""
+    date from the notices file."""
     print(f"joining {tenders_path} for the 8-digit family and date ...")
     meta = tender_meta(tenders_path, {r["reference"] for r in rows})
     for r in rows:
         u8, date = meta.get(r["reference"], ("", ""))
         r["unspsc8"] = u8 or group
         r["pub_date"] = date
-    return {r["reference"]: r["unspsc8"] for r in rows}
 
 
 def apply_map(rows, map_path):
-    """Labels -> canonical attributes (prepare/attribute_map.py); rows
-    mapped to 'unknown' (boilerplate) are dropped. Applied BEFORE the rows
-    are written, so census_<grp>_mapped.csv really holds canonical labels;
-    raw_label survives, so a wrong merge - the map is a frozen judgement
-    that may be wrong - stays traceable to what the tender said."""
+    """Rename each label to its attribute from the map; drop the rows the
+    map calls 'unknown'. raw_label keeps the tender's wording.
+    """
     with io.open(map_path, encoding="utf-8") as f:
         m = json.load(f)
     m = m.get("map", m)
@@ -1091,247 +680,12 @@ def apply_map(rows, map_path):
 
 
 def write_rows(rows, path):
+    """Write the rows to a CSV file."""
     with io.open(path, "w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=CENSUS_COLS, extrasaction="ignore")
         w.writeheader()
         for r in rows:
             w.writerow(r)
-
-
-def group_by_attribute(rows, cut, group):
-    """Per attribute - (family at `cut` digits, dimension, label) - the
-    tenders that state it, its comparators, where its labels came from,
-    its converted values, raw spellings and dates. One tender counts ONCE
-    per attribute: departments reuse templates and repeat a requirement
-    across lots, and counting every repetition would fabricate the
-    denominator and make the test lie in our favour."""
-    g = {"tenders": defaultdict(set), "comp": defaultdict(Counter),
-         "src": defaultdict(Counter), "vals": defaultdict(list),
-         "raws": defaultdict(Counter), "dates": defaultdict(list)}
-    for r in rows:
-        k = (r["unspsc8"][:cut] or group, r["dimension"], r["label"])
-        g["tenders"][k].add(r["reference"])
-        g["comp"][k][r["comparator"]] += 1
-        g["src"][k][r["label_src"]] += 1
-        g["raws"][k][r["raw_label"]] += 1
-        if r["pub_date"]:
-            g["dates"][k].append(r["pub_date"])
-        # ONLY converted values. A median over a column holding millimetres,
-        # inches and metres at once is the number that made `overall width`
-        # read as 37 - decision 15's whole point.
-        if r.get("base_value") != "":
-            try:
-                g["vals"][k].append(float(r["base_value"]))
-            except (TypeError, ValueError):
-                pass
-    return g
-
-
-def write_label_table(g, path):
-    """One line per attribute, most tenders first - the file to read."""
-    with io.open(path, "w", encoding="utf-8", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["unspsc8", "dimension", "label", "tenders", "obs",
-                    "GE", "LE", "RANGE", "EQ", "NONE", "label_src_above",
-                    "base_unit", "n_converted", "median_base",
-                    "date_min", "date_max", "variants"])
-        for k in sorted(g["tenders"], key=lambda x: -len(g["tenders"][x])):
-            u8, dim, lab = k
-            c = g["comp"][k]
-            v = g["vals"][k]
-            d = sorted(g["dates"][k])
-            w.writerow([
-                u8, dim, lab, len(g["tenders"][k]), sum(c.values()),
-                c["GE"], c["LE"], c["RANGE"], c["EQ"], c["NONE"],
-                g["src"][k]["above"],
-                BASE.get(dim, ""), len(v),
-                round(statistics.median(v), 3) if v else "",
-                d[0] if d else "", d[-1] if d else "",
-                " | ".join(x for x, _ in g["raws"][k].most_common(4)),
-            ])
-
-
-# ----------------------------------------------------------- the summary
-def summary(args, files, refs, rows, g, family_of, cut):
-    """The census report, printed and returned as lines: what was read,
-    peer depth, the top labels, extraction hygiene, dates, and the
-    within-document baseline."""
-    lines = []
-
-    def say(s=""):
-        print(s)
-        lines.append(s)
-
-    _say_overview(say, args, files, refs, rows, g, family_of, cut)
-    _say_peer_depth(say, g, refs, args.min_peers)
-    _say_top_labels(say, g, args.top)
-    _say_hygiene(say, rows, args.group)
-    _say_dates(say, rows)
-    _say_within_document(say, rows)
-    return lines
-
-
-def _say_overview(say, args, files, refs, rows, g, family_of, cut):
-    say("=" * 74)
-    say(f"VOCABULARY CENSUS - {args.group}   "
-        f"(peers grouped at {args.family}"
-        + (", attribute map APPLIED)" if args.map else ", RAW labels)"))
-    say("=" * 74)
-
-    say(f"\n  documents ............ {len(files):,}")
-    say(f"  tenders .............. {len(refs):,}")
-    say(f"  candidates extracted . {len(rows):,}")
-    say(f"  distinct labels ...... {len(g['tenders']):,}")
-
-    fams = Counter(v[:cut] for v in family_of.values())
-    say(f"\n  product families (UNSPSC-8) in this category: {len(fams)}")
-    for fam, c in fams.most_common(12):
-        say(f"    {fam:10s} {c:4,} tenders")
-    if len(fams) > 12:
-        say(f"    ... and {len(fams)-12} more")
-    say("\n  Splitting by family is what makes a comparison meaningful, and"
-        "\n  it is also what costs peers. The count above is how fine the"
-        "\n  split can go before the n >= %d floor bites." % args.min_peers)
-
-
-def _say_peer_depth(say, g, refs, min_peers):
-    """THE question: does an attribute reach n >= min_peers tenders?"""
-    tenders_per_key = g["tenders"]
-    sizes = sorted((len(v) for v in tenders_per_key.values()), reverse=True)
-    reach = [k for k, v in tenders_per_key.items() if len(v) >= min_peers]
-    say("\n" + "=" * 74)
-    say(f"PEER DEPTH - does an attribute reach n >= {min_peers} tenders?")
-    say("=" * 74)
-    say("")
-    for thr in (2, 4, 6, 8, 12, 20, 30):
-        c = sum(1 for s in sizes if s >= thr)
-        say(f"  labels with >= {thr:3d} tenders : {c:6,}"
-            f"   {100.0*c/len(sizes):5.1f}% of labels")
-    say(f"\n  median label appears in {statistics.median(sizes):.0f} tender(s)")
-    say(f"  labels seen in exactly 1 tender: "
-        f"{sum(1 for s in sizes if s == 1):,} "
-        f"({100.0*sum(1 for s in sizes if s==1)/len(sizes):.1f}%)")
-
-    covered = set()
-    for k in reach:
-        covered |= tenders_per_key[k]
-    say(f"\n  {len(reach):,} labels clear the floor, covering "
-        f"{len(covered):,}/{len(refs):,} tenders "
-        f"({100.0*len(covered)/max(len(refs),1):.0f}%)")
-    say("\n  That coverage is the honest ceiling on the peer detector: a"
-        "\n  tender with no attribute above the floor can only be judged by"
-        "\n  the within-document test below.")
-
-
-def _say_top_labels(say, g, top):
-    say("\n" + "=" * 74)
-    say(f"TOP {top} LABELS BY TENDER COUNT")
-    say("=" * 74)
-    say("\n  The near-duplicates here are the finding, not the noise - they")
-    say("  are what the attribute map has to merge, and merging them is what")
-    say("  pushes labels above the floor.\n")
-    say(f"  {'n':>4} {'fam':>8} {'dim':12s} {'GE/LE':>7} {'EQ':>4} "
-        f"{'RNG':>4}  label")
-    for k in sorted(g["tenders"], key=lambda x: -len(g["tenders"][x]))[:top]:
-        u8, dim, lab = k
-        c = g["comp"][k]
-        say(f"  {len(g['tenders'][k]):4d} {u8:>8} {dim:12s} "
-            f"{c['GE']+c['LE']:7d} {c['EQ']:4d} {c['RANGE']:4d}  {lab[:38]}")
-
-
-def _say_hygiene(say, rows, group):
-    """How much of the extraction is trustworthy."""
-    say("\n" + "=" * 74)
-    say("EXTRACTION HYGIENE - how much of this is trustworthy?")
-    say("=" * 74)
-    csrc = Counter(r["comp_src"] for r in rows)
-    say(f"\n  comparator on the same line . {csrc['inline']:6,} "
-        f"{100.0*csrc['inline']/len(rows):5.1f}%")
-    say(f"  comparator from the window .. {csrc['window']:6,} "
-        f"{100.0*csrc['window']/len(rows):5.1f}%   <- can bleed across rows")
-    src = Counter(r["label_src"] for r in rows)
-    say(f"\n  label read on the same line . {src['inline']:6,} "
-        f"{100.0*src['inline']/len(rows):5.1f}%")
-    say(f"  label taken from above ...... {src['above']:6,} "
-        f"{100.0*src['above']/len(rows):5.1f}%   <- inferred, check these")
-    scp = Counter(r["scope"] for r in rows)
-    say(f"\n  from a requirement section  {scp['section']:6,} "
-        f"{100.0*scp['section']/len(rows):5.1f}%")
-    say(f"  from a document with none .. {scp['whole']:6,} "
-        f"{100.0*scp['whole']/len(rows):5.1f}%   <- unscoped fallback")
-    say(f"  section found but empty .... {scp['whole_empty']:6,} "
-        f"{100.0*scp['whole_empty']/len(rows):5.1f}%   <- scoping failed")
-    soft = sum(r["soft_unit"] for r in rows)
-    part = sum(r["part_number_line"] for r in rows)
-    unk = sum(1 for r in rows if r["dimension"] == "?")
-    say(f"\n  ambiguous unit (in/m/l/g/A/cc) {soft:6,} "
-        f"{100.0*soft/len(rows):5.1f}%   <- decision 15 territory")
-    say(f"  line also looks like a part no. {part:6,} "
-        f"{100.0*part/len(rows):5.1f}%   <- drop candidates")
-    say(f"  unit with no dimension mapped . {unk:6,} "
-        f"{100.0*unk/len(rows):5.1f}%")
-    say("\n  'taken from above' is the number to watch. Those labels were"
-        "\n  inferred from a neighbouring line, and a wrong one silently"
-        "\n  merges two unrelated attributes. Spot-check them in"
-        f"\n  census_{group}.csv before trusting any group built on them.")
-    say("\n  unit distribution:")
-    for u, c in Counter(r["unit"] for r in rows).most_common(15):
-        say(f"    {u:6s} {c:6,}  {DIMENSION.get(u,'?')}")
-
-
-def _say_dates(say, rows):
-    dates = sorted(d for d in (r["pub_date"] for r in rows) if d)
-    say("\n" + "=" * 74)
-    say("DATE SPREAD")
-    say("=" * 74)
-    if dates:
-        yrs = Counter(d[:4] for d in dates)
-        say(f"\n  {dates[0]} .. {dates[-1]}\n")
-        for y in sorted(yrs):
-            say(f"    {y}  {yrs[y]:6,}  {'#'*int(40*yrs[y]/max(yrs.values()))}")
-        say("\n  Physical dimensions barely drift; performance specs do."
-            "\n  Decide the comparison window from this spread, not in"
-            "\n  advance - a sliding window cuts n, the scarce resource.")
-    else:
-        say("\n  no dates joined (is data/tenders.csv present?)")
-
-
-def _say_within_document(say, rows):
-    """The detector that needs no peers: the share of exact values."""
-    say("\n" + "=" * 74)
-    say("WITHIN-DOCUMENT BASELINE - the detector that needs no peers")
-    say("=" * 74)
-    per_tender = defaultdict(Counter)
-    for r in rows:
-        per_tender[r["reference"]][r["comparator"]] += 1
-    thr_tot = sum(c["GE"] + c["LE"] for c in per_tender.values())
-    eq_tot = sum(c["EQ"] for c in per_tender.values())
-    rng_tot = sum(c["RANGE"] for c in per_tender.values())
-    none_tot = sum(c["NONE"] for c in per_tender.values())
-    all_tot = max(thr_tot + eq_tot + rng_tot + none_tot, 1)
-    say(f"\n  threshold (GE/LE) .. {thr_tot:6,}  {100.0*thr_tot/all_tot:5.1f}%")
-    say(f"  band (RANGE) ....... {rng_tot:6,}  {100.0*rng_tot/all_tot:5.1f}%")
-    say(f"  exact (EQ) ......... {eq_tot:6,}  {100.0*eq_tot/all_tot:5.1f}%"
-        "   <- the signal")
-    say(f"  no comparator ...... {none_tot:6,}  "
-        f"{100.0*none_tot/all_tot:5.1f}%")
-
-    with_eq = [(ref, c) for ref, c in per_tender.items() if c["EQ"]]
-    say(f"\n  tenders with >= 1 exact value: {len(with_eq):,}/"
-        f"{len(per_tender):,} ({100.0*len(with_eq)/max(len(per_tender),1):.0f}%)")
-    say("\n  Highest exact-to-threshold ratio - level-2 candidates needing no"
-        "\n  peer group at all:\n")
-    say(f"  {'EQ':>4} {'THR':>5} {'ratio':>7}  tender")
-    ranked = sorted(with_eq,
-                    key=lambda x: -(x[1]["EQ"] /
-                                    float(x[1]["EQ"] + x[1]["GE"] +
-                                          x[1]["LE"] + 1)))
-    for ref, c in ranked[:15]:
-        thr = c["GE"] + c["LE"]
-        say(f"  {c['EQ']:4d} {thr:5d} {c['EQ']/float(c['EQ']+thr):7.2f}  {ref}")
-    say("\n  This is the number the peer model has to beat. It needs no"
-        "\n  attribute map, no unit conversion and no peers, and it works on"
-        "\n  the thin categories too.")
 
 
 if __name__ == "__main__":

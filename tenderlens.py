@@ -47,10 +47,13 @@ COMMANDS = {
     "awards": "agents.m3_investigator",
     "llm": "tools.llm",
 }
-EVALS = {"m2": "tests.m2_eval", "m4": "tests.m4_eval",
+EVALS = {"m2": "tests.m2_eval", 
+         "m4": "tests.m4_eval",
          "synth": "tests.synth_rig"}
-PREPARE = {"profile": "prepare.profile_tenders", "docs": "prepare.fetch_docs",
-           "text": "prepare.extract_text", "census": "prepare.census",
+PREPARE = {"profile": "prepare.profile_tenders", 
+           "docs": "prepare.fetch_docs",
+           "text": "prepare.extract_text", 
+           "census": "prepare.census",
            "labels": "prepare.attribute_map"}
 
 

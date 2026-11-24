@@ -79,18 +79,31 @@ def _cases(kb):
     return _logged[kb.case_log][1]
 
 
+def _installation(kb):
+    """Stamps of the batches that installed the base (run --install)."""
+    out = set()
+    for path in glob.glob(os.path.join(kb.batches, "*_settings.json")):
+        with open(path, encoding="utf-8") as f:
+            if json.load(f).get("settings", {}).get("install"):
+                out.add(os.path.basename(path)[:15])
+    return out
+
+
 def tenders(group):
-    """Every registered tender: where it is now, the auditor's verdict, and
-    the case the register points to (None for a tender processed before
-    cases were logged - re-running the category gives it one)."""
+    """Every registered tender: where it is now, the auditor's verdict, the
+    case the register points to (None for a tender processed before cases
+    were logged - re-running the category gives it one), and whether the
+    installation (rules only) put it there."""
     kb = KB(group, KB_ROOT)
     cases = _cases(kb)
+    installed = _installation(kb)
     out = []
     for ref, ev in kb.state().items():
         case = cases.get(ref, {}).get(ev["run_id"])
         out.append({"reference": ref, "pub_date": ev["pub_date"],
                     "pile": ev["pile"], "status": ev["status"],
                     "verdict": JUDGED.get(ev["status"]), "case": case,
+                    "installed": ev["run_id"][:15] in installed,
                     "score": case["score"] if case else int(ev["score"] or 0)})
     return out
 

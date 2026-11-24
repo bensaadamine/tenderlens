@@ -38,9 +38,9 @@ tenderlens.py          the one command: demo, tender, run, test, eval, awards, p
 pipeline/              one_tender.py (the four components on one tender), stream.py (a category,
                        tender by tender, against its knowledge base), demo.py, settings.py (one run's choices)
 agents/                M1–M4; m4_checks.py = M4's checks; agent_loop.py = the loop the M2 and M3 agents share
-tools/                 documents.py (a tender's text), brands.py (brand rules), wikidata.py,
-                       level2.py (peer comparison), llm.py (LLM access), report.py (the queue pages),
-                       names.py (how brand and company names are compared)
+tools/                 documents.py (a tender's text), sections.py (where the requirements section is),
+                       brands.py (brand rules), wikidata.py, level2.py (peer comparison), llm.py (LLM access),
+                       report.py (the queue pages), names.py (how brand and company names are compared)
 prepare/               data preparation, in order: profile → docs → text → census → labels
 tests/                 offline tests (test_*.py), evaluations (m2_eval.py, m4_eval.py), synth_rig.py
 experiments/           measured and not chosen: m4_model_coordinator.py (a model choosing M4's checks)
@@ -93,7 +93,14 @@ Open `reports/kb/2510/batches/<date>_queue.html`.
 
 **Which tenders are processed.** Only a tender that was **awarded** (it has a row in the award file) and **whose documents we hold** goes through M1–M4 and can reach the queue. A cheap check decides it first, from the notice and the award file, before any text is read. The others are only recorded: cancelled tenders, requests for information and supply arrangements are not audit cases; open tenders are checked again on every run; a tender that closed with documents but **no award found** goes on the family's **Award not found** list, for the inspector to check the award by hand (sorted by date, or with the tenders where the rules find a required brand first). When its award appears in the file, the next run processes it. On today's data: 108 of 205 readable tenders in 2510, 288 of 487 in 4110.
 
-**Weekly update** — one command downloads the latest notices, awards and documents, then runs only the tenders not yet in each category's knowledge base (rules only, no model called):
+**Knowledge base: installation, then new tenders.** A category's base is started once with its **oldest 70%** of tenders (by publication date), **rules only** — no model, 0 tokens. The newest 30% then play the new tenders: they go through the **hybrid chain** (agents included), as every later tender will, and the base grows with them.
+
+```bash
+python tenderlens.py run --group 2510 --install --online   # once: the oldest 70%, rules only
+python tenderlens.py run --group 2510 --online --agent --m3-agent --m4-checks   # the rest
+```
+
+**Weekly update** — one command downloads the latest notices, awards and documents, installs any category that has no base yet, then runs only the tenders not yet in each base, with the agents (`--rules-only` leaves them out):
 
 ```bash
 python tenderlens.py update                    # 2510 and 4110; --groups to choose

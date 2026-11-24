@@ -1,6 +1,7 @@
 """TenderLens, incremental: one tender at a time against a growing knowledge base.
 
-    python tenderlens.py run --group 2510                 # every new tender
+    python tenderlens.py run --group 2510 --install       # start a base: oldest 70%, rules only
+    python tenderlens.py run --group 2510 --agent         # every new tender, hybrid
     python tenderlens.py run --group 2510 --until 2024-12-31   # simulate an early batch
     python tenderlens.py run --group 2510 --status
     python tenderlens.py run --group 2510 --feedback      # apply the auditor's verdicts
@@ -28,7 +29,10 @@ HOW A RUN WORKS
        is compared only with tenders processed before it
     3. alert or watch -> QUARANTINE (kept, never used as peers)
        close          -> BASE (becomes a peer for every later tender)
-  The first run is the same loop starting from an empty base.
+  The first run is the same loop starting from an empty base. It is the
+  INSTALLATION (--install): the oldest 70% of the tenders to process, by
+  publication date, rules only (no model, 0 tokens). The rest - and every
+  later batch - are the new tenders, run with the agents.
 
   Medians and spreads are computed on read, so adding a tender to the base
   IS the update. Level 2 stays silent for an attribute until it has 8 peers.
@@ -105,6 +109,9 @@ REG_COLS = ["at", "reference", "run_id", "pub_date", "event", "status",
 FB_COLS = ["reference", "verdict", "note", "reviewer", "date"]
 QUARANTINE_ROUTES = {"alert", "watch"}
 RECHECK = {"still_open", "award_not_found"}     # gated again on every run
+# The installation reads the oldest 70% of the tenders to process; the newest
+# 30% play the new tenders, so the platform is tested on tenders it never saw.
+INSTALL_SHARE = 0.7
 # Each case goes to cases.jsonl BEFORE its register event, so a crash never
 # leaves a tender registered as done with no case anywhere (the next run
 # would skip it).
@@ -294,6 +301,18 @@ def base_rows(kb, state, amap, level2_on=True):
 
 
 # ------------------------------------------------------------------ commands
+def install_cut(notices, group, graph):
+    """Last publication date of the installation: the oldest INSTALL_SHARE
+    of the tenders to process (awarded, with documents). A cut by date, never
+    at random: the base must hold only tenders older than the new ones."""
+    dates = sorted(notice_meta(notices[ref])[1] or "9999"
+                   for ref in one_tender.select(notices, group)
+                   if one_tender.gate(ref, notices[ref], graph)[0] == "process")
+    if not dates:
+        sys.exit(f"{group}: no awarded tender with documents to install")
+    return dates[max(round(len(dates) * INSTALL_SHARE), 1) - 1]
+
+
 def todo_list(notices, group, state, until=None):
     todo = []
     for ref in one_tender.select(notices, group):
@@ -350,6 +369,15 @@ def run(a):
         sys.exit("the award file selects the tenders to process: run "
                  "python tenderlens.py awards --fetch first")
     state = kb.state()
+    if a.install:
+        if s.agent or s.m3_agent or s.m4_checks:
+            sys.exit("--install runs the rules only: drop the agent options")
+        if any(e["event"] == "processed" for e in state.values()):
+            sys.exit(f"{a.group} already has a knowledge base: --install "
+                     f"only starts one")
+        a.until = install_cut(notices, a.group, graph)
+        print(f"installation: tenders published up to {a.until} (the oldest "
+              f"{INSTALL_SHARE:.0%}), rules only")
     if a.reprocess:
         # Only the tenders named: new ones wait for a plain run, so re-running
         # one tender (with the agents, say) touches nothing else.
@@ -587,6 +615,9 @@ def main():
     ap.add_argument("--group", required=True, help="UNSPSC-4 group, e.g. 2510")
     ap.add_argument("--until", help="only tenders published on or before "
                     "this date (YYYY-MM-DD) - to simulate an earlier batch")
+    ap.add_argument("--install", action="store_true",
+                    help="start the group's knowledge base: the oldest 70%% "
+                         "of its tenders, rules only")
     ap.add_argument("--limit", type=int, default=0)
     settings.add_args(ap)
     ap.add_argument("--kb-root", default="reports/kb",

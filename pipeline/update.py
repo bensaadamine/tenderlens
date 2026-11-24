@@ -3,7 +3,7 @@
     python tenderlens.py update                   # every category with a knowledge base
     python tenderlens.py update --groups 2510
     python tenderlens.py update --groups 4014 --no-download   # start a new category
-    python tenderlens.py update --agents          # step 4 with every agent (quota)
+    python tenderlens.py update --rules-only      # step 4 without the agents (0 tokens)
 
 Steps, in order; the update stops at the first one that fails:
   1. download the notice and award files again (CanadaBuys republishes each in
@@ -14,9 +14,11 @@ Steps, in order; the update stops at the first one that fails:
      skipped, so only new tenders' documents are fetched)
   3. extract their text (text already extracted is reused)
   4. run each group: only tenders not yet in its knowledge base are processed,
-     oldest first (pipeline/stream.py). Rules only, with Wikidata online
-     (free); with --agents also the M2 and M3 agents and M4's checks (the
-     model's daily quota: a run that spends it stops, the next resumes).
+     oldest first (pipeline/stream.py). A group with no knowledge base is
+     installed first: its oldest 70% of tenders, rules only (0 tokens). New
+     tenders get the hybrid chain: the M2 and M3 agents and M4's checks (the
+     model's daily quota: a run that spends it stops, the next resumes);
+     --rules-only leaves the agents out.
 
 Needs the network (Windows). To run it every week: README, "Weekly update".
 """
@@ -69,9 +71,9 @@ def main():
                          "category that has a knowledge base)")
     ap.add_argument("--no-download", action="store_true",
                     help="skip step 1: use the notice and award files on disk")
-    ap.add_argument("--agents", action="store_true",
-                    help="run with every agent: --agent --m3-agent "
-                         "--m4-checks (uses the model's daily quota)")
+    ap.add_argument("--rules-only", action="store_true",
+                    help="new tenders without the agents (default: --agent "
+                         "--m3-agent --m4-checks, which use the daily quota)")
     a = ap.parse_args()
     groups = ([g.strip() for g in a.groups.split(",") if g.strip()]
               or known_groups())
@@ -82,9 +84,12 @@ def main():
         refresh(AWARDS, AWARDS_URL)
     step("prepare", "docs", "--only", ",".join(groups), "--per-cat", "0")
     step("prepare", "text")
+    started = known_groups()
     for g in groups:
+        if g not in started:
+            step("run", "--group", g, "--online", "--install")
         step("run", "--group", g, "--online",
-             *(["--agent", "--m3-agent", "--m4-checks"] if a.agents else []))
+             *([] if a.rules_only else ["--agent", "--m3-agent", "--m4-checks"]))
 
 
 if __name__ == "__main__":

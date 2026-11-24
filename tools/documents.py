@@ -17,7 +17,7 @@ Every tool that reads a tender goes through here:
 import os
 import re
 
-from prepare import census
+from tools import sections
 
 TEXT_DIR = "reports/text"
 
@@ -104,7 +104,7 @@ def requirement_mask(lines):
     """(one bool per line: inside the requirements section, "section"), or
     (all True, "whole") when no section is found."""
     try:
-        mask, mode = census.scope_mask(lines)
+        mask, mode = sections.scope_mask(lines)
         if mode == "section":
             return list(mask), mode
     except Exception:

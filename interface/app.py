@@ -55,7 +55,7 @@ def command(name, g, ref, mode):
             return None
         args = (["update"] if name == "update" else
                 ["update", "--groups", g, "--no-download"])
-        return args + (["--agents"] if mode == "hybrid" else [])
+        return args + (["--rules-only"] if mode == "rules" else [])
     if name in ("rerun", "tender"):
         args = ["run", "--group", g, "--reprocess",
                 "all" if name == "rerun" else ref] + agents
@@ -278,7 +278,7 @@ def queue(g: str, show: str = "review"):
     tabs = "".join(f"<a href='?show={k}'{' class=on' if k == show else ''}>"
                    f"{v}<span class=count>{len(picks[k])}</span></a>"
                    for k, v in TABS.items())
-    items, bare = [], []
+    items, installed, bare = [], [], []
     for t in picks[show]:
         c, ref = t["case"], t["reference"]
         acts = verdict_buttons(g, t) if t["pile"] == "quarantine" else ""
@@ -291,7 +291,7 @@ def queue(g: str, show: str = "review"):
         winner = (c.get("award") or {}).get("supplier")
         why = "".join(f"<div class=reason>{w}<span>{e(text)}</span></div>"
                       for text, w in reasons(c))
-        items.append(
+        (installed if t["installed"] else items).append(
             f"<div class='item {c['route']}'><div class=edge></div>"
             f"<div class=body><div class=top>{sev(c)}<a class=title "
             f"href='/group/{g}/case/{quote(ref)}'>{e(c['title']) or ref}</a>"
@@ -302,7 +302,18 @@ def queue(g: str, show: str = "review"):
     empty = {"review": "Nothing left to review in this family.",
              "judged": "No verdict yet.", "all": "No case yet."}[show]
     body = (f"<div class=queue>{''.join(items)}</div>" if items else
-            "" if bare else f"<div class='queue empty'>{empty}</div>")
+            "" if bare or installed else
+            f"<div class='queue empty'>{empty}</div>")
+    if installed:
+        body += (
+            f"<details class='component bare' open><summary><b>"
+            f"{len(installed)} case{'s' if len(installed) != 1 else ''} "
+            f"flagged at installation</b><span class=muted>rules only, no "
+            f"agent</span></summary><div class=inner><p class=muted>The base "
+            f"was started with the family's oldest tenders, read by the rules "
+            f"alone. These were flagged then and kept out of the base. Mark "
+            f"clean to add one to the base.</p><div class=queue>"
+            f"{''.join(installed)}</div></div></details>")
     if bare:
         body += (
             f"<details class='component bare'><summary><b>{len(bare)} "
@@ -392,16 +403,21 @@ def base(g: str, pile: str = "all"):
         ref, c = t["reference"], t["case"]
         name = (f"<a href='/group/{g}/case/{quote(ref)}'>{e(ref)}</a>"
                 if c else e(ref))
+        read_as = "Installation" if t["installed"] else "New tender"
         lines.append(f"<tr><td class=mono>{name}</td><td>{e(t['pub_date'])}"
                      f"</td><td>{e(c['title'] if c else '')}</td><td>"
-                     f"{state(t)}</td><td class=r>{t['score']}</td></tr>")
+                     f"{state(t)}</td><td>{read_as}</td><td class=r>"
+                     f"{t['score']}</td></tr>")
     body = (
         "<dl class=setups><dt>Base</dt><dd>Closed tenders. Later tenders are "
         "compared with them.</dd><dt>Quarantine</dt><dd>Alert and watch "
         "cases, kept apart until you judge them.</dd><dt>No documents</dt>"
-        "<dd>Nothing to read.</dd></dl>"
-        + tbl(["Reference", "Published", "Title", "State", "Score"], lines,
-              right=(4,)))
+        "<dd>Nothing to read.</dd><dt>Installation</dt><dd>The family's "
+        "oldest tenders, read by the rules alone to start the base.</dd>"
+        "<dt>New tender</dt><dd>Arrived after the installation; read with "
+        "the agents, unless the run left them out.</dd></dl>"
+        + tbl(["Reference", "Published", "Title", "State", "Read as",
+               "Score"], lines, right=(5,)))
     head = page_head(
         f"{g} knowledge base",
         "Every tender of the family, in the order it arrived. Each one was "

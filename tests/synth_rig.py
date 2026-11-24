@@ -76,7 +76,7 @@ except Exception:
     pass
 
 
-from prepare import census
+from tools import sections
 from pipeline import stream  # noqa: E402
 
 GROUP = "2510"
@@ -169,7 +169,7 @@ def pick_bases(n, seed, bases="no-clause"):
         body_docs = [d for d in docs if "amend" not in d["document"].lower()]
         primary = max(body_docs or docs, key=lambda d: len(d["text"]))
         lines = primary["text"].split("\n")
-        mask, mode = census.scope_mask(lines)
+        mask, mode = sections.scope_mask(lines)
         if mode != "section":
             continue
         cand = [i for i, m in enumerate(mask)
