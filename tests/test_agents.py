@@ -295,6 +295,32 @@ def main():
               ("Bendix", "finding"), ("RFSA", "dropped")]
           and all(n["decided_by"] for n in names))
 
+    from tools import brands
+    approved = ["The Order identifies six containers as Approved Containers",
+                "as follows:", "", "  (a) Vacutainer\u00ae XF947;", "",
+                "(b) BD Vacutainer\u2122 367001;", "(c) Tri-Tech Inc. TUG10;",
+                "(d) TRITECHFORENSICS TUG10.", "", "2.2", "One holder."]
+    check("an item of a list of approved products naming 2+ makes, "
+          "markers (a) a)",
+          brands._in_approved_list(approved, 4)
+          and brands._in_approved_list(approved, 8)
+          and brands._in_approved_list([l.replace("(", "") for l in approved],
+                                       6))
+    required = ["The following items are required:", "(a) Dell P2422H;",
+                "(b) Logitech M705;", "(c) HP M404;"]
+    check("a list of required items is not a choice",
+          not brands._in_approved_list(required, 2))
+    check("an approved list of settings is not a list of makes",
+          not brands._in_approved_list(["compatible with approved operating "
+                                    "systems:", "Windows", "",
+                                    "\u2022  All environments: Windows 11 "
+                                    "23H2", "\u2022  Security updates are "
+                                    "centrally deployed"], 4))
+    check("an approved list of one make is still that make",
+          not brands._in_approved_list(["Approved containers:",
+                                    "(a) Vacutainer XF947;",
+                                    "(b) Vacutainer 367001;"], 2))
+
     print(f"\n{FAILS} failure(s)")
     sys.exit(1 if FAILS else 0)
 

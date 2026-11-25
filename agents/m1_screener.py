@@ -27,7 +27,6 @@ C_PUB = "publicationDate-datePublication"
 C_CLOSE = "tenderClosingDate-appelOffresDateCloture"
 C_METHOD = "procurementMethod-methodeApprovisionnement-eng"
 C_NOTICE = "noticeType-avisType-eng"
-C_LTR = "limitedTenderingReason-raisonAppelOffresLimite-eng"
 C_TRADE = "tradeAgreements-accordsCommerciaux-eng"
 C_SELECT = "selectionCriteria-criteresSelection-eng"
 C_CAT = "procurementCategory-categorieApprovisionnement"
@@ -50,11 +49,9 @@ def is_acan(row):
     return bool(RE_ACAN.search((row.get(C_METHOD) or "").strip())
                 or RE_ACAN.search((row.get(C_NOTICE) or "").strip()))
 
-# "None" is not a reason. 8,310 of 8,720 notices carrying this field say
-# exactly that, so a truthiness test makes the signal fire on a quarter of
-# the corpus and the audit queue becomes a list of everything.
-RE_NO_REASON = re.compile(r"^\s*\*?\s*(none|n/?a|not applicable|sans objet)"
-                          r"\s*$", re.I)
+# The limited-tendering reason field is not read (decision 51): limited
+# tendering never carries a filed reason in the data (0 of 232); reasons
+# appear only on ACANs and, as noise, on competitive notices.
 
 WINDOW_Z = -1.0      # how far below its own method's median a window must
                      # sit. Robust z, so "unusually short FOR THIS METHOD".
@@ -145,7 +142,6 @@ def screen(reference, notices=None, wstats=None, text_dir=None):
 
     method = (row.get(C_METHOD) or "").strip()
     notice = (row.get(C_NOTICE) or "").strip()
-    ltr = (row.get(C_LTR) or "").strip()
     trade = (row.get(C_TRADE) or "").strip()
     signals = []
 
@@ -162,12 +158,6 @@ def screen(reference, notices=None, wstats=None, text_dir=None):
             "signal": "limited_tendering_method", "weight": "strong",
             "why": "Procurement method itself forgoes open competition.",
             "evidence": method})
-    if ltr and not RE_NO_REASON.match(ltr):
-        signals.append({
-            "signal": "limited_tendering_reason", "weight": "strong",
-            "why": "The buyer filed a written justification for avoiding "
-                   "competition. ~410 of 30,420 notices carry a real one.",
-            "evidence": ltr[:120]})
 
     # ---- weak: suggestive only, and never on their own
     d = window_days(row)

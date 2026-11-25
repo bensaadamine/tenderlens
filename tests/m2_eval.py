@@ -73,6 +73,7 @@ SAMPLE_SEED = 20261101
 STATUS_LETTER = {
     "OK": "e", "OK_EQUIV_PRODUCTS_CLAUSE": "e", "OK_BLANKET_CLAUSE": "e",
     "OK_PDF_ORDER": "e", "OK_BUYER_EQUIPMENT": "c", "OK_MAKE_LIST": "d",
+    "OK_APPROVED_LIST": "d",
     "OK_PLATFORM": "c",
     "OK_LLM_CLEARED": "cleared by the LLM judge",
 }

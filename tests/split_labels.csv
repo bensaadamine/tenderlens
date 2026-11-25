@@ -1,0 +1,17 @@
+# Blind labels (2026-11-25): a separate agent read only the groups (reports/splits/to_label.md), never the rules' or the agent's verdicts.
+group,label,reason
+2022-08-05|department of public works and governmen|abi advanced business interiors inc,separate,Different reference codes (EP095-230750 vs EP119-230817) for different items: table digital readers vs workspaces.
+2022-04-04|department of public works and governmen|asokan business interiors,unclear,"Both are office seating for ECCC, but under different requisition codes (EF245-230065 vs EF245-222488) 23 days apart, so the records cannot show one need."
+2023-06-20|department of public works and governmen|burovision ottawa inc,split,"Same reference code EP916-240077 and identical title in both contracts a week apart, one at $24,968 (99.9% of the limit)."
+2024-06-14|department of public works and governmen|burovision ottawa inc,separate,"Three different requisition codes for seating for different end users (IIC at 155 Queen, NRCan NSA, unnamed)."
+2025-11-17|department of public works and governmen|esri canada limited,separate,Different codes and clients: T8086 software renewal vs M7594 ArcGIS Online for RCMP.
+2026-03-12|department of public works and governmen|esri canada limited,separate,"Four different codes for four different departments (GAC, DND, ISC, 0D160 client)."
+2022-04-11|department of public works and governmen|mbh,separate,"Same day, but different requisition codes (EE519-222139 vs EE519-222398) for different items: privacy capsule/stools vs multimedia tables."
+2023-02-21|department of public works and governmen|nitam solutions inc,separate,"Three different codes and items: LDV workspace (EP076), monitor arms (EP067), SA furniture for DND (EF245)."
+2022-07-19|department of public works and governmen|teknion limited,separate,Different codes and end users: ESDC Camrose furniture (MM100-075190) vs multiclient mobile pedestal (EF926-230676).
+2023-06-08|department of public works and governmen|teknion limited,split,"Two contracts on the same day under the same reference code EP916-240077 with identical titles, together $26,724."
+2024-04-09|department of public works and governmen|teknion limited,separate,Different codes and items: CICS office seating (EP916-241940) vs Cat 5 workspaces (EP916-242038).
+2025-05-15|department of public works and governmen|teknion limited,separate,"Three different requisition codes for different SA categories and places (EF245-260137, EF245-260164, EE474-260210 suite N13-27)."
+2025-07-29|department of public works and governmen|teknion limited,separate,"All for ESDC but three different codes and items: SA furniture (EE520), non-SA lockers for Alma (EF937), SA furniture (EF944)."
+2026-09-14|department of public works and governmen|teknion limited,unclear,"CBSA piece is distinct, but LDV Cat 1/2/5/3 pieces (consecutive codes EP916-270853/270854, two without codes) may be one fit-out cut by category; records show no shared code or end user."
+2022-10-27|department of public works and governmen|urban workplace,unclear,"Consecutive codes EP119-231027 and EP119-231028 hint at one project, but the items differ (Cat 1a-2 furniture vs lockers) and no shared code or place is shown."

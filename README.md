@@ -23,11 +23,14 @@ A **hybrid multi-agent workflow**: four components look at one tender at a time,
 | **M1 Screener** | rules | the notice | what the buyer declared (limited tendering), a short bidding window, whether a trade agreement applies | [docs/agents/M1_screener.md](docs/agents/M1_screener.md) |
 | **M2 Spec Auditor** | rules + **agent** (`--agent`) | the specification | a brand required without "or equivalent" — the rules find the names and settle what the text decides exactly; the agent letters the rest a–f with a checked quote | [docs/agents/M2_spec_auditor.md](docs/agents/M2_spec_auditor.md) |
 | **M3 Investigator** | rules + **agent** (`--m3-agent`) | award history | who won, whether this buyer keeps choosing the same supplier — the agent decides which spellings are the same company | [docs/agents/M3_investigator.md](docs/agents/M3_investigator.md) |
+| **Split-purchase agent** | rules + **agent** (`splits --agent`) | the award file alone (no documents) | one need cut into several contracts, each under the $25,000 limit for buying without competition: the rules find the groups, the agent judges split / separate / unclear with a checked quote | [docs/agents/split_agent.md](docs/agents/split_agent.md) |
 | **M4 Case Builder** | rules + fixed checks (`--m4-checks`) | M1 + M2 + M3 | checks every claim has a source, scores it, decides alert / watch / close; before ranking a brand case it sends the finding back to the M2 agent and the winner's spellings to the M3 agent | [docs/agents/M4_case_builder.md](docs/agents/M4_case_builder.md) |
 
 M4's checks run in a fixed order: a version where a model chose them was measured and not chosen (0 false alarms with the fixed order, 2 with the model choosing, on 73 labelled tenders). What M2 and M3 hand to M4 is defined once, in `agents/evidence.py`.
 
 **Routing in one line:** only something found **in the documents** can raise an **alert**; what the buyer **declared** on the notice only ranks a case; award history and "no trade agreement" are **context** and never put a case in the queue.
+
+**Split purchases** are a separate list (the award file alone, every goods category): a split goes to watch, never alert; the auditor's verdict decides.
 
 **Not audit cases:** an advance contract award notice (the supplier was announced in advance and others could object), and anything cancelled, still open or not a purchase. In selective tendering (only pre-qualified suppliers bid), a short window is normal and doesn't count.
 
@@ -39,7 +42,8 @@ M4's checks run in a fixed order: a version where a model chose them was measure
 tenderlens.py          the one command: demo, tender, run, test, eval, awards, prepare, llm
 pipeline/              one_tender.py (the four components on one tender), stream.py (a category,
                        tender by tender, against its knowledge base), demo.py, settings.py (one run's choices)
-agents/                M1–M4; m4_checks.py = M4's checks; agent_loop.py = the loop the M2 and M3 agents share
+agents/                M1–M4; m4_checks.py = M4's checks; split_agent.py = split purchases;
+                       agent_loop.py = the loop the M2, M3 and split agents share
 tools/                 documents.py (a tender's text), sections.py (where the requirements section is),
                        brands.py (brand rules), wikidata.py, level2.py (peer comparison), llm.py (LLM access),
                        report.py (the queue pages), names.py (how brand and company names are compared)
@@ -130,6 +134,8 @@ schtasks /Create /SC WEEKLY /D MON /ST 08:00 /TN TenderLens-update /TR "cmd /c c
 
 One tender, with every agent's reasoning: `python tenderlens.py tender cb-425-92729935`
 
+**Split purchases** (award file only, every goods category): `python tenderlens.py splits` (groups and the rules' verdict) · `splits --agent --labels tests/split_labels.csv` (with the agent, compared with blind labels).
+
 Tests (no data, no network): `python tenderlens.py test` runs every `tests/test_*.py`; one alone: `python -m tests.test_agents`.
 Measurements: `python tenderlens.py eval synth --run` (synthetic rigged tenders over 6 families; each run in its own folder `reports/synth/families/runs/<stamp>/`; `--review` lists the bases' "equivalent" lines to check by hand) · `python tenderlens.py eval m2 [--agent --online] [--split tuning|holdout|sample]` (M2 against labelled names: tuning, held-out, and a random sample of 102 real tenders) · `python tenderlens.py eval m4 --online` (M4: no checks / fixed checks, 73 labelled tenders).
 
@@ -153,6 +159,7 @@ A sidebar lists each family with its number of cases to review, and the system's
 - **Case:** the evidence (a quote opens the document at that line), the brand names checked and who settled each, and how each component reached the case: an agent's steps as a table (the tool the model chose, what it asked, what it got back). On the side: the verdict, **Run this tender again** in the chosen mode, the facts, the documents.
 - **Agent activity:** model calls and tokens per agent and per day against the daily quota, answers from the cache, how investigations ended, failed calls.
 - **Synthetic test:** its results, and a button to run it.
+- **Split purchases:** each group of contracts under the $25,000 limit, the rules', the agent's and your verdict, the agent's steps; **Split** / **Separate** buttons; a button to run the check.
 
 Fonts (Public Sans, IBM Plex Mono; SIL Open Font License) are bundled in `interface/static/fonts/`, so the page works offline.
 
@@ -192,6 +199,8 @@ Six families, each with a base (oldest 70%, rules) and its newest 30% read with 
 - **M2 on the held-out names** (never used for tuning): with the agent, 34 of 35 right, 7 of 7 lock-ins found (2 names wait for a fresh agent answer).
 - **Synthetic test (6 families, 148 rigged copies):** with Wikidata online, the brand is found in 77 (52%), 0 false alarms on the 111 copies that should close. Brands Wikidata doesn't know need the agent.
 - **Measured errors, fixed as general rules (2026-11-24):** furniture call-ups flagged on deadline + "no trade agreement"; French words and measurements read as brands ("ENVIRON 610MM"); equivalents accepted in other words; awards matched by a reused solicitation number.
+- **Split purchases (agent 3, 2026-11-25):** 15 groups in all goods. Against blind labels (2 split, 10 separate, 3 unclear), the rules alone get 10 of 15, with 3 false splits; the agent is to be measured.
+- **A list the buyer calls approved products** naming two or more makes now clears a brand (the 4111 blood-alcohol kits: six containers approved by law, written "(a)…(f)").
 - **Peer comparison (level 2)** stays dormant: few product groups have 8 comparable tenders. `--no-level2` skips it.
 
 ---

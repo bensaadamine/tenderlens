@@ -43,7 +43,7 @@ What stays in code: all scoring and routing (`build_case`, unchanged); M2's and 
 |---|---|
 | brand without equivalent (documents) | 3 (max 2 brands counted) |
 | brand = winner | 3 |
-| advance award notice / limited method / limited reason (declared) | 2 each |
+| advance award notice / limited method (declared) | 2 each |
 | short bidding window | 1 |
 | no trade agreement (context) | 1, ranks only |
 | recurring / dependent supplier (context) | 1 / 2, only if a document finding exists |

@@ -49,7 +49,9 @@ from tools import documents
 # with the rules, and so does the buyer's own equipment: re-checked by the
 # agent, 3 correct clearances (Sellick, Fat Truck x2: "a trailer for
 # transporting a Fat Truck") became false findings. Add "OK_BUYER_EQUIPMENT"
-# to let the agent re-check them.
+# to let the agent re-check them. A list the buyer calls approved products
+# (OK_APPROVED_LIST) is a text clearance too; a list of vehicle makes the
+# rules recognise by its shape (OK_MAKE_LIST) is re-checked.
 AGENT_RECHECK = {"OK_MAKE_LIST"}
 
 # Two run choices arrive as parameters (pipeline/settings.py):

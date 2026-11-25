@@ -517,6 +517,52 @@ def _evidence_rank(occ):
     return score
 
 
+# A list the buyer introduces as approved or acceptable products, naming two
+# or more makes: the bidder may supply any one of them ("the Order identifies
+# six containers as Approved Containers ... as follows: (a) Vacutainer
+# XF947; ... (d) Tri-Tech Inc. TUG10"). The items are marked (a) a) (i) 1. 1)
+# or bullets; the introduction is the text just above the first item; an
+# item counts only if it names a product (a model code or a trademark sign).
+RE_ENUM_LINE = re.compile(
+    r"^\s*(?:\(?[a-z]\)|\(?[ivx]{1,4}\)|\(?\d{1,2}[.)]|[-*\u2022])\s+(\S.*)$")
+RE_APPROVED_INTRO = re.compile(
+    r"\b(?:approved|acceptable|accepted|qualified|any(?: one)? of the "
+    r"following|one of the following)\b", re.I)
+RE_MAKE_WORD = re.compile(r"[A-Za-z][A-Za-z\-]+")
+# an item names a product: a model code (letters and digits, or 3+ digits)
+# or a trademark sign - not "All environments", "Security updates"
+RE_ITEM_PRODUCT = re.compile(
+    r"\b(?=[A-Za-z]*\d)(?=\d*[A-Za-z])[A-Za-z\d]{2,}\b|\b\d{3,}\b|[\u00ae\u2122]")
+APPROVED_LIST_MIN = 2   # distinct makes
+INTRO_LINES = 3         # non-blank lines above the first item
+
+
+def _in_approved_list(lines, line_no):
+    """Is this line an item of a list introduced as approved / acceptable
+    products that names APPROVED_LIST_MIN+ different makes?"""
+    i = line_no - 1
+    if not (0 <= i < len(lines)) or not RE_ENUM_LINE.match(lines[i]):
+        return False
+    first = last = i                       # the list: items and blank lines
+    while first > 0 and (RE_ENUM_LINE.match(lines[first - 1])
+                         or not lines[first - 1].strip()):
+        first -= 1
+    while last + 1 < len(lines) and (RE_ENUM_LINE.match(lines[last + 1])
+                                     or not lines[last + 1].strip()):
+        last += 1
+    makes = set()
+    for line in lines[first:last + 1]:
+        m = RE_ENUM_LINE.match(line)
+        if not m or not RE_ITEM_PRODUCT.search(m.group(1)):
+            continue
+        w = RE_MAKE_WORD.search(m.group(1))
+        if w:
+            makes.add(w.group(0).lower())
+    intro = [l for l in lines[max(0, first - 12):first] if l.strip()]
+    return (len(makes) >= APPROVED_LIST_MIN
+            and bool(RE_APPROVED_INTRO.search(" ".join(intro[-INTRO_LINES:]))))
+
+
 def _in_make_list(lines, line_no):
     """Is this line one of MAKE_LIST_MIN+ list-shaped lines naming different
     makes ("Chevrolet Silverado 1500 /2500", "Ford F150 /250 / 350")?
@@ -620,6 +666,7 @@ CLEARED_BY = {
     "OK_EQUIV_PRODUCTS_CLAUSE": "rule: the Equivalent Products clause",
     "OK_BUYER_EQUIPMENT": "rule: the buyer's own equipment",
     "OK_MAKE_LIST": "rule: one of a list of makes",
+    "OK_APPROVED_LIST": "rule: one of a list of approved products",
     "OK_PLATFORM": "rule: the buyer's computer environment",
 }
 
@@ -640,8 +687,14 @@ def _text_clearance(docs, name, hits, lines_of, window, window_before,
     equipment = _buyer_equipment(docs, hits)
     if equipment:
         return {"status": "OK_BUYER_EQUIPMENT", "buyer_equipment": equipment}
-    if all(_in_make_list(lines_of[h["document"]], h["line_no"])
-                         for h in hits):
+    # the line is found from the hit's position in the document's text: the
+    # scan numbers the lines of a view, which can split them differently
+    texts = {d["document"]: d["text"] for d in docs}
+    at = [(lines_of[h["document"]],
+           texts[h["document"]].count("\n", 0, h["pos"]) + 1) for h in hits]
+    if all(_in_approved_list(ls, n) for ls, n in at):
+        return {"status": "OK_APPROVED_LIST"}
+    if all(_in_make_list(ls, n) for ls, n in at):
         return {"status": "OK_MAKE_LIST"}
     if is_platform(name):
         return {"status": "OK_PLATFORM"}
@@ -666,7 +719,7 @@ def brands_without_equivalent(reference, text_dir=None, window=200,
     # a requirement repeated in the RFP, the statement of requirement and two
     # amendments is one finding with four locations, not four findings.
     per_brand = {}
-    lines_of = {d["document"]: d["text"].splitlines() for d in docs}
+    lines_of = {d["document"]: d["text"].split("\n") for d in docs}
     for d in docs:
         text = d["text"]
         clause = bool(RE_DOC_CLAUSE.search(text)) or accepts_equivalents(text)

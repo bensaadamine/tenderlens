@@ -300,7 +300,7 @@ def build(n, seed, bases="no-clause"):
 
 # ------------------------------------------------------------------- run
 OUTCOME = {"OK": "or_equivalent_nearby", "OK_BLANKET_CLAUSE": "blanket_clause",
-           "OK_MAKE_LIST": "make_list",
+           "OK_MAKE_LIST": "make_list", "OK_APPROVED_LIST": "make_list",
            "OK_EQUIV_PRODUCTS_CLAUSE": "equiv_products_clause",
            "AGENT_A": "agent_a_not_a_brand", "AGENT_B": "agent_b_bidder",
            "AGENT_C": "agent_c_buyer_equipment",

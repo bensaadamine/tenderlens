@@ -1,5 +1,5 @@
 """
-THE AGENT LOOP - the one loop the agents run (M2, M3).
+THE AGENT LOOP - the one loop the agents run (M2, M3, split purchases).
 
 Each agent supplies two steps:
     decide(state)  asks the model for ONE action: a tool and its arguments

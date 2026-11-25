@@ -18,7 +18,6 @@ Say, in seconds, which tenders deserve the expensive work (reading documents, as
 |---|---|---|
 | Advance Contract Award Notice (ACAN) | the buyer announces in advance the supplier it will choose. Since 2026-11-24 an ACAN is **not an audit case**: the run records it and does not read it (`is_acan`, used by the gate) | declared |
 | Limited-tendering method | the procedure itself skips open competition | declared |
-| Limited-tendering reason | the buyer's written justification (e.g. "Exclusive Rights"); the literal value "None" is ignored | declared |
 | Short bidding window | days to respond, compared with **tenders run the same way** (not an absolute number). In **selective tendering** (only pre-qualified suppliers bid) it is shown but does not count | from the notice dates |
 | No trade agreement | the rule against naming brands does not apply. Ranks a case, never puts it in the queue | context |
 
@@ -44,5 +43,5 @@ python -m agents.m1_screener --all --group 2510 --limit 25
 - A bidding window is always compared with its own procurement method.
 
 ## Open work
-- Limited-tendering reasons are not graded ("Exclusive Rights" weighs the same as "No response").
+- The limited-tendering reason field is not read: limited tendering never carries a filed reason in the data (0 of 232), so its absence says nothing (decision 51).
 - The `watch` route has no effect on the final score.

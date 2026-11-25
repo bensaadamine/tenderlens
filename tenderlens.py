@@ -16,6 +16,8 @@ TENDERLENS - the one command. Every part of the system starts here.
                                                    and documents, then run the new
                                                    tenders (rules only)
     python tenderlens.py awards --fetch            download the award notices (once)
+    python tenderlens.py splits [--agent]          purchases split under the $25,000 limit
+                                                   (award file only; agent 3)
     python tenderlens.py prepare profile|docs|text|labels [...]
                                                    data preparation, in that order
     python tenderlens.py llm [--usage]             the pinned models; tokens spent
@@ -45,6 +47,7 @@ COMMANDS = {
     "update": "pipeline.update",
     "serve": "interface.app",
     "awards": "agents.m3_investigator",
+    "splits": "agents.split_agent",
     "llm": "tools.llm",
 }
 EVALS = {"m2": "tests.m2_eval", 

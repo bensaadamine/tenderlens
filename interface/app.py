@@ -10,6 +10,7 @@
     /doc/<ref>              a document's text, the quoted line marked
     /agents                 what the agents did: calls, tokens, quota, errors
     /synth                  the synthetic test's results
+    /splits                 purchases split under the $25,000 limit (agent 3)
     /jobs/<id>              a command started from the page, its output live
 
 Every command runs in the MODE chosen in the sidebar: rules only; hybrid
@@ -56,6 +57,10 @@ def command(name, g, ref, mode):
         args = ["run", "--group", g, "--reprocess",
                 "all" if name == "rerun" else ref] + agents
         return ["--offline"] + args if mode == "replay" else args + ["--online"]
+    if name == "splits":
+        args = ["splits", "--labels", SPLIT_LABELS] + (
+            ["--agent"] if agents else [])
+        return ["--offline"] + args if mode == "replay" else args
     if name == "synth":
         args = ["eval", "synth", "--run"] + (["--agent"] if agents else [])
         return ["--offline"] + args if mode == "replay" else args
@@ -63,7 +68,9 @@ def command(name, g, ref, mode):
 
 
 COMMAND_NAMES = {"update": "Get new tenders", "rerun": "Re-run every tender",
-                 "tender": "Run one tender again", "synth": "Synthetic test"}
+                 "tender": "Run one tender again", "synth": "Synthetic test",
+                 "splits": "Split purchases"}
+SPLIT_LABELS = "tests/split_labels.csv"
 
 
 # ------------------------------------------------------------- small parts
@@ -148,7 +155,8 @@ def layout(title, head, body, on=""):
                     f"<span>{g} {e(data.NAMES.get(g, ''))}</span><span class="
                     f"'count{' hot' if n else ''}'>{n}</span></a>")
     tools = [("agents", "/agents", "Agent activity"),
-             ("synth", "/synth", "Synthetic test")]
+             ("synth", "/synth", "Synthetic test"),
+             ("splits", "/splits", "Split purchases")]
     tool_links = "".join(f"<a href='{u}'{' class=on' if on == k else ''}>"
                          f"<span>{t}</span></a>" for k, u, t in tools)
     seg = "".join(f"<input type=radio name=mode id=m-{k} value={k}"
@@ -685,6 +693,62 @@ def synth(run: str = ""):
     return layout("Synthetic test", head, body, "synth")
 
 
+SPLIT_NAMES = {"split": "Split", "separate": "Separate", "unclear": "Unclear"}
+
+
+def split_row(r):
+    gid = e(r["group"]).replace("'", "&#39;")
+    said = lambda v: (f"<b>{SPLIT_NAMES.get(v, e(v))}</b>" if v else
+                      "<span class=muted>-</span>")
+    buttons = "".join(
+        f"<button class='btn small{' primary' if r.get('auditor') == v else ''}'"
+        f" onclick=\"splitVerdict('{gid}','{v}')\">{SPLIT_NAMES[v]}</button>"
+        for v in ("split", "separate"))
+    steps = "".join(f"<li><code>{e(t)}</code></li>"
+                    for t in r.get("trace") or [])
+    reason = (f"<p><b>Agent:</b> {e(r['reason'])}"
+              + (f" <span class=muted>Quote: \u201c{e(r['quote'])}\u201d"
+                 f"</span>" if r.get("quote") else "") + "</p>"
+              if r.get("reason") else "")
+    return (f"<details class=component><summary><b>{e(r['supplier'][:40])}"
+            f"</b><span class=muted>{e(r['buyer'][:50])} \u00b7 {r['n']} "
+            f"contracts in {r['days']} day(s) \u00b7 ${r['total']:,.0f}</span>"
+            f"<span class='small verdicts'>Rules {said(r['rule'])} \u00b7 Agent "
+            f"{said(r['agent'])} \u00b7 Auditor {said(r.get('auditor'))}"
+            f"</span></summary><div class=inner>"
+            f"<pre class=report>{e(r.get('group_text', ''))}</pre>{reason}"
+            + (f"<ul>{steps}</ul>" if steps else "")
+            + f"<div class=split-acts>Your verdict: {buttons}</div></div>"
+            f"</details>")
+
+
+@app.get("/splits", response_class=HTMLResponse)
+def splits():
+    run = data.split_run()
+    head = page_head(
+        "Split purchases",
+        "A goods contract may be given without competition only up to "
+        "$25,000. Each group below is one buyer giving one supplier several "
+        "non-competitive goods contracts, each under that limit, within 30 "
+        "days, together over it - from the award file alone. The rules find "
+        "the groups; the agent judges whether they are one need cut into "
+        "pieces. A split is a reason to open the files, never a finding of "
+        "wrongdoing; your verdict decides.",
+        "<button class='btn primary' onclick=\"run('splits')\">Run the "
+        "check</button>")
+    if not run:
+        return layout("Split purchases", head, "<div class='queue empty'>No "
+                      "run yet: press Run the check.</div>", "splits")
+    rows = run["rows"]
+    rows.sort(key=lambda r: ({"split": 0, "unclear": 1}.get(
+        r.get("auditor") or r["agent"] or r["rule"], 2), -r["total"]))
+    body = (f"<p class=muted>Run of {when(run['stamp'])}: {len(rows)} "
+            f"group(s).</p>" + "".join(split_row(r) for r in rows)
+            + (f"<pre class=report>{e(run['summary'])}</pre>"
+               if run["summary"] else ""))
+    return layout("Split purchases", head, body, "splits")
+
+
 @app.get("/jobs/{job_id}", response_class=HTMLResponse)
 def job_page(job_id: str):
     out = jobs.output(job_id)
@@ -724,6 +788,14 @@ async def api_verdict(request: Request):
                                (b.get("note") or "").strip())
     return (refuse(said[6:].capitalize() + ".") if said.startswith("skip")
             else {"done": said})
+
+
+@app.post("/api/split_verdict")
+async def api_split_verdict(request: Request):
+    b = await request.json()
+    said = data.record_split_verdict(b.get("group") or "",
+                                     b.get("verdict") or "")
+    return refuse(said) if said else {"done": "saved"}
 
 
 @app.post("/api/jobs/{name}")

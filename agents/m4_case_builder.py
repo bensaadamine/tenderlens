@@ -57,7 +57,6 @@ WEIGHTS = {
     # M1 - declared by the buyer on the notice
     "acan": 2,
     "limited_tendering_method": 2,
-    "limited_tendering_reason": 2,
     "short_window": 1,
     "no_trade_agreement": 1,
     # level 2 - low confidence, see level2.py
@@ -74,12 +73,12 @@ CAPS = {"brand_without_equivalent": 2, "level2": 2}
 
 ALERT = 5
 # What the buyer DECLARES on the notice: an advance award notice, a limited
-# tendering method or reason. User decision 2026-10-19: alone, these rank a
+# tendering method. User decision 2026-10-19: alone, these rank a
 # case but never put it in the queue - measured on 4110, an ACAN alone sent
 # 194 of 957 tenders (20%) to WATCH, burying any document finding. They
 # still reach WATCH together with anything not declared (a brand, a short
 # window, a recurring supplier ...).
-DECLARED = {"acan", "limited_tendering_method", "limited_tendering_reason"}
+DECLARED = {"acan", "limited_tendering_method"}
 # "No trade agreement" is context, not a sign: it only means the rule against
 # naming brands does not apply. It ranks a case but never lifts it to WATCH
 # (user decisions 2026-10-19 and 2026-11-24).
@@ -93,7 +92,6 @@ CONTEXT_ONLY = {"no_trade_agreement"}
 NATURE = {
     "acan": "Declared by the buyer",
     "limited_tendering_method": "Declared by the buyer",
-    "limited_tendering_reason": "Declared by the buyer",
     "short_window": "From the notice dates",
     "no_trade_agreement": "Context",
     "brand_without_equivalent": "Found in the documents",
@@ -118,8 +116,6 @@ def plain_text(c, award=None):
     if k == "limited_tendering_method":
         return ("The buyer used a limited-tendering procedure: the contract "
                 "was not opened to competition.")
-    if k == "limited_tendering_reason":
-        return f"The buyer's stated reason for not competing: \u201c{ev}\u201d."
     if k == "short_window":
         d, m = c.get("days"), c.get("median")
         if d is not None and m is not None:

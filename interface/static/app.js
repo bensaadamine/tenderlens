@@ -52,6 +52,10 @@ async function verdict(group, ref, v) {
     location.reload();
 }
 
+async function splitVerdict(group, v) {
+  if (await post("/api/split_verdict", {group, verdict: v})) location.reload();
+}
+
 function ask(title, html, go, label) {
   const d = document.getElementById("ask");
   d.querySelector("h2").textContent = title;

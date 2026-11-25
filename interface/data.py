@@ -171,6 +171,46 @@ def synth_runs():
     return [(os.path.basename(os.path.dirname(p)), p) for p in paths]
 
 
+# ------------------------------------------------------- split purchases
+SPLIT_DIR = os.path.join("reports", "splits")
+
+
+def split_run():
+    """The newest split-purchase run, with the auditor's verdicts as they
+    are now: {"stamp", "rows", "summary"}, or None."""
+    from agents import split_agent
+    runs = sorted(glob.glob(os.path.join(SPLIT_DIR, "*", "groups.json")),
+                  reverse=True)
+    if not runs:
+        return None
+    d = os.path.dirname(runs[0])
+    with open(runs[0], encoding="utf-8") as f:
+        rows = json.load(f)
+    now = split_agent.by_who()
+    for r in rows:
+        aud = now.get(r["group"], {}).get("auditor")
+        r["auditor"] = aud["verdict"] if aud else ""
+    summary = os.path.join(d, "summary.txt")
+    return {"stamp": os.path.basename(d), "rows": rows,
+            "summary": open(summary, encoding="utf-8").read()
+            if os.path.exists(summary) else ""}
+
+
+def record_split_verdict(group, verdict):
+    """The auditor's verdict on a group. Returns an error, or "" if saved."""
+    from agents import split_agent
+    run = split_run()
+    if verdict not in ("split", "separate"):
+        return "Unknown verdict."
+    if not run or group not in {r["group"] for r in run["rows"]}:
+        return "Unknown group."
+    split_agent.save_verdict({"group": group, "verdict": verdict,
+                              "reason": "", "quote": "",
+                              "decided_by": "auditor",
+                              "date": time.strftime("%Y-%m-%d")})
+    return ""
+
+
 # ------------------------------------------------------------- the demo
 def demo_runs():
     """The demo's runs (python tenderlens.py demo), newest first."""
