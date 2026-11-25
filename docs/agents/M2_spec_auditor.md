@@ -1,4 +1,4 @@
-# M2 — Spec Auditor
+# M2 — Spec auditor (agent 1)
 
 **Code:** `agents/m2_spec_auditor.py` (the auditor) · `agents/m2_agent.py` (its agent) · `tools/brands.py` (brand rules) · `tools/documents.py` (the tender's text) · `tools/wikidata.py`
 
@@ -6,11 +6,11 @@
 Reads the **specification documents** of one tender and looks for requirements written so that only one product can win.
 
 ## Goal
-Find, with a quoted line, a departure from the trade-agreement rule: *a specification may name a brand only if it also accepts an equivalent.*
+Find, with a quoted line, a departure from the trade-agreement rule: *a specification may name a brand only if it also accepts an equivalent* (Canadian Free Trade Agreement, art. 509; the case page links to it). On the case page the quoted line is shown as the document's own words, marked, and opens the document at that line.
 
 ## Input
 - `reports/text/<group>/<reference>__<document>.txt` — text extracted by `prepare/extract_text.py`.
-- The knowledge base of past tenders (for level 2).
+- The knowledge base of past tenders (for level 2, dormant).
 - The run flags `--online`, `--agent`.
 
 ## How it works
@@ -43,7 +43,7 @@ Find, with a quoted line, a departure from the trade-agreement rule: *a specific
 
 **How the model calls them:** native tool calling, one schema per tool (`llm.tool`); a plain JSON reply still works.
 
-**Who settles each name is recorded** (`decided_by`, shown on the case page under "Brand names checked"). The rules settle what the text decides exactly: a name dropped as the tender's own acronym, part of a web address, or not a brand on Wikidata; a name cleared by "or equivalent", the Equivalent Products clause, the buyer's own equipment, a list of products the buyer calls approved naming two or more makes ("as follows: (a) Vacutainer® XF947; … (d) Tri-Tech Inc. TUG10"), a list of makes, or the buyer's computer environment. Everything else is for the agent. The rule clearances stay with the rules on measurement: when the agent re-checked the buyer's-equipment clearances, it turned 3 correct ones into false findings (2026-10-22).
+**Who settles each name is recorded** (`decided_by`, shown on the case page under "Brand names checked"). The rules settle what the text decides exactly: a name dropped as the tender's own acronym, part of a web address, or not a brand on Wikidata; a name cleared by "or equivalent", the Equivalent Products clause, the buyer's own equipment, a list of products the buyer calls approved naming two or more makes ("as follows: (a) Vacutainer® XF947; … (d) Tri-Tech Inc. TUG10"), a list of makes, or the buyer's computer environment. Everything else is for the agent. The rule clearances stay with the rules on measurement: when the agent re-checked the buyer's-equipment clearances, it turned 3 correct ones into false findings (2026-10-22). One exception: a list of vehicle makes the rules recognise only by its shape is re-checked by the agent; a list the buyer calls approved products is not (its cached answer had wrongly said "f" on the 4111 blood-alcohol kits).
 
 **One brand, several spellings, one finding:** a spelling joins a shorter finding whose words it begins with ("FormLabs Form" joins "Formlabs"; "General Electric" and "General Motors" stay two). The others are listed as `also_written`, and each keeps its own place and quote in the finding's evidence. Measured 2026-11-08: only the Formlabs demo case changes (alert → watch); synthetic set, 73 labelled tenders and 4110 unchanged.
 
@@ -67,7 +67,8 @@ python -m tools.brands --tender cb-425-92729935 --offline          # rules only
 ## How it is checked
 - `python -m tests.test_m2_agent` — the agent's rules with a scripted fake model (no network).
 - `python tenderlens.py eval m2 [--agent --online] [--split tuning|holdout|sample]` — labelled names: tuning (`tests/m2_labels.csv`), held-out (`tests/m2_holdout.csv`), and a random sample of 102 real tenders over 6 families (`tests/m2_sample.csv`). Held-out with the agent (2026-11-24): 34 of 35 right, 7 of 7 lock-ins (2 names wait for a fresh answer). Sample: 2 real lock-ins in 102 tenders; the rules now raise one of them for the agent.
-- `python tenderlens.py eval synth --run [--online] [--agent]` — synthetic rigged tenders over 6 families: online, the brand is found in 77 of 148 rigged copies, 0 false alarms; brands Wikidata doesn't know need the agent.
+- `python tenderlens.py eval synth --run [--online] [--agent]` — synthetic rigged tenders over 6 families: the brand is found in 83 of 148 rigged copies offline (77 online with Wikidata), 0 false alarms; brands Wikidata doesn't know need the agent. With the agent (3 copy types, quota-limited): 40 of 74 vs 36 for the rules, 0 false alarms, but 5 inserted brands wrongly cleared.
+- Real sample (102 tenders): the rules alone letter 12 of 164 names as labelled (most names are left to the agent); the agent on this sample is to be measured.
 
 ## Rules it must keep
 - Every finding quotes its line; no quote, no finding.

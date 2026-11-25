@@ -2,7 +2,8 @@
 
     python tenderlens.py serve [--port 8000]     # opens http://127.0.0.1:8000
 
-    /                       overview: each family's cases to review
+    /                       To decide: every flagged case and split purchase
+    /families               one row per family: queue, base, awards not found
     /group/<g>              the queue: cases ranked, clean / confirm
     /group/<g>/base         every tender of the family and its pile
     /group/<g>/case/<ref>   one case: its evidence, how each component
@@ -15,7 +16,7 @@
     /how                    the four agents: what each decides, its tools
     /jobs/<id>              a command started from the page, its output live
 
-Every command runs in the MODE chosen in the sidebar: rules only; hybrid
+Every command runs in the MODE chosen in the top bar: rules only; hybrid
 (rules + agents, live: uses the model's quota); or hybrid replayed from the
 cache (no network, no quota - for the demo). The page reads what the runs
 wrote (interface/data.py) and starts commands as if typed by hand
@@ -473,10 +474,10 @@ def base(g: str, pile: str = "all"):
 
 
 # ---------------------------------------------------------------- a case
-COMPONENTS = [("M1", "M1 Screener", "the notice"),
-              ("M2", "M2 Spec Auditor", "the documents"),
-              ("M3", "M3 Investigator", "the award history"),
-              ("M4", "M4 Case Builder", "the case")]
+COMPONENTS = [("M1", "Notice rules (M1)", "the notice"),
+              ("M2", "Spec auditor (M2)", "the documents"),
+              ("M3", "Supplier identity (M3)", "the award history"),
+              ("M4", "Coordinator (M4)", "the case")]
 RE_STEP = re.compile(r"agent step (\d+): (\S+) (.*?) -> (.*)$")
 
 
@@ -993,7 +994,7 @@ def job_page(job_id: str):
               if "[finished]" in text[-80:] else
               "<span class='pill bad'>Stopped</span>")
     acts = ("<button class=btn onclick=\"post('/api/stop')\">Stop</button>"
-            if live else "") + "<a class=btn href='/'>Overview</a>"
+            if live else "") + "<a class=btn href='/'>To decide</a>"
     head = page_head(what, f"{status} Started {at}"
                      + (f", mode {mode}." if mode else "."), acts)
     body = (f"<pre class=console id=log data-job='{e(job_id)}'"

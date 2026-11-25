@@ -1,9 +1,9 @@
-# M4 — Case Builder
+# M4 — Coordinator (agent 4)
 
 **Code:** `agents/m4_case_builder.py` 
 
 ## Role
-Takes what M1, M2 and M3 found about one tender, checks that every claim can be verified, scores it, decides **alert / watch / close**, and writes the case page the auditor reads.
+The coordinator of the chain. Takes what M1, M2 and M3 found about one tender, sends each brand finding back to agent 1 and the winner's spellings to agent 2 (in a fixed order), checks that every claim can be verified, scores it, decides **alert / watch / close**, and writes the case the auditor reads. It has no model of its own: its point is the measured choice of **who decides the order of the checks** (below).
 
 ## Goal
 A ranked queue an auditor can trust: every line in a case points to a source a person can open.
@@ -61,7 +61,7 @@ Points are an ordering, not a probability — there is no ground truth yet to fi
 ## Output
 `build_case(m1, m2, m3)` returns:
 - `route`, `score`, `breakdown`
-- `claims` — each with a plain sentence (`plain`), its nature (*Declared by the buyer / Found in the documents / Context / Award history*), points, source, verified or not
+- `claims` — each with a plain sentence (`plain`), its nature (*Declared by the buyer / Found in the documents / Context / Award history*), points, source, verified or not; the auditor's page links each claim's kind to its rule of law (`tools/laws.py`)
 - `narrative` — the case page text: why it is listed, what could not be checked, the supplier's history
 - `followups` — what M4 checked again; `m4_checks` — mode, number of checks, note
 - `award`, `trace` (with `M4` when the checks ran)

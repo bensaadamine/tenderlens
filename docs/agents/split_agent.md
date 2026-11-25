@@ -1,5 +1,7 @@
 # Split-purchase agent (agent 3)
 
+**The rule:** a buyer may not divide procurement requirements to avoid the obligations of the trade agreement (Canadian Free Trade Agreement, art. 503); a goods contract may be given without bids only up to $25,000 (Government Contracts Regulations, s. 6).
+
 **Code:** `agents/split_agent.py` · tests `tests/test_split_agent.py` · labels `tests/split_labels.csv`
 
 ## Role
@@ -33,7 +35,10 @@ A goods contract may be given to a supplier without bids only if it is **$25,000
 - The groups, every number and every date; the model never computes.
 - `split` needs a **quote found word for word in two or more of the group's own titles or descriptions**: the words that make it one need. Otherwise it is refused and the model is told why.
 - A `split` routes to **watch, never alert**: the award file cannot show intent; the auditor opens the files.
-- Every verdict is stored in `reports/splits/verdicts.csv` and never asked again. **The auditor's verdict decides the route** (buttons on the auditor's page, "Split purchases").
+- Every verdict is stored in `reports/splits/verdicts.csv` and never asked again. **The auditor's verdict decides the route.**
+
+## On the auditor's page
+Groups a rule or the agent calls split appear in **To decide**, with the cases. The **Split purchases** page shows each group as a table of its contracts (date, amount, title, contract number), the rules', the agent's and the auditor's verdict, the agent's reason and steps, and **Split** / **Separate** buttons.
 
 ## How it is checked
 - `python -m tests.test_split_agent`: the rules and the agent's code checks with a scripted fake model (no network).

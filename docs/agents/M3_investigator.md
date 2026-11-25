@@ -1,4 +1,4 @@
-# M3 — Investigator
+# M3 — Supplier identity (agent 2)
 
 **Code:** `agents/m3_investigator.py`, agent `agents/m3_agent.py`
 
@@ -51,5 +51,5 @@ python tenderlens.py awards --tender cb-425-92729935
 - Column names are detected from the file header, never assumed.
 
 ## Open work
-- Only 32 % of notices match an award; the rest not investigated.
+- Only awarded tenders are read (decision 33). Tenders closed with documents but no award in the file wait on each family's "Award not found" list for a check by hand: 585 across the 6 families (2026-11-25).
 - Spelling variants: handled by the M3 agent (above); its decisions need an auditor's look the first time (`reports/supplier_aliases.csv`).

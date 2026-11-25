@@ -1,1 +1,1 @@
-"""The four components: M1 screener, M2 spec auditor (+ its agent), M3 investigator (+ its agent), M4 case builder and checks."""
+"""The components: M1 notice rules; the four agents - M2 spec auditor (agent 1), M3 supplier identity (agent 2), split purchases (agent 3), M4 coordinator (agent 4); the rules assistant."""

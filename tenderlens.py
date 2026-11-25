@@ -7,8 +7,8 @@ TENDERLENS - the one command. Every part of the system starts here.
     python tenderlens.py run --group 2510 [--online --agent ...]
                                                    a category, tender by tender, against its
                                                    knowledge base (--status, --feedback, --queue)
-    python tenderlens.py serve                     the auditor's page (queue, cases,
-                                                   verdicts, update, synthetic test)
+    python tenderlens.py serve                     the auditor's page (to decide, families,
+                                                   rules, how it works)
     python tenderlens.py test                      every offline test (no data, no network)
     python tenderlens.py eval m2|m4|synth [...]    the measurements
     python tenderlens.py update [--groups 2510,4110]

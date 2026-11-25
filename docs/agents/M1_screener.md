@@ -6,7 +6,7 @@
 Reads only the **tender notice** (one row of the CanadaBuys feed) — never a document — and lists what the buyer itself declared about competition. It is cheap and runs on every tender.
 
 ## Goal
-Say, in seconds, which tenders deserve the expensive work (reading documents, asking the LLM), and why.
+List, in seconds and with the notice field as evidence, what the buyer declared: these signals **rank** a case, they never put it in the queue. M1 is rules, not an agent: the notice says exactly what it says.
 
 ## Input
 - `data/tenders.csv` — the notice feed (one row per tender).
@@ -27,10 +27,10 @@ None external. Statistics on bidding windows are computed once over the whole fe
 ## Output
 `screen(reference)` returns a dict:
 - `signals` — each with `signal`, `weight` (strong / weak), `why`, `evidence` (the notice field)
-- `route` — `deep` (send to M2 with the LLM), `watch`, `close`, or `deep_unreadable` (no documents)
+- `route` — `deep`, `watch`, `close` or `deep_unreadable`: shown by M1's own command only; the pipeline does not use it (every awarded tender with documents is read, decision 28)
 - `documents`, `title`, `entity`, `method`, `published`, `window_days`
 
-The route only decides **how deep M2 goes**. Every tender with documents is read by M2 anyway.
+Each signal links, on the case page, to its rule of law: limited tendering to the Government Contracts Regulations s. 5–6 and the Canadian Free Trade Agreement art. 513; the bidding window to art. 511; "no trade agreement" to art. 504 (`tools/laws.py`).
 
 ## Run it alone
 ```bash
@@ -44,4 +44,4 @@ python -m agents.m1_screener --all --group 2510 --limit 25
 
 ## Open work
 - The limited-tendering reason field is not read: limited tendering never carries a filed reason in the data (0 of 232), so its absence says nothing (decision 51).
-- The `watch` route has no effect on the final score.
+- M1's own route is not used by the pipeline; kept for its command line.
