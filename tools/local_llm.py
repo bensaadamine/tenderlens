@@ -75,32 +75,52 @@ def status(timeout=1.5):
     return True, f"Answers by {want}, on this computer."
 
 
-def ask_json(system, user, cache_only=False, num_ctx=8192):
+# A small model writing JSON can fall into repeating itself until Ollama
+# aborts it ("token repeat limit reached"). Three guards: the answer's shape
+# is given as a JSON schema (Ollama constrains the output to it), repetition
+# is penalised and the length capped, and a looping answer is asked once
+# more with more variety.
+OPTIONS = {"temperature": 0, "repeat_penalty": 1.15, "num_predict": 1200}
+RETRY = {"temperature": 0.4, "repeat_penalty": 1.3, "num_predict": 1200}
+
+
+def _chat(body):
+    """POST /api/chat -> the reply. Raises urllib errors."""
+    req = urllib.request.Request(url() + "/api/chat",
+                                 data=json.dumps(body).encode("utf-8"),
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+        return json.load(r)
+
+
+def ask_json(system, user, cache_only=False, num_ctx=8192, schema=None):
     """One question -> the model's JSON answer as a dict ({} if it is not
-    JSON). Raises Unavailable."""
+    JSON). schema: a JSON schema the answer must follow (else any JSON).
+    Raises Unavailable."""
     cache = _load()
     k = _key(system, user)
     if k in cache:
         return cache[k]
     if cache_only:
         raise Unavailable("not in the cache (replay)")
-    body = json.dumps({
-        "model": model(), "stream": False, "format": "json",
-        "messages": [{"role": "system", "content": system},
-                     {"role": "user", "content": user}],
-        "options": {"temperature": 0, "num_ctx": num_ctx}}).encode("utf-8")
-    req = urllib.request.Request(url() + "/api/chat", data=body,
-                                 headers={"Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-            data = json.load(r)
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode("utf-8", "replace")[:200]
-        raise Unavailable(f"Ollama answered {e.code}: {detail} (is the "
-                          f"model pulled? ollama pull {model()})")
-    except (urllib.error.URLError, OSError) as e:
-        raise Unavailable(f"the local model is not running: start Ollama "
-                          f"(open the Ollama app, or run: ollama serve)")
+    body = {"model": model(), "stream": False, "format": schema or "json",
+            "messages": [{"role": "system", "content": system},
+                         {"role": "user", "content": user}]}
+    data = None
+    for opts in (OPTIONS, RETRY):
+        try:
+            data = _chat(dict(body, options=dict(opts, num_ctx=num_ctx)))
+            break
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", "replace")[:200]
+            if "repeat" in detail and opts is OPTIONS:
+                continue                    # looping: once more, varied
+            hint = (f" (is the model pulled? ollama pull {model()})"
+                    if e.code == 404 or "not found" in detail else "")
+            raise Unavailable(f"Ollama answered {e.code}: {detail}{hint}")
+        except (urllib.error.URLError, OSError) as e:
+            raise Unavailable(f"the local model is not running: start Ollama "
+                              f"(open the Ollama app, or run: ollama serve)")
     text = (data.get("message") or {}).get("content") or ""
     try:
         reply = json.loads(text)

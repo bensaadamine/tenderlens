@@ -60,6 +60,19 @@ Reply with JSON only, either
 or {"not_found": "<one sentence: what is missing>"}"""
 
 
+# The shapes of Gemma's two answers, given to Ollama as JSON schemas: the
+# model can only write these fields.
+PLAN_SCHEMA = {"type": "object", "properties": {"search": {"type": "string"}},
+               "required": ["search"]}
+ANSWER_SCHEMA = {"type": "object", "properties": {
+    "answer": {"type": "string"},
+    "citations": {"type": "array", "maxItems": 4, "items": {
+        "type": "object", "properties": {"id": {"type": "string"},
+                                         "quote": {"type": "string"}},
+        "required": ["id", "quote"]}},
+    "not_found": {"type": "string"}}}
+
+
 def show(p):
     return (f"[{p['id']}] {p['title']}" + (f" - {p['section']}"
                                            if p["section"] else "")
@@ -119,7 +132,8 @@ def ask_rules(question, index=None, ask=None, model=True, cache_only=False,
         from tools import local_llm
         if ask is None:
             ask = lambda system, user: local_llm.ask_json(
-                system, user, cache_only=cache_only)
+                system, user, cache_only=cache_only,
+                schema=PLAN_SCHEMA if system == PLAN else ANSWER_SCHEMA)
             out["model"] = local_llm.model()
         if embed is None:
             embed = lambda *x: local_llm.embed(*x, cache_only=cache_only)

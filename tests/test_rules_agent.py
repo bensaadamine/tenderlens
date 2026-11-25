@@ -153,6 +153,38 @@ def main():
     check("no embedding model: keywords only, said in the trace, still "
           "answers", r["answer"] and "keywords only" in r["trace"][0])
 
+    # ---- Gemma looping: asked once more with more variety
+    import io as _io
+    import urllib.error
+    calls = []
+
+    def fake_chat(body):
+        calls.append(body)
+        if len(calls) == 1:
+            raise urllib.error.HTTPError(
+                "u", 500, "x", {}, _io.BytesIO(b'{"error":"prediction '
+                                              b'aborted, token repeat limit '
+                                              b'reached"}'))
+        return {"message": {"content": '{"search": "divide procurement"}'}}
+    old_chat, old_cache = local_llm._chat, local_llm.CACHE
+    local_llm._chat, local_llm.CACHE = fake_chat, os.path.join(tmp, "c.json")
+    got = local_llm.ask_json("s", "loop?", schema=ra.PLAN_SCHEMA)
+    check("a looping answer is asked once more, with more variety and the "
+          "answer's schema", got == {"search": "divide procurement"}
+          and len(calls) == 2 and calls[1]["options"]["temperature"] > 0
+          and calls[1]["format"] == ra.PLAN_SCHEMA)
+
+    def broken(body):
+        raise urllib.error.HTTPError("u", 500, "x", {}, _io.BytesIO(b"boom"))
+    local_llm._chat = broken
+    try:
+        local_llm.ask_json("s", "other")
+        check("another server error is reported without a wrong hint", False)
+    except local_llm.Unavailable as e:
+        check("another server error is reported without a wrong hint",
+              "500" in str(e) and "pull" not in str(e))
+    local_llm._chat, local_llm.CACHE = old_chat, old_cache
+
     old = local_llm.CACHE
     local_llm.CACHE = os.path.join(tmp, "cache.json")
     try:
