@@ -8,8 +8,10 @@ A small model is unreliable in a free tool loop, so the code drives three
 steps (retrieval-augmented generation):
     1. PLAN    the model rewrites the question as search words, in the
                texts' own vocabulary ("split" -> "divide procurement")
-    2. SEARCH  the code searches the law texts (tools/law_index.py, BM25)
-               with the question and those words; the best passages go on
+    2. SEARCH  the code searches the law texts (tools/law_index.py): hybrid,
+               keywords (BM25) and meaning (embeddings) fused (keywords only
+               if the embedding model is missing), with the question and
+               with those words; the best passages go on
     3. ANSWER  the model answers from those passages only:
                {"answer", "citations": [{"id", "quote"}]} or {"not_found"}
 
@@ -98,31 +100,50 @@ def merge(*lists, k=SHOWN):
     return out[:k]
 
 
-def ask_rules(question, index=None, ask=None, model=True, cache_only=False):
+def ask_rules(question, index=None, ask=None, model=True, cache_only=False,
+              embed=None):
     """Answer one question. Returns {"answer", "citations", "not_found",
     "passages", "search", "steps", "stop_reason", "trace", "model"}.
     ask(system, user) -> dict is the model (default: the local one);
-    model=False: the search's passages only."""
+    embed(texts, kind, titles) -> vectors makes the search hybrid (default:
+    the local embedding model; unavailable -> keywords only);
+    model=False: keywords only, no model of any kind (Rules mode)."""
     index = index or law_index.load()
-    first = index.search(question, SHOWN)
     out = {"answer": "", "citations": [], "not_found": "", "search": "",
-           "passages": first, "steps": 0, "trace": [], "model": "",
+           "passages": [], "steps": 0, "trace": [], "model": "",
            "stop_reason": "search only (no model)"}
     if not model:
+        out["passages"] = index.search(question, SHOWN)
         return out
-    if ask is None:
+    if ask is None or embed is None:
         from tools import local_llm
-        ask = lambda system, user: local_llm.ask_json(
-            system, user, cache_only=cache_only)
-        out["model"] = local_llm.model()
+        if ask is None:
+            ask = lambda system, user: local_llm.ask_json(
+                system, user, cache_only=cache_only)
+            out["model"] = local_llm.model()
+        if embed is None:
+            embed = lambda *x: local_llm.embed(*x, cache_only=cache_only)
+
+    def find(text):
+        try:
+            index.attach_vectors(embed)
+            qvec = embed([text], "query", None)[0]
+        except Exception as e:
+            out["trace"].append(f"search: keywords only ({str(e)[:120]})")
+            qvec = None
+        return index.search(text, SHOWN, qvec=qvec)
+
+    first = find(question)
+    out["passages"] = first
     try:
         plan = ask(PLAN, f"QUESTION: {question}")
         words = str(plan.get("search", ""))[:200]
         out.update(search=words, steps=1)
-        out["trace"].append(f"plan: search words “{words}”")
-        shown = merge(first, index.search(words, SHOWN) if words else [])
+        out["trace"].append(f"plan: search words \u201c{words}\u201d")
+        shown = merge(first, find(words) if words else [])
         out["passages"] = shown
-        out["trace"].append("search: " + ", ".join(p["id"] for p in shown))
+        out["trace"].append("search: " + ", ".join(
+            f"{p['id']} ({p.get('how', 'keywords')})" for p in shown))
         user = (f"QUESTION: {question}\n\nPASSAGES:\n\n"
                 + "\n\n".join(show(p) for p in shown))
         ids = {p["id"] for p in shown}

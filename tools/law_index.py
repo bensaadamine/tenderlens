@@ -1,6 +1,20 @@
 """
-THE LAW INDEX - the law texts cut into passages, searched by words (BM25).
-No model, no network: it runs anywhere.
+THE LAW INDEX - the law texts cut into passages, searched two ways and the
+two rankings fused (hybrid search):
+
+    keywords  BM25 over the words (a light stem, the auditor's words -> the
+              texts' words). No model: it runs anywhere, finds exact terms
+              ("B3000T", "art. 509").
+    meaning   cosine between embeddings (a local model, tools/local_llm.py):
+              finds a passage worded differently from the question ("pick
+              one supplier without asking others" -> limited tendering).
+    hybrid    Reciprocal Rank Fusion: each passage scores 1/(RRF_K + rank)
+              in each ranking, summed. Ranks, not scores, are fused, so the
+              two scales never have to be compared.
+DEFAULT: hybrid when embeddings exist, else keywords (user decision
+2026-11-25). Measured on 15 questions (tests/law_eval.py): hit@6 keywords
+8, meaning 14, hybrid 13; MRR 0.25 / 0.70 / 0.53. Hybrid keeps the exact
+terms (article numbers, "B3000T") that meaning alone can miss.
 
 Corpus: the texts `python tenderlens.py prepare laws` wrote to reports/laws/
 (official regulations, directive, trade agreements, Supply Manual), plus
@@ -11,7 +25,9 @@ it never crosses a heading, so it keeps its section ("Article 509: ...").
 
     from tools import law_index
     idx = law_index.load()
-    idx.search("brand name or equivalent", k=5)   # -> [passage, ...]
+    idx.search("brand name or equivalent", k=5)   # keywords only
+    idx.attach_vectors(local_llm.embed)            # once: the passages' vectors
+    idx.search(q, k=5, qvec=local_llm.embed([q], "query")[0])   # hybrid
     idx.read("cfta5:12")                           # -> the passage, neighbours
 """
 
@@ -27,6 +43,8 @@ from tools import laws, names
 TEXT_DIR = os.path.join("reports", "laws")
 PASSAGE_WORDS = 180
 K1, B = 1.5, 0.75
+RRF_K = 60              # the usual constant of Reciprocal Rank Fusion
+POOL = 50               # passages taken from each ranking before fusing
 STOP = set("""a an and are as at be by for from has have in is it its of on
 or that the this to was were will with which who whom shall may must not
 any all such other than then there these those their they under per""".split())
@@ -124,6 +142,16 @@ class Index:
         n = len(passages)
         self.idf = {w: math.log(1 + (n - d + 0.5) / (d + 0.5))
                     for w, d in df.items()}
+        self.vecs = None
+
+    def attach_vectors(self, embed):
+        """The passages' vectors: embed(texts, kind, titles) -> unit vectors
+        (cached by the embedder, so only new passages cost anything)."""
+        if self.vecs is None:
+            self.vecs = embed([p["section"] + "\n" + p["text"]
+                               for p in self.passages], "document",
+                              [p["title"] for p in self.passages])
+        return self
 
     def sources(self):
         """(id, title) of each official text; the rules page is "rules"."""
@@ -131,7 +159,8 @@ class Index:
                        if p["source"] != "rules"}) + [
             ("rules", "TenderLens: the rules the system checks")]
 
-    def search(self, query, k=5, source=None):
+    def keywords(self, query, source=None):
+        """[(BM25 score, passage index)], best first."""
         q = query_tokens(query)
         scored = []
         for i, tf in enumerate(self.tf):
@@ -145,9 +174,37 @@ class Index:
                         f + K1 * (1 - B + B * self.len[i] / self.avg))
             if s > 0:
                 scored.append((s, i))
-        scored.sort(reverse=True)
-        return [dict(self.passages[i], score=round(s, 2))
-                for s, i in scored[:k]]
+        return sorted(scored, reverse=True)
+
+    def meaning(self, qvec, source=None):
+        """[(cosine, passage index)], best first (unit vectors: a dot)."""
+        scored = [(sum(a * b for a, b in zip(qvec, v)), i)
+                  for i, v in enumerate(self.vecs or [])
+                  if not source or self.passages[i]["source"] == source]
+        return sorted(scored, reverse=True)
+
+    def search(self, query, k=5, source=None, qvec=None, mode=None):
+        """The k best passages. mode: "keywords", "meaning" or "hybrid";
+        default hybrid when a query vector and the passages' vectors
+        exist, else keywords. Each passage says how it was found ("how")."""
+        mode = mode or ("hybrid" if qvec and self.vecs else "keywords")
+        kw = self.keywords(query, source) if mode != "meaning" else []
+        mn = (self.meaning(qvec, source) if mode != "keywords" and qvec
+              and self.vecs else [])
+        if mode == "keywords":
+            top = [(s, i, "keywords") for s, i in kw[:k]]
+        elif mode == "meaning":
+            top = [(s, i, "meaning") for s, i in mn[:k]]
+        else:
+            fused, found = {}, {}
+            for name, ranking in (("keywords", kw), ("meaning", mn)):
+                for rank, (_, i) in enumerate(ranking[:POOL]):
+                    fused[i] = fused.get(i, 0.0) + 1.0 / (RRF_K + rank + 1)
+                    found.setdefault(i, []).append(name)
+            best = sorted(fused.items(), key=lambda x: -x[1])[:k]
+            top = [(sc, i, " + ".join(found[i])) for i, sc in best]
+        return [dict(self.passages[i], score=round(sc, 4), how=how)
+                for sc, i, how in top]
 
     def get(self, pid):
         i = self.by_id.get(str(pid).strip())

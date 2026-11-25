@@ -12,13 +12,7 @@ Our six families of goods publish about 1,000 notices a year, about 5 readable t
 
 A **hybrid multi-agent system**: **rules where exactness matters** (what a notice declares, whether a quote is really in a document, scoring, routing), **agents where judgement is needed**, and every choice between the two measured. An agent is a model that chooses its own tools, step by step; the code checks what it may conclude.
 
-```
- tender notice ───► M1 rules ───────────────┐
- tender documents ► Spec auditor (agent) ───┼──► Coordinator (M4) ──► alert / watch / close ──► the auditor
- award notices ───► Supplier identity (agent)┘
- award notices ───► Split-purchase agent ───────────────────────────► watch / close ─────────► the auditor
- law texts ───────► Rules assistant (local model) ◄── the auditor's questions
-```
+![How a purchase is checked](docs/architecture.png)
 
 **The four agents** (one presenter each):
 
@@ -29,7 +23,7 @@ A **hybrid multi-agent system**: **rules where exactness matters** (what a notic
 | **3. Split-purchase agent** | the award file alone | are these contracts, each under the $25,000 limit for buying without bids, one need cut into pieces? | [split_agent.md](docs/agents/split_agent.md) |
 | **4. Coordinator** (M4) | what M1–M3 found | sends each brand finding back to agent 1 and the winner's spellings to agent 2, in a fixed order; checks every quote; scores; alert / watch / close. A model choosing the checks was measured worse (2 false alarms vs 0) | [M4_case_builder.md](docs/agents/M4_case_builder.md) |
 
-Around them: **M1** (rules) reads the notice: procedure, bidding window, trade agreement ([M1_screener.md](docs/agents/M1_screener.md)). The **rules assistant** answers the auditor's questions from the official law texts on a local model (Gemma 4B), with quotes checked word for word ([rules_agent.md](docs/agents/rules_agent.md)).
+Around them: **M1** (rules) reads the notice: procedure, bidding window, trade agreement ([M1_screener.md](docs/agents/M1_screener.md)). The **rules assistant** answers the auditor's questions from the official law texts (RAG: hybrid search, keywords + local embeddings, then Gemma on a local model), with quotes checked word for word ([rules_agent.md](docs/agents/rules_agent.md)).
 
 **Routing in one line:** only a brand found **in the documents** can raise an **alert**; what the buyer **declared** on the notice only ranks a case; award history and "no trade agreement" are **context** and never put a case in the queue. A **split purchase** reaches watch, never alert. Each reason links to its rule of law (`tools/laws.py`).
 
@@ -47,8 +41,8 @@ agents/                m1_screener.py, m2_spec_auditor.py + m2_agent.py, m3_inve
                        m4_case_builder.py + m4_checks.py, split_agent.py, rules_agent.py,
                        agent_loop.py (the loop agents 1–3 share), evidence.py (what M2 and M3 hand to M4)
 tools/                 documents.py, sections.py, brands.py (brand rules), wikidata.py, names.py (how names are
-                       compared), llm.py (Groq), local_llm.py (Ollama), laws.py (the rules of law),
-                       law_index.py (search over the law texts), level2.py (dormant), report.py
+                       compared), llm.py (Groq), local_llm.py (Ollama: answers, embeddings), laws.py (the rules
+                       of law), law_index.py (search over the law texts), level2.py (dormant), report.py
 prepare/               data preparation: profile → docs → text → labels; laws (the official law texts)
 interface/             the auditor's page (app.py, data.py, jobs.py, static/)
 tests/                 offline tests (test_*.py), evaluations (m2_eval.py, m4_eval.py, synth_rig.py), labels
@@ -72,7 +66,7 @@ No `pandas` needed: the pipeline is the standard library plus those packages.
 
 **Agents 1–3 (Groq).** Keys go in `.env` (never committed): `GROQ_API_KEY=...`, optionally `GROQ_API_KEY2=...` (a second account: same model, twice the calls a minute and the daily quota). Groq's gpt-oss-120b answers every call (`tools/llm.py`); when its daily quota is spent the run stops and the next run resumes there. `TENDERLENS_SHARE=1` also sends calls to Gemini (`GEMINI_API_KEY`; verdicts can then differ between runs). `python tenderlens.py llm` shows the models; `--usage` the tokens spent.
 
-**The rules assistant (local).** Install [Ollama](https://ollama.com), then `ollama pull gemma3:4b`. `TENDERLENS_LOCAL_MODEL` and `OLLAMA_URL` can be set in `.env`. Nothing leaves the computer.
+**The rules assistant (local).** Install [Ollama](https://ollama.com), then `ollama pull gemma4:e4b` (answers) and `ollama pull embeddinggemma` (search by meaning). `TENDERLENS_LOCAL_MODEL`, `TENDERLENS_EMBED_MODEL` and `OLLAMA_URL` can be set in `.env`. Nothing leaves the computer.
 
 **Offline.** `python tenderlens.py --offline <command>` takes model answers from the caches only: a missing one is reported, never paid, and no key is needed.
 
@@ -141,7 +135,7 @@ schtasks /Create /SC WEEKLY /D MON /ST 08:00 /TN TenderLens-update /TR "cmd /c c
 
 One tender, with every agent's reasoning: `python tenderlens.py tender cb-425-92729935`
 
-**Rules assistant:** `python tenderlens.py prepare laws` (once, Windows: the official texts) · `ollama pull gemma3:4b` (once: the local model) · `python tenderlens.py ask "Can a buyer split a purchase?"` (`--search-only` without a model).
+**Rules assistant:** `python tenderlens.py prepare laws` (once, Windows: the official texts) · `ollama pull gemma4:e4b` and `ollama pull embeddinggemma` (once: the local models) · `python tenderlens.py ask "Can a buyer split a purchase?"` (`--search-only`: keywords, no model) · `python tenderlens.py eval laws` (the search measured: keywords 8/15, meaning 14/15, hybrid 13/15; hybrid is the default).
 
 **Split purchases** (award file only, every goods category): `python tenderlens.py splits` (groups and the rules' verdict) · `splits --agent --labels tests/split_labels.csv` (with the agent, compared with blind labels).
 

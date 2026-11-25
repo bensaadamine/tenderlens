@@ -50,9 +50,6 @@ SOURCES = [
      INTL + "ceta-aecg/text-texte/19.aspx?lang=eng"),
     ("gpa", "WTO Agreement on Government Procurement (2012)",
      "https://www.wto.org/english/docs_e/legal_e/rev-gpr-94_01_e.htm"),
-    ("acan", "Treasury Board guide: Advance Contract Award Notices",
-     "https://www.canada.ca/en/treasury-board-secretariat/services/"
-     "federal-real-property-management/guide-managers.html"),
     ("citt", "CITT procurement inquiries guide",
      "https://citt-tcce.gc.ca/en/procurement-inquiries/"
      "procurement-inquiries-guide"),

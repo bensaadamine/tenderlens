@@ -25,7 +25,7 @@ Around them: M1 (rules, the notice) and the rules assistant (local Gemma, the la
 2. `python tenderlens.py run --group 4111 --reprocess cb-981-22811944 --online --agent --m3-agent --m4-checks` — the 4111 false alert should close.
 3. `python tenderlens.py eval synth --run --online --agent --variants A,G,D` — the agent's 5 wrong clearances.
 4. `python tenderlens.py eval m2 --agent --online --split sample` — agent 1 on the random sample.
-5. `python tenderlens.py prepare laws` and `ollama pull gemma3:4b` — the official texts and the local model for the rules assistant (no quota).
+
 Report and slides: another team member.
 
 ## Dropped, with reasons
@@ -33,6 +33,7 @@ Report and slides: another team member.
 - Contract value growth after the award: the award file keeps one row per contract, earlier values are overwritten.
 - Complaints to the trade tribunal as ground truth: about 70 a year for all federal purchasing, mostly services; too few in our goods families. Future work.
 - Rebuilding the knowledge bases with the new agents: they feed only level 2 (dormant); about a week of quota.
+- A database for the knowledge bases: 21 MB for 6 families (about 900 cases), every page in 0.15–0.3 s, append-only files that a crash cannot corrupt, and verdicts already wait while a run writes. SQLite would pay off only at a much larger scale. Future work.
 
 ## Earlier plan (2026-11-01), all done
 Native tool calling for the agents; brand names looked for in the requirements section only; the buyer's own equipment shown to the agent before it starts; M3 decisions per group of spellings, no chained merges; M4 measured (fixed order kept); `--reprocess`. The local model added then for fact extraction was removed on 2026-11-08 (no caller); the rules assistant brings a local model back for a different job.

@@ -55,7 +55,8 @@ COMMANDS = {
 }
 EVALS = {"m2": "tests.m2_eval", 
          "m4": "tests.m4_eval",
-         "synth": "tests.synth_rig"}
+         "synth": "tests.synth_rig",
+         "laws": "tests.law_eval"}
 PREPARE = {"profile": "prepare.profile_tenders", 
            "docs": "prepare.fetch_docs",
            "text": "prepare.extract_text", 

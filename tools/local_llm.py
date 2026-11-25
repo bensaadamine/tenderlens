@@ -1,13 +1,15 @@
 """
-THE LOCAL MODEL - a model running on this computer through Ollama, for the
+THE LOCAL MODELS - models running on this computer through Ollama, for the
 rules assistant: no key, no quota, nothing leaves the machine.
 
-    ollama pull gemma3:4b          # once
+    ollama pull gemma4:e4b         # once: answers (ask_json)
+    ollama pull embeddinggemma     # once: embeddings for the search (embed)
     (Ollama runs in the background on Windows after install)
 
-Settings (environment or .env): TENDERLENS_LOCAL_MODEL (default gemma3:4b),
-OLLAMA_URL (default http://localhost:11434). Answers are asked as JSON and
-cached in reports/local_llm_cache.json, so a replay needs no model.
+Settings (environment or .env): TENDERLENS_LOCAL_MODEL (default gemma4:e4b),
+TENDERLENS_EMBED_MODEL (default embeddinggemma), OLLAMA_URL (default
+http://localhost:11434). Answers are cached in reports/local_llm_cache.json,
+embeddings in reports/laws/embeddings.json, so a replay needs no model.
 """
 
 import hashlib
@@ -30,7 +32,7 @@ class Unavailable(RuntimeError):
 
 
 def model():
-    return os.environ.get("TENDERLENS_LOCAL_MODEL", "gemma3:4b")
+    return os.environ.get("TENDERLENS_LOCAL_MODEL", "gemma4:e4b")
 
 
 def url():
@@ -109,3 +111,69 @@ def ask_json(system, user, cache_only=False, num_ctx=8192):
     cache[k] = reply
     _save(cache)
     return reply
+
+
+# ------------------------------------------------------------ embeddings
+EMBED_CACHE = os.path.join("reports", "laws", "embeddings.json")
+EMBED_BATCH = 32
+
+
+def embed_model():
+    return os.environ.get("TENDERLENS_EMBED_MODEL", "embeddinggemma")
+
+
+def _prompted(text, kind, title=""):
+    """EmbeddingGemma was trained with task prompts: one for a search query,
+    one for a document. Other models get the text as it is."""
+    if "embeddinggemma" not in embed_model():
+        return text
+    if kind == "query":
+        return f"task: search result | query: {text}"
+    return f"title: {title or 'none'} | text: {text}"
+
+
+def _ekey(text):
+    return embed_model() + "|" + hashlib.sha256(
+        text.encode("utf-8")).hexdigest()[:32]
+
+
+def embed(texts, kind="document", titles=None, cache_only=False):
+    """Texts -> unit vectors (lists of floats), cached by model and text.
+    kind: "query" or "document". Raises Unavailable."""
+    titles = titles or [""] * len(texts)
+    items = [_prompted(t, kind, ti) for t, ti in zip(texts, titles)]
+    cache = {}
+    if os.path.exists(EMBED_CACHE):
+        with io.open(EMBED_CACHE, encoding="utf-8") as f:
+            cache = json.load(f)
+    todo = [x for x in dict.fromkeys(items) if _ekey(x) not in cache]
+    if todo and cache_only:
+        raise Unavailable("embeddings not in the cache (replay)")
+    for i in range(0, len(todo), EMBED_BATCH):
+        part = todo[i:i + EMBED_BATCH]
+        body = json.dumps({"model": embed_model(),
+                           "input": part}).encode("utf-8")
+        req = urllib.request.Request(url() + "/api/embed", data=body,
+                                     headers={"Content-Type":
+                                              "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+                vecs = json.load(r).get("embeddings") or []
+        except urllib.error.HTTPError as e:
+            raise Unavailable(f"Ollama answered {e.code} for embeddings (is "
+                              f"the model pulled? ollama pull "
+                              f"{embed_model()})")
+        except (urllib.error.URLError, OSError) as e:
+            raise Unavailable(f"Ollama not reachable at {url()} ({e})")
+        if len(vecs) != len(part):
+            raise Unavailable("Ollama returned no embeddings")
+        for x, v in zip(part, vecs):
+            n = sum(a * a for a in v) ** 0.5 or 1.0
+            cache[_ekey(x)] = [round(a / n, 5) for a in v]
+    if todo:
+        os.makedirs(os.path.dirname(EMBED_CACHE), exist_ok=True)
+        tmp = EMBED_CACHE + ".part"
+        with io.open(tmp, "w", encoding="utf-8") as f:
+            json.dump(cache, f)
+        os.replace(tmp, EMBED_CACHE)
+    return [cache[_ekey(x)] for x in items]
