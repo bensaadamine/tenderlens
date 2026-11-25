@@ -24,6 +24,7 @@ A **hybrid multi-agent workflow**: four components look at one tender at a time,
 | **M2 Spec Auditor** | rules + **agent** (`--agent`) | the specification | a brand required without "or equivalent" — the rules find the names and settle what the text decides exactly; the agent letters the rest a–f with a checked quote | [docs/agents/M2_spec_auditor.md](docs/agents/M2_spec_auditor.md) |
 | **M3 Investigator** | rules + **agent** (`--m3-agent`) | award history | who won, whether this buyer keeps choosing the same supplier — the agent decides which spellings are the same company | [docs/agents/M3_investigator.md](docs/agents/M3_investigator.md) |
 | **Split-purchase agent** | rules + **agent** (`splits --agent`) | the award file alone (no documents) | one need cut into several contracts, each under the $25,000 limit for buying without competition: the rules find the groups, the agent judges split / separate / unclear with a checked quote | [docs/agents/split_agent.md](docs/agents/split_agent.md) |
+| **Rules assistant** | local model (Gemma 4B, Ollama) + code | the official law texts (`prepare laws`) | answers the auditor's questions about the rules, with quotes checked word for word; search only without a model | [docs/agents/rules_agent.md](docs/agents/rules_agent.md) |
 | **M4 Case Builder** | rules + fixed checks (`--m4-checks`) | M1 + M2 + M3 | checks every claim has a source, scores it, decides alert / watch / close; before ranking a brand case it sends the finding back to the M2 agent and the winner's spellings to the M3 agent | [docs/agents/M4_case_builder.md](docs/agents/M4_case_builder.md) |
 
 M4's checks run in a fixed order: a version where a model chose them was measured and not chosen (0 false alarms with the fixed order, 2 with the model choosing, on 73 labelled tenders). What M2 and M3 hand to M4 is defined once, in `agents/evidence.py`.
@@ -134,6 +135,8 @@ schtasks /Create /SC WEEKLY /D MON /ST 08:00 /TN TenderLens-update /TR "cmd /c c
 
 One tender, with every agent's reasoning: `python tenderlens.py tender cb-425-92729935`
 
+**Rules assistant:** `python tenderlens.py prepare laws` (once, Windows: the official texts) · `ollama pull gemma3:4b` (once: the local model) · `python tenderlens.py ask "Can a buyer split a purchase?"` (`--search-only` without a model).
+
 **Split purchases** (award file only, every goods category): `python tenderlens.py splits` (groups and the rules' verdict) · `splits --agent --labels tests/split_labels.csv` (with the agent, compared with blind labels).
 
 Tests (no data, no network): `python tenderlens.py test` runs every `tests/test_*.py`; one alone: `python -m tests.test_agents`.
@@ -150,18 +153,17 @@ pip install fastapi uvicorn
 python tenderlens.py serve          # opens http://127.0.0.1:8000 (this computer only)
 ```
 
-A sidebar lists each family with its number of cases to review, and the system's pages.
+A top bar leads to four places; the model mode (Rules, Hybrid, Replay) sits on its right.
 
-- **Mode** (bottom of the sidebar) for every command: **Rules** (no model called); **Hybrid**: rules + the M2 and M3 agents and M4's checks, live (uses the model's daily quota; you confirm first); **Replay**: the same hybrid run, with the agents' answers from the cache (no network, no quota: the demo).
-- **Overview:** each family's cases to review, confirmed, in the base, without documents; get new tenders; re-run a family. Recent commands, with their live output (`reports/jobs/`).
-- **Queue:** the cases ranked (cases flagged at installation, rules only, in a block apart), each with its reason in one sentence and who decided it (Rules or Agent), with **Mark clean** / **Confirm**.
-- **Award not found:** per family, the tenders that closed with documents but no award in the award file: published and closing dates, the brand names the rules find required, the documents, and a link to the CanadaBuys notice to check the award.
-- **Case:** the evidence (a quote opens the document at that line), the brand names checked and who settled each, and how each component reached the case: an agent's steps as a table (the tool the model chose, what it asked, what it got back). On the side: the verdict, **Run this tender again** in the chosen mode, the facts, the documents.
-- **Agent activity:** model calls and tokens per agent and per day against the daily quota, answers from the cache, how investigations ended, failed calls.
-- **Synthetic test:** its results, and a button to run it.
-- **Split purchases:** each group of contracts under the $25,000 limit, the rules', the agent's and your verdict, the agent's steps; **Split** / **Separate** buttons; a button to run the check.
+- **Mode** for every command: **Rules** (no model called); **Hybrid**: rules + the agents, live (the Groq quota; the rules assistant uses the local model); **Replay**: the agents' answers from the cache (no network, no quota: the demo).
+- **To decide:** every flagged purchase in one list, most serious first: cases from every family, and split purchases waiting for your verdict.
+- **Case:** the tender's own words, marked as with a highlighter, opening the document at that line; the rule each reason rests on; the brand names checked and who settled each; your verdict (Mark clean / Confirm); how each component reached it (folded).
+- **Families:** one row per family: to review, confirmed, cleared, awards not found (check by hand), re-run, all tenders; recent commands with their live output.
+- **Split purchases:** each group under the $25,000 limit as a table of contracts, the rules', the agent's and your verdict; **Split** / **Separate**.
+- **Rules:** a question box (the rules assistant) and the rules of law behind each signal, with their sources.
+- **How it works:** the four agents (what each decides, its tools, what the code keeps, what was measured), with links to agent activity and the synthetic test.
 
-Fonts (Public Sans, IBM Plex Mono; SIL Open Font License) are bundled in `interface/static/fonts/`, so the page works offline.
+Fonts (Atkinson Hyperlegible Next for the interface, Source Serif 4 for documents and laws, IBM Plex Mono for raw text; SIL Open Font License) are bundled in `interface/static/fonts/`, so the page works offline.
 
 A verdict is applied at once and kept in `feedback.csv`, as `run --feedback` does.
 

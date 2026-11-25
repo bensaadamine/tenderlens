@@ -20,6 +20,8 @@ TENDERLENS - the one command. Every part of the system starts here.
                                                    (award file only; agent 3)
     python tenderlens.py prepare profile|docs|text|labels [...]
                                                    data preparation, in that order
+    python tenderlens.py prepare laws              the law texts for the rules assistant
+    python tenderlens.py ask "question" [--offline] the rules assistant, in a terminal
     python tenderlens.py llm [--usage]             the pinned models; tokens spent
 
     python tenderlens.py --offline <command> ...   model answers from the cache only:
@@ -48,6 +50,7 @@ COMMANDS = {
     "serve": "interface.app",
     "awards": "agents.m3_investigator",
     "splits": "agents.split_agent",
+    "ask": "agents.rules_agent",
     "llm": "tools.llm",
 }
 EVALS = {"m2": "tests.m2_eval", 
@@ -56,7 +59,8 @@ EVALS = {"m2": "tests.m2_eval",
 PREPARE = {"profile": "prepare.profile_tenders", 
            "docs": "prepare.fetch_docs",
            "text": "prepare.extract_text", 
-           "labels": "prepare.attribute_map"}
+           "labels": "prepare.attribute_map",
+           "laws": "prepare.fetch_laws"}
 
 
 def run_tests():

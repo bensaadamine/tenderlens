@@ -52,6 +52,14 @@ async function verdict(group, ref, v) {
     location.reload();
 }
 
+async function askRules(ev) {
+  ev.preventDefault();
+  const q = document.getElementById("q").value, out = document.getElementById("answer");
+  out.innerHTML = "<p class='small muted'>Searching the texts and asking the local model. A first answer can take a minute.</p>";
+  const j = await post("/api/ask", {question: q, mode: mode()});
+  out.innerHTML = j ? j.html : "";
+}
+
 async function splitVerdict(group, v) {
   if (await post("/api/split_verdict", {group, verdict: v})) location.reload();
 }
