@@ -14,7 +14,7 @@ Find, with a quoted line, a departure from the trade-agreement rule: *a specific
 - The run flags `--online`, `--agent`.
 
 ## How it works
-1. **Rules find candidates** (`tools/brands.py`): brand-like names next to a model code, **in the requirements section only** (whole document when no section is found), outside bidders' questions. Measured on the 76 labelled cases: 0 of 12 lock-ins lost, 10 of 46 junk names removed; synthetic set unchanged (64/160, 17 alerts, 0/120 wrong); on 4110 offline only the two "Net 30" false findings went away. Names Wikidata knows are not companies are dropped. A name is cleared for good only when the text accepts an equivalent ("or equivalent", or the standard "Equivalent Products … form, fit, function" clause, or that clause cited only by its number, B3000T).
+1. **Rules find candidates** (`tools/brands.py`): brand-like names next to a model code, or named by the sentence itself ("manufactured by X", "approved distributor of X", "genuine X"), **in the requirements section only** (whole document when no section is found), outside bidders' questions. Measured on the 76 labelled cases: 0 of 12 lock-ins lost, 10 of 46 junk names removed; synthetic set unchanged (64/160, 17 alerts, 0/120 wrong); on 4110 offline only the two "Net 30" false findings went away. Names Wikidata knows are not companies are dropped. A measurement is not a model code ("ENVIRON 610MM" is French for "about 610 mm"; "350W" is a power). A name is cleared for good only when the text accepts an equivalent ("or equivalent"; the standard "Equivalent Products … form, fit, function" clause, or its number B3000T alone; or the buyer saying so in other words, "equivalent … will be accepted", "products that meet the same specifications").
 2. **The agent judges the rest** (`--agent`, `agents/m2_agent.py`). Goal: give every remaining candidate the auditor's letter, with a quote:
 
    | | |
@@ -66,8 +66,8 @@ python -m tools.brands --tender cb-425-92729935 --offline          # rules only
 
 ## How it is checked
 - `python -m tests.test_m2_agent` — the agent's rules with a scripted fake model (no network).
-- `python tenderlens.py eval m2 [--agent --online] [--split holdout]` — the labelled names: 36 tuning (`tests/m2_labels.csv`) + 40 held-out (`tests/m2_holdout.csv`). Held-out (37 names, 2026-11-08, Groq only): rules find 1 of 8 lock-ins; with the agent 8 of 8, 8 of 10 findings real, 35/37 right. (The earlier 36/37 mixed two models: 17 of its answers came from Gemini.)
-- `python tenderlens.py eval synth --run [--agent]` — synthetic rigged tenders.
+- `python tenderlens.py eval m2 [--agent --online] [--split tuning|holdout|sample]` — labelled names: tuning (`tests/m2_labels.csv`), held-out (`tests/m2_holdout.csv`), and a random sample of 102 real tenders over 6 families (`tests/m2_sample.csv`). Held-out with the agent (2026-11-24): 34 of 35 right, 7 of 7 lock-ins (2 names wait for a fresh answer). Sample: 2 real lock-ins in 102 tenders; the rules now raise one of them for the agent.
+- `python tenderlens.py eval synth --run [--online] [--agent]` — synthetic rigged tenders over 6 families: online, the brand is found in 77 of 148 rigged copies, 0 false alarms; brands Wikidata doesn't know need the agent.
 
 ## Rules it must keep
 - Every finding quotes its line; no quote, no finding.

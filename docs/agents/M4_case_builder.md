@@ -45,12 +45,13 @@ What stays in code: all scoring and routing (`build_case`, unchanged); M2's and 
 | brand = winner | 3 |
 | advance award notice / limited method / limited reason (declared) | 2 each |
 | short bidding window | 1 |
-| no trade agreement (context) | 1 |
+| no trade agreement (context) | 1, ranks only |
 | recurring / dependent supplier (context) | 1 / 2, only if a document finding exists |
 | level 2 (low confidence) | 1, max 2 |
 
 - **Alert:** 5 points **from document findings alone** — two brands, or a brand that won.
-- **Watch:** 2 points, and at least one claim that is neither declared by the buyer nor context.
+- **Watch:** 2 points **without counting context**, and at least one claim that is neither declared by the buyer nor context.
+- **Not an audit case:** an advance contract award notice closes, whatever its score (user decision 2026-11-24).
 - **Close:** everything else. The score is kept for ranking.
 - A claim scores only if its source is **attached** (an origin and the words) **and checked** — the words found in the document by M2 (or by the M2 agent's quote test), or copied by code from the notice field (M1) or the award records (M3). Otherwise it is shown as unverified and scores 0. Each claim carries `source_attached` and `verified`.
 - Brand = winner is checked against every supplier the award notices name for the tender, not only the newest.
@@ -68,7 +69,7 @@ Points are an ordering, not a probability — there is no ground truth yet to fi
 The pipeline (`pipeline/one_tender.py`, `pipeline/stream.py`, through `tools/report.py`) writes all cases to `…_queue.html / .csv / .json`.
 
 ## Run it
-Through the pipeline (`python tenderlens.py tender <ref>`, `python tenderlens.py run --group <code>`). Add `--m4-checks` for the checks (LLM, Windows), or `--m4-checks model` for the experiment. Without the flag, M4 is rules only. No model answering → the run stops and resumes from that tender (`Settings(on_outage="keep")` ranks the case as it stands).
+Through the pipeline (`python tenderlens.py tender <ref>`, `python tenderlens.py run --group <code>`). Add `--m4-checks` for the checks (LLM, Windows). Without the flag, M4 is rules only. No model answering → the run stops and resumes from that tender (`Settings(on_outage="keep")` ranks the case as it stands).
 
 Tests (no data, no network): `python -m tests.test_agents` (rules), `python -m tests.test_m4_checks` (the checks, fake M2/M3).
 

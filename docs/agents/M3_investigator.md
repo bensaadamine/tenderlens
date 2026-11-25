@@ -17,6 +17,7 @@ An in-memory graph built once from the award file: buyer + category → awards, 
 
 ## Steps
 1. **Depth 1, always:** find the award; count this buyer's awards in the category and the winner's share.
+   A match by solicitation number counts only if the award's title shares a meaningful word with the tender's: buyers reuse their numbers (12 of 404 tenders in 2510/4110 had been matched to another purchase's award, 2026-11-24).
    When several award rows match, the **newest** is the award (ties: supplier name) — never the file's row order; every distinct supplier is listed in `award.winners`.
 2. **Depth 2, only if** the winner got **≥ 50 % of ≥ 3** awards: look at the supplier's other buyers.
    - wins everywhere → market leader (`recurring_supplier`)

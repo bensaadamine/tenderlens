@@ -42,7 +42,9 @@ def main():
     ap.add_argument("--limit", type=int, default=0)
     a = ap.parse_args()
 
-    labels = m2_eval.load_labels("all")
+    # the 73 labelled tenders (tuning + held-out); the random sample has
+    # its own score (eval m2 --split sample)
+    labels = [r for r in m2_eval.load_labels("all") if r["split"] != "sample"]
     want = collections.defaultdict(set)
     for lab in labels:
         want[lab["reference"]].add(lab["letter"])

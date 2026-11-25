@@ -79,7 +79,7 @@ RE_YEAR = re.compile(r"(?:19|20)\d\d")
 # probe's size (2026-11-24: all three were read as brands). One digit and a
 # one-letter unit is a model as often as a size ("Form 4L", a 3D printer), so
 # a one-letter unit needs two digits or more.
-RE_MEASURE = re.compile(r"(\d[\d.,]*)\s?(" + UNIT + r")(?![A-Za-z])", re.I)
+RE_MEASURE = re.compile(r"(\d[\d.,]*)\s?(" + UNIT + r")(?![A-Za-z0-9])", re.I)
 
 
 # One-letter units, in their own case: "m" is metres, "M" is not ("AKTApure
@@ -89,8 +89,9 @@ ONE_LETTER_UNITS = {c for c in string.ascii_letters
 
 
 def is_measure(token):
-    """A number and its unit. A one-letter unit counts in its own case and
-    after two digits or more ("350W"; "Form 4L" is a model)."""
+    """A number and its unit, the unit ending the token ("465A300" is a
+    model). A one-letter unit counts in its own case and after three or four
+    digits ("350W"; "Fluke 87V", "Form 4L", "Keysight 34465A" are models)."""
     m = RE_MEASURE.match(token)
     if not m:
         return False
@@ -98,11 +99,21 @@ def is_measure(token):
     if len(unit) > 1:
         return True
     return (unit in ONE_LETTER_UNITS
-            and sum(ch.isdigit() for ch in m.group(1)) > 1)
+            and 3 <= sum(ch.isdigit() for ch in m.group(1)) <= 4)
 
 RE_SENTENCE_START = re.compile(r"[.!?;:]\s+$")
 
 RE_TRADEMARK = re.compile(r"[®™]")
+
+# A maker named by the sentence itself, with no model code after it (2026-11-24:
+# "The bidder must be an approved distributor of Applied Test Systems",
+# "must be manufactured by Knapheide" - missed by every run).
+MAKER_INTRO = (r"(?:\b(?:manufactured|made|produced|fabriqu[ée]e?s?)\s+(?:by|par)"
+               r"|\b(?:authori[sz]ed|approved|certified|official)\s+"
+               r"(?:distributor|dealer|reseller|retailer|partner)s?\s+(?:of|for)"
+               r"|\bgenuine)")
+RE_MAKER_BEFORE = re.compile(MAKER_INTRO + r"\s+$", re.I)
+RE_MAKER_LINE = re.compile(MAKER_INTRO, re.I)
 
 # Lines that explicitly introduce a product.
 RE_MAKE_CONTEXT = re.compile(
@@ -332,11 +343,21 @@ def _candidates(text):
         tm = bool(RE_TRADEMARK.search(line))
         ctx = bool(RE_MAKE_CONTEXT.search(line))
         model = bool(RE_MODEL_NEAR.search(line))
-        if not (tm or ctx or model):
+        if not (tm or ctx or model or RE_MAKER_LINE.search(line)):
             continue
         for m in RE_CAND.finditer(line):
             term = m.group(1).strip(" .-&")
             term = RE_NAME_TAIL.sub("", term).strip(" .-&") or term
+            end = m.end()
+            # "Genie GS-1930": a last word joined to digits by a hyphen is
+            # the model's prefix, not part of the maker's name.
+            # Kept whole when the maker's name alone would not pass
+            # ("HWL TS-150": three capitals).
+            if (" " in term and m.group(1).endswith("-")
+                    and re.match(r"\d", line[end:end + 1])
+                    and _plausible(term.rsplit(" ", 1)[0])):
+                term = term.rsplit(" ", 1)[0]
+                end = m.start(1) + len(term)
             if not _plausible(term):
                 continue
             # Wikidata confirms ordinary English words that happen to be
@@ -353,15 +374,21 @@ def _candidates(text):
             # either side, which let a clause number BEFORE the word count -
             # see RE_MODEL_NEXT. Now: a trademark symbol, or the model code
             # as the very next token.
-            tail = line[m.end():m.end() + 25]
+            tail = line[end:end + 25]
             mm = RE_MODEL_NEXT.match(tail)
             # "01 Dec 2025", "Edition 2023": a year is not a model code.
             if mm and RE_YEAR.fullmatch(mm.group(0).strip(" -")):
                 mm = None
             if mm and is_measure(mm.group(0).strip(" -")):
                 mm = None
-            if not (RE_TRADEMARK.search(tail[:3]) or mm):
+            maker = bool(RE_MAKER_BEFORE.search(line[:m.start()]))
+            if not (RE_TRADEMARK.search(tail[:3]) or mm or maker):
                 continue
+            # a maker the sentence names may take a third word
+            # ("Applied Test Systems")
+            more = re.match(r"\s+([A-Z][A-Za-z&\-]{2,})\b", line[end:])
+            if maker and not mm and more:
+                term, end = f"{term} {more.group(1)}", end + more.end()
             # Capitalised because a sentence starts here, mid-line - or
             # because it opens the line or a numbered item ("Ensure all
             # other products function properly").
@@ -378,7 +405,7 @@ def _candidates(text):
             if after_colon or at_start:
                 if line[:m.start()].rstrip().endswith((".", "!", "?", ";")):
                     continue
-                if not _strong_support(tail, line[m.end():]):
+                if not _strong_support(tail, line[end:]):
                     continue
             # "Square/Carre:", "Colour:" - a field label, not a product.
             if tail[:1] in (":", "/", "="):
@@ -392,7 +419,7 @@ def _candidates(text):
                 "page": text.count("\f", 0, start) + 1,
                 "line_no": i + 1,
                 "pos": start + m.start(),
-                "end": start + m.end(),
+                "end": start + end,
                 "line": _norm(line)[:300],
                 "trademark": tm, "make_context": ctx,
             })

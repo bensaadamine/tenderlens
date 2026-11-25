@@ -33,6 +33,7 @@ def main():
     tmp = tempfile.mkdtemp()
     m2_eval.LABELS = os.path.join(tmp, "labels.csv")
     m2_eval.HOLDOUT = os.path.join(tmp, "holdout.csv")
+    m2_eval.SAMPLE = os.path.join(tmp, "sample.csv")      # none
     with io.open(m2_eval.LABELS, "w", encoding="utf-8") as f:
         f.write("reference,name,letter,source,split\n"
                 "t-1,Bendix,f,hand,tuning\nt-2,Net,a,hand,tuning\n")

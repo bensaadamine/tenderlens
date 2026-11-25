@@ -20,14 +20,16 @@ A **hybrid multi-agent workflow**: four components look at one tender at a time,
 
 | Component | Kind | Looks at | Finds | Doc |
 |---|---|---|---|---|
-| **M1 Screener** | rules | the notice | what the buyer declared: advance award notice, limited tendering, short bidding window | [docs/agents/M1_screener.md](docs/agents/M1_screener.md) |
+| **M1 Screener** | rules | the notice | what the buyer declared (limited tendering), a short bidding window, whether a trade agreement applies | [docs/agents/M1_screener.md](docs/agents/M1_screener.md) |
 | **M2 Spec Auditor** | rules + **agent** (`--agent`) | the specification | a brand required without "or equivalent" — the rules find the names and settle what the text decides exactly; the agent letters the rest a–f with a checked quote | [docs/agents/M2_spec_auditor.md](docs/agents/M2_spec_auditor.md) |
 | **M3 Investigator** | rules + **agent** (`--m3-agent`) | award history | who won, whether this buyer keeps choosing the same supplier — the agent decides which spellings are the same company | [docs/agents/M3_investigator.md](docs/agents/M3_investigator.md) |
 | **M4 Case Builder** | rules + fixed checks (`--m4-checks`) | M1 + M2 + M3 | checks every claim has a source, scores it, decides alert / watch / close; before ranking a brand case it sends the finding back to the M2 agent and the winner's spellings to the M3 agent | [docs/agents/M4_case_builder.md](docs/agents/M4_case_builder.md) |
 
 M4's checks run in a fixed order: a version where a model chose them was measured and not chosen (0 false alarms with the fixed order, 2 with the model choosing, on 73 labelled tenders). What M2 and M3 hand to M4 is defined once, in `agents/evidence.py`.
 
-**Routing in one line:** only something found **in the documents** can raise an **alert**; what the buyer **declared** on the notice only ranks a case; award history is **context**.
+**Routing in one line:** only something found **in the documents** can raise an **alert**; what the buyer **declared** on the notice only ranks a case; award history and "no trade agreement" are **context** and never put a case in the queue.
+
+**Not audit cases:** an advance contract award notice (the supplier was announced in advance and others could object), and anything cancelled, still open or not a purchase. In selective tendering (only pre-qualified suppliers bid), a short window is normal and doesn't count.
 
 ---
 
@@ -85,12 +87,13 @@ python tenderlens.py prepare profile                  # notices feed (reuses dat
 python tenderlens.py prepare docs --only 2510 --per-cat 0
 python tenderlens.py prepare text                     # extract text -> reports/text/
 python tenderlens.py awards --fetch                   # award notices, once
-python tenderlens.py run --group 2510 --online        # the four components, tender by tender
+python tenderlens.py run --group 2510 --install --online                          # the base: oldest 70%, rules only
+python tenderlens.py run --group 2510 --online --agent --m3-agent --m4-checks    # the newest 30%, hybrid
 ```
 
 Open `reports/kb/2510/batches/<date>_queue.html`.
 
-**Which tenders are processed.** Only a tender that was **awarded** (it has a row in the award file) and **whose documents we hold** goes through M1–M4 and can reach the queue. A cheap check decides it first, from the notice and the award file, before any text is read. The others are only recorded: cancelled tenders, requests for information and supply arrangements are not audit cases; open tenders are checked again on every run; a tender that closed with documents but **no award found** goes on the family's **Award not found** list, for the inspector to check the award by hand (sorted by date, or with the tenders where the rules find a required brand first). When its award appears in the file, the next run processes it. On today's data: 108 of 205 readable tenders in 2510, 288 of 487 in 4110.
+**Which tenders are processed.** Only a tender that was **awarded** (it has a row in the award file) and **whose documents we hold** goes through M1–M4 and can reach the queue. A cheap check decides it first, from the notice and the award file, before any text is read. The others are only recorded: cancelled tenders, requests for information and supply arrangements are not audit cases; open tenders are checked again on every run; a tender that closed with documents but **no award found** goes on the family's **Award not found** list, for the inspector to check the award by hand (sorted by date, or with the tenders where the rules find a required brand first). When its award appears in the file, the next run processes it. An award found by solicitation number counts only if its title shares a word with the tender's: buyers reuse their numbers.
 
 **Knowledge base: installation, then new tenders.** A category's base is started once with its **oldest 70%** of tenders (by publication date), **rules only** — no model, 0 tokens. The newest 30% then play the new tenders: they go through the **hybrid chain** (agents included), as every later tender will, and the base grows with them.
 
@@ -102,7 +105,7 @@ python tenderlens.py run --group 2510 --online --agent --m3-agent --m4-checks   
 **Weekly update** — one command downloads the latest notices, awards and documents, installs any category that has no base yet, then runs only the tenders not yet in each base, with the agents (`--rules-only` leaves them out):
 
 ```bash
-python tenderlens.py update                    # 2510 and 4110; --groups to choose
+python tenderlens.py update                    # every category with a base; --groups to choose
 ```
 
 A broken download never replaces the current file; the replaced one is kept in `data/previous/`. To run it every Monday at 08:00 on Windows (once, in a command prompt):
@@ -116,7 +119,8 @@ schtasks /Create /SC WEEKLY /D MON /ST 08:00 /TN TenderLens-update /TR "cmd /c c
 | `--online` | check brand names on Wikidata (free, cached) |
 | `--agent` | the M2 agent letters every brand candidate a–f with a quote (LLM) |
 | `--m3-agent` | the M3 agent decides which spellings of the winner are the same company (LLM) |
-| `--m4-checks` | before ranking a case with a brand finding, M4 sends each finding back to the M2 agent and the winner's spellings to the M3 agent, in a fixed order (LLM). `model` lets a model choose the checks — an experiment, measured worse |
+| `--m4-checks` | before ranking a case with a brand finding, M4 sends each finding back to the M2 agent and the winner's spellings to the M3 agent, in a fixed order (LLM) |
+| `--install` | start a category's base: its oldest 70% of tenders, rules only (refuses the agents and an existing base) |
 | `--reprocess REF… / quarantine / all` | run tenders again with today's code (auditor-judged tenders are kept) |
 | `--queue [STAMP]` | rebuild a queue from the case log |
 | `--until YYYY-MM-DD` | only tenders published up to that date |
@@ -127,7 +131,7 @@ schtasks /Create /SC WEEKLY /D MON /ST 08:00 /TN TenderLens-update /TR "cmd /c c
 One tender, with every agent's reasoning: `python tenderlens.py tender cb-425-92729935`
 
 Tests (no data, no network): `python tenderlens.py test` runs every `tests/test_*.py`; one alone: `python -m tests.test_agents`.
-Measurements: `python tenderlens.py eval synth --run` (synthetic rigged tenders; each run in its own folder `reports/synth/2510/runs/<stamp>/`; `--review` lists the bases' "equivalent" lines to check by hand) · `python tenderlens.py eval m2 [--agent --online] [--split holdout]` (M2 against the labelled names: 36 tuning + 40 held-out) · `python tenderlens.py eval m4 --online` (M4: no checks / fixed / model).
+Measurements: `python tenderlens.py eval synth --run` (synthetic rigged tenders over 6 families; each run in its own folder `reports/synth/families/runs/<stamp>/`; `--review` lists the bases' "equivalent" lines to check by hand) · `python tenderlens.py eval m2 [--agent --online] [--split tuning|holdout|sample]` (M2 against labelled names: tuning, held-out, and a random sample of 102 real tenders) · `python tenderlens.py eval m4 --online` (M4: no checks / fixed checks, 73 labelled tenders).
 
 **Long runs** (agents over a whole category) are done **once, at the end of a category** — not after each fix. Fixes are checked offline on the affected tenders and on the synthetic set.
 
@@ -171,18 +175,24 @@ One line per case in `feedback.csv` (`reference,verdict,note,reviewer,date`), th
 
 ---
 
-## Where things stand (2026-11-08)
+## Where things stand (2026-11-25)
 
-| category | tenders | alert | watch | note |
-|---|---|---|---|---|
-| 2510 motor vehicles | 613 (193 with documents) | 0 | 3 | offline, rules only |
-| 4110 lab equipment | 957 | 2 | 10 | offline, rules only; to audit |
+Six families, each with a base (oldest 70%, rules) and its newest 30% read with the agents:
 
-- **M2 on the 37 held-out names** (never used for tuning): rules alone find **1 of 8** real lock-ins; with the M2 agent **8 of 8**, 8 of its 10 findings real, 35 of 37 names right (one model, Groq gpt-oss-120b, 2026-11-08). The false finding: the word "LAMP" on a line requiring an Osram lamp.
-- **M4's checks on 73 labelled tenders** (M2 on rules): 7 false alarms without them, 0 with them (both real lock-ins kept).
-- **The demo** shows each on chosen cases: the rules' false alarm cleared by the re-check (Hitachi/JEOL), a lock-in only the agent finds (Gamry), the real lock-ins kept.
-- **Synthetic test (2510):** of 160 rigged copies, the brand is found in 64 offline; 17 reach alert; 0 of 120 clean copies are flagged.
-- **Peer comparison (level 2)** stays dormant: few product groups have 8 comparable tenders yet. It runs by default; `--no-level2` skips it (same routes on the demo and on 120 tenders of 2510).
+| family | in the base | to review |
+|---|---|---|
+| 2510 motor vehicles | 105 | 1 |
+| 4110 laboratory equipment | 208 | 0 |
+| 5610 furniture | 184 | 0 |
+| 4111 measuring instruments | 104 | 1 |
+| 4014 valves | 120 | 0 |
+| 2410 lifting equipment | 59 | 0 |
+
+- **Real lock-ins are rare.** In 102 tenders drawn at random (17 per family), we found 2 by reading the requirements. The rules now raise one of them for the agent ("approved distributor of Applied Test Systems"); the other names a model by part number only.
+- **M2 on the held-out names** (never used for tuning): with the agent, 34 of 35 right, 7 of 7 lock-ins found (2 names wait for a fresh agent answer).
+- **Synthetic test (6 families, 148 rigged copies):** with Wikidata online, the brand is found in 77 (52%), 0 false alarms on the 111 copies that should close. Brands Wikidata doesn't know need the agent.
+- **Measured errors, fixed as general rules (2026-11-24):** furniture call-ups flagged on deadline + "no trade agreement"; French words and measurements read as brands ("ENVIRON 610MM"); equivalents accepted in other words; awards matched by a reused solicitation number.
+- **Peer comparison (level 2)** stays dormant: few product groups have 8 comparable tenders. `--no-level2` skips it.
 
 ---
 

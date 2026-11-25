@@ -5,9 +5,11 @@
     python tenderlens.py eval synth --run        # only run + report (add --online on Windows)
     python tenderlens.py eval synth --review     # list the bases' "equivalent" lines to check by hand
 
-BASE TENDERS: real 2510 tenders now in the knowledge base (closed, with a
-(--bases no-clause, default) no standard "Equivalent Products" clause, and a
-detected requirement section). Each gets seven copies:
+BASE TENDERS: real tenders of six families (2510 vehicles, 4110 laboratory,
+5610 furniture, 4111 instruments, 4014 valves, 2410 lifting), --n per family
+(default 7), now in the knowledge base (closed, with (--bases no-clause,
+default) no standard "Equivalent Products" clause, and a detected
+requirement section). Each gets seven copies:
   A  one brand + model, no "or equivalent"                      expect watch
   B  two brands, no "or equivalent"                              expect alert
   C  one brand, and the contract awarded to that brand's maker   expect alert
@@ -18,16 +20,17 @@ detected requirement section). Each gets seven copies:
 One base tender keeps one wording style and one brand across A-E, so the
 copies differ only in the rigging.
 
-INJECTION VARIES ON PURPOSE: 7 wording styles (English and French), brands
-the offline brand cache already confirms (Honda, Michelin, Palfinger) and
-brands only an --online run can confirm (Cummins, Allison, ...).
+INJECTION VARIES ON PURPOSE: 7 wording styles (English and French), and
+brands of each family's own market (a balance in a laboratory tender, a
+task chair in a furniture tender) - some the offline brand cache already
+confirms, most only an --online run can confirm.
 
-NOTHING TOUCHES REAL DATA: copies live in reports/text_synth/2510/. Each
-run writes its own folder, reports/synth/2510/runs/<stamp>/ (results.csv,
-summary.txt, the queue, settings.json: options, models that answered, and
-fingerprints of the manifest and copies); a run never overwrites another.
-Each copy is compared with the real knowledge base (reports/kb/2510) minus
-its own original, as a tender of a new batch would be.
+NOTHING TOUCHES REAL DATA: copies live in reports/text_synth_families/<family>/.
+Each run writes its own folder, reports/synth/families/runs/<stamp>/
+(results.csv, summary.txt, the queue, settings.json: options, models that
+answered, and fingerprints of the manifest and copies); a run never
+overwrites another. Each copy is compared with its family's real knowledge
+base minus its own original, as a tender of a new batch would be.
 
 ONE INVESTIGATION PER COPY: what happened to each injected brand is read from
 the case itself (case["m2"]: every name M2 raised, its result, who settled
@@ -36,7 +39,7 @@ it), so the route and the brand outcome come from the same M2 run.
 EXPECTED LABELS: whether a base already accepts equivalents for every brand
 (then a brand added there is legal: expect close) is decided by the
 detector's own clause patterns - a shared blind spot. --review lists every
-"equivalent" line of the bases in reports/synth/2510/equivalent_review.csv;
+"equivalent" line of the bases in reports/synth/families/equivalent_review.csv;
 a base marked there by hand (allows = yes / no) uses that verdict instead.
 
 HONEST LIMIT: the same team wrote the injections and the detector. Two
@@ -79,9 +82,11 @@ except Exception:
 from tools import sections
 from pipeline import stream  # noqa: E402
 
-GROUP = "2510"
-SYN_TEXT = "reports/text_synth"
-OUT = os.path.join("reports", "synth", GROUP)
+# Six families since 2026-11-24 (the first set, 40 tenders of 2510 only, is
+# kept in reports/synth/2510/ with its runs).
+GROUPS = ["2510", "4110", "5610", "4111", "4014", "2410"]
+SYN_TEXT = "reports/text_synth_families"
+OUT = os.path.join("reports", "synth", "families")
 MANIFEST = os.path.join(OUT, "manifest.csv")
 REVIEW = os.path.join(OUT, "equivalent_review.csv")
 RE_ANY_EQUIV = re.compile(r"[ée]quivalen", re.I)   # broad on purpose
@@ -90,21 +95,55 @@ RE_ANY_EQUIV = re.compile(r"[ée]quivalen", re.I)   # broad on purpose
 RE_NOT_PRODUCTS = re.compile(r"net.zero|race to zero|science based targets",
                              re.I)
 
-# name, model, part (en), part (fr), maker's company name, and whether the
-# brand cache confirmed it when the set was written (unused: the run reads
-# the cache itself - section 5)
-BRANDS = [
-    ("Honda", "GX390", "engine", "moteur", "Honda Canada Inc.", True),
-    ("Cummins", "ISB6.7", "engine", "moteur", "Cummins Eastern Canada LP", False),
-    ("Michelin", "XZE2", "tire", "pneu", "Michelin North America (Canada) Inc.", True),
-    ("Allison", "2500RDS", "transmission", "transmission", "Allison Transmission Inc.", False),
-    ("Palfinger", "PK11001", "crane", "grue", "Palfinger Inc.", True),
-    ("Hiab", "X-HiPro 192", "crane", "grue", "Hiab Canada Inc.", False),
-    ("Webasto", "TSL17", "heater", "chauffage d'appoint", "Webasto Thermo & Comfort", False),
-    ("Knapheide", "KSS-96", "service body", "carrosserie de service", "Knapheide Manufacturing Company", False),
-    ("Jerr-Dan", "MPL40", "wrecker body", "plateau de remorquage", "Jerr-Dan Corporation", False),
-    ("Fontaine", "6000", "fifth wheel", "sellette d'attelage", "Fontaine Fifth Wheel", False),
-]
+# Per family, brands of that family's own market (so a centrifuge is not
+# injected into a furniture tender): name, model, part (en), part (fr), the
+# maker's company name. Whether the brand cache confirms each is read at run
+# time (section 5).
+BRANDS = {
+    "2510": [  # vehicles
+        ("Honda", "GX390", "engine", "moteur", "Honda Canada Inc."),
+        ("Cummins", "ISB6.7", "engine", "moteur", "Cummins Eastern Canada LP"),
+        ("Michelin", "XZE2", "tire", "pneu", "Michelin North America (Canada) Inc."),
+        ("Allison", "2500RDS", "transmission", "transmission", "Allison Transmission Inc."),
+        ("Palfinger", "PK11001", "crane", "grue", "Palfinger Inc."),
+        ("Knapheide", "KSS-96", "service body", "carrosserie de service", "Knapheide Manufacturing Company"),
+    ],
+    "4110": [  # laboratory equipment
+        ("Mettler Toledo", "XPR205", "analytical balance", "balance analytique", "Mettler-Toledo Inc."),
+        ("Eppendorf", "5430R", "centrifuge", "centrifugeuse", "Eppendorf Canada Ltd."),
+        ("Agilent", "1260", "HPLC system", "système CLHP", "Agilent Technologies Canada Inc."),
+        ("Leica", "DM750", "microscope", "microscope", "Leica Microsystems (Canada) Inc."),
+        ("Thermo Scientific", "Heracell 150i", "CO2 incubator", "incubateur à CO2", "Thermo Fisher Scientific"),
+    ],
+    "4111": [  # measuring instruments
+        ("Fluke", "87V", "multimeter", "multimètre", "Fluke Electronics Canada LP"),
+        ("Keysight", "34465A", "digital multimeter", "multimètre numérique", "Keysight Technologies Canada Inc."),
+        ("Tektronix", "MSO44", "oscilloscope", "oscilloscope", "Tektronix Canada Inc."),
+        ("Yokogawa", "WT5000", "power analyzer", "analyseur de puissance", "Yokogawa Canada Inc."),
+        ("Bruker", "S1", "handheld XRF analyzer", "analyseur XRF portatif", "Bruker Ltd."),
+    ],
+    "4014": [  # valves
+        ("Swagelok", "SS-43GS4", "ball valve", "robinet à tournant sphérique", "Swagelok Company"),
+        ("Parker", "4Z-V4LN-SS", "needle valve", "robinet à pointeau", "Parker Hannifin Canada"),
+        ("Velan", "B16", "gate valve", "robinet-vanne", "Velan Inc."),
+        ("Watts", "LF25AUB", "pressure reducing valve", "détendeur", "Watts Water Technologies"),
+        ("Apollo", "77C", "ball valve", "robinet à tournant sphérique", "Apollo Valves"),
+    ],
+    "5610": [  # furniture
+        ("Steelcase", "465A300", "task chair", "chaise de travail", "Steelcase Canada Ltd."),
+        ("Herman Miller", "AER1B23DW", "task chair", "chaise de travail", "Herman Miller Ltd."),
+        ("Haworth", "5210", "task chair", "chaise de travail", "Haworth Ltd."),
+        ("Teknion", "TS-4824", "height-adjustable desk", "bureau à hauteur réglable", "Teknion Corporation"),
+        ("Humanscale", "M8", "monitor arm", "bras de moniteur", "Humanscale Corporation"),
+    ],
+    "2410": [  # lifting equipment
+        ("Toyota", "8FGCU25", "forklift", "chariot élévateur", "Toyota Material Handling Canada"),
+        ("Crown", "RR5725", "reach truck", "chariot à mât rétractable", "Crown Equipment Corporation"),
+        ("Genie", "GS-1930", "scissor lift", "plateforme à ciseaux", "Genie Industries"),
+        ("Hyster", "H50FT", "forklift", "chariot élévateur", "Hyster Company"),
+        ("JLG", "450AJ", "boom lift", "nacelle articulée", "JLG Industries"),
+    ],
+}
 
 STYLES = ["prose", "table", "field", "trademark", "oem", "no_model", "french"]
 VARIANTS = {"A": "watch", "B": "alert", "C": "alert",
@@ -149,8 +188,8 @@ def allows_equivalents(docs):
                or brands.RE_DOC_CLAUSE.search(d["text"]) for d in docs)
 
 
-def pick_bases(n, seed, bases="no-clause"):
-    kb = stream.KB(GROUP)
+def pick_bases(group, n, seed, bases="no-clause"):
+    kb = stream.KB(group)
     state = kb.state()
     pool = sorted(ref for ref, ev in state.items()
                   if ev["pile"] == "base" and ev["status"] == "close"
@@ -183,18 +222,24 @@ def pick_bases(n, seed, bases="no-clause"):
 
 
 def build(n, seed, bases="no-clause"):
-    gdir = os.path.join(SYN_TEXT, GROUP)
-    if os.path.isdir(gdir) and os.listdir(gdir):
-        sys.exit(f"{gdir} is not empty - move it away to rebuild")
-    os.makedirs(gdir, exist_ok=True)
+    """n base tenders per family, seven copies each."""
+    if os.path.isdir(SYN_TEXT) and any(os.listdir(os.path.join(SYN_TEXT, g))
+                                       for g in os.listdir(SYN_TEXT)):
+        sys.exit(f"{SYN_TEXT} is not empty - move it away to rebuild")
     os.makedirs(OUT, exist_ok=True)
-    bases = pick_bases(n, seed, bases)
-    print(f"{len(bases)} base tenders")
+    picked = []
+    for group in GROUPS:
+        got = pick_bases(group, n, seed, bases)
+        print(f"{group}: {len(got)} base tenders")
+        picked += [(group, *x) for x in got]
     rows = []
-    for k, (ref, docs, primary, lines, at) in enumerate(bases):
+    for k, (group, ref, docs, primary, lines, at) in enumerate(picked):
+        gdir = os.path.join(SYN_TEXT, group)
+        os.makedirs(gdir, exist_ok=True)
+        fam = BRANDS[group]
         style = STYLES[k % len(STYLES)]
-        b1 = BRANDS[k % len(BRANDS)]
-        b2 = BRANDS[(k + 3) % len(BRANDS)]
+        b1 = fam[k % len(fam)]
+        b2 = fam[(k + 2) % len(fam)]
         blanket = any(brands.RE_DOC_CLAUSE.search(d["text"]) for d in docs)
         for v in VARIANTS:
             sref = f"synth-{v}-{ref}"
@@ -236,7 +281,7 @@ def build(n, seed, bases="no-clause"):
             added = ([b1] if v in ("A", "C", "D", "E", "G")
                      else [b1, b2] if v == "B" else [])
             rows.append({
-                "sref": sref, "base": ref, "variant": v,
+                "sref": sref, "group": group, "base": ref, "variant": v,
                 "expected": VARIANTS[v], "style": style,
                 "lang": "fr" if style == "french" else "en",
                 "brands": "|".join(b[0] for b in added),
@@ -250,7 +295,7 @@ def build(n, seed, bases="no-clause"):
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
         w.writeheader()
         w.writerows(rows)
-    print(f"{len(rows)} copies -> {gdir}\nmanifest -> {MANIFEST}")
+    print(f"{len(rows)} copies -> {SYN_TEXT}\nmanifest -> {MANIFEST}")
 
 
 # ------------------------------------------------------------------- run
@@ -314,7 +359,7 @@ def review_equivalents():
         w.writerows(rows)
     print(f"{len(rows)} of {len(bases)} bases mention 'equivalent' -> "
           f"{REVIEW}\nfill 'allows' with yes / no (all the lines: "
-          f"reports/text/2510/<base>__*.txt); the next run uses it")
+          f"reports/text/<family>/<base>__*.txt); the next run uses it")
 
 
 def reviewed_allows():
@@ -352,11 +397,14 @@ def run(a):
     m1_screener.TEXT_DIR = SYN_TEXT
 
     notices, wstats, _, graph = one_tender.load_shared()
-    kb = stream.KB(GROUP)
-    state = kb.state()
     amap = stream.load_map()
-    base = stream.base_rows(kb, state, amap)
-    print(f"real knowledge base: {len({r['reference'] for r in base})} tenders as peers")
+    state, base = {}, {}
+    for group in GROUPS:
+        kb = stream.KB(group)
+        st = kb.state()
+        state.update(st)
+        base[group] = stream.base_rows(kb, st, amap)
+    print(f"real knowledge bases: {sum(len({r['reference'] for r in b}) for b in base.values())} tenders as peers")
 
     if graph is not None:
         graph = dict(graph)
@@ -381,7 +429,7 @@ def run(a):
     results, cases = [], []
     t0 = time.time()
     for i, m in enumerate(man, 1):
-        sref, ref = m["sref"], m["base"]
+        sref, ref, group = m["sref"], m["base"], m["group"]
         m = dict(m)
         m["base_allows_equivalents"] = str(allows[ref])
         if m["variant"] in POSITIVE and allows[ref]:
@@ -403,10 +451,11 @@ def run(a):
             graph["by_ref"][sref] = [{
                 "supplier": m["winner"].upper(), "supplier_name": m["winner"],
                 "buyer": "SYNTHETIC", "buyer_name": "(synthetic test buyer)",
-                "value": "", "date": "", "group": GROUP}]
-        _, raw = stream.extract_tender(sref, row, GROUP, f"synth-{i:04d}")
+                "value": "", "date": "", "group": group}]
+        _, raw = stream.extract_tender(sref, row, group, f"synth-{i:04d}")
         mine = stream.comparable(raw, amap)
-        peers = [r for r in base if r["reference"] not in (ref, sref)] + mine
+        peers = [r for r in base[group]
+                 if r["reference"] not in (ref, sref)] + mine
         # a copy without a model keeps the rules' result
         case = one_tender.run_one(sref, (notices, wstats, peers, graph),
                                   Settings(online=a.online, agent=a.agent,
@@ -437,8 +486,8 @@ def run(a):
     stamp = time.strftime("%Y%m%d-%H%M%S")
     run_dir = os.path.join(OUT, "runs", stamp)
     os.makedirs(run_dir, exist_ok=True)
-    copies = [os.path.join(SYN_TEXT, GROUP, f)
-              for f in os.listdir(os.path.join(SYN_TEXT, GROUP))]
+    copies = [os.path.join(SYN_TEXT, g, f) for g in os.listdir(SYN_TEXT)
+              for f in os.listdir(os.path.join(SYN_TEXT, g))]
     with io.open(os.path.join(run_dir, "settings.json"), "w",
                  encoding="utf-8") as f:
         json.dump({"stamp": stamp, "argv": sys.argv[1:],
@@ -455,7 +504,7 @@ def run(a):
         w = csv.DictWriter(f, fieldnames=cols)
         w.writeheader()
         w.writerows(results)
-    meta = {"scope": "synthetic rigged tenders, 2510",
+    meta = {"scope": "synthetic rigged tenders, " + ", ".join(GROUPS),
             "generated": time.strftime("%Y-%m-%d %H:%M"),
             "tenders": len(cases), "awards": graph is not None,
             "agent": a.agent, "weights": m4_case_builder.WEIGHTS,
@@ -467,7 +516,7 @@ def run(a):
 def report(results, state, online, run_dir, n_reviewed=0):
     L = []
     say = L.append
-    say(f"SYNTHETIC RIGGED TENDERS - 2510 - {time.strftime('%Y-%m-%d %H:%M')}"
+    say(f"SYNTHETIC RIGGED TENDERS - {', '.join(GROUPS)} - {time.strftime('%Y-%m-%d %H:%M')}"
         f" - brand check {'online' if online else 'OFFLINE (cache only)'}")
     say(f"{len({r['base'] for r in results})} base tenders x {len(VARIANTS)} copies\n")
 
@@ -520,6 +569,15 @@ def report(results, state, online, run_dir, n_reviewed=0):
     for s in STYLES:
         f, t = by[s]
         say(f"   {s:10} {f}/{t}")
+
+    say("\n2b. Rigged copies by family: brand found")
+    by = collections.defaultdict(lambda: [0, 0])
+    for r in pos:
+        by[r["group"]][1] += 1
+        by[r["group"]][0] += "found" in r["outcomes"].split("|")
+    for g in GROUPS:
+        f, t = by[g]
+        say(f"   {g:10} {f}/{t}")
 
     say("\n5. Brand found, by what the brand cache says about it (read at "
         "the start of this run)")
@@ -606,7 +664,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--build", action="store_true")
     ap.add_argument("--run", action="store_true")
-    ap.add_argument("--n", type=int, default=40)
+    ap.add_argument("--n", type=int, default=7, help="base tenders per family")
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--online", action="store_true")
     ap.add_argument("--agent", action="store_true",
@@ -617,7 +675,7 @@ def main():
                          "tokens with --agent")
     ap.add_argument("--review", action="store_true",
                     help="list the bases' 'equivalent' lines for a person to "
-                         "mark (reports/synth/2510/equivalent_review.csv)")
+                         "mark (reports/synth/families/equivalent_review.csv)")
     ap.add_argument("--bases", choices=["no-clause", "any"],
                     default="no-clause",
                     help="--build: pick only base tenders that do NOT already "

@@ -20,6 +20,10 @@ TWO SETS (audit finding 2026-11-01):
   holdout  tests/m2_holdout.csv - cases never looked at while tuning, built
            by --sample and labelled by the auditor. Only rows with a letter
            count. This is the score to quote.
+  sample   tests/m2_sample.csv - 102 tenders drawn at random, 17 in each of 6
+           families (2026-11-24): every name the rules raise, labelled, plus
+           the lock-ins found by reading the requirement lines that the rules
+           never raised. Measures the system as it meets real tenders.
 
 EVERY RUN KEEPS ITS EVIDENCE (audit finding 2026-11-01: the 36-case agent
 result of 2026-10-23 was overwritten by a later one-tender run). Each run
@@ -53,6 +57,9 @@ from tools import documents
 
 LABELS = os.path.join("tests", "m2_labels.csv")
 HOLDOUT = os.path.join("tests", "m2_holdout.csv")
+# A random sample of real tenders, 17 per family over 6 families (2026-11-24):
+# every name the rules raise, labelled, plus the lock-ins they never raised.
+SAMPLE = os.path.join("tests", "m2_sample.csv")
 OUT_DIR = os.path.join("reports", "m2_eval")
 STOP_AFTER = 3      # tenders in a row where the agent could not run
 LETTERS = set("abcdef")
@@ -102,7 +109,8 @@ def agent_status(l1, trace):
 def load_labels(split="all"):
     """Labelled cases of the chosen set(s); held-out rows need a letter."""
     out = []
-    for path, default in ((LABELS, "tuning"), (HOLDOUT, "holdout")):
+    for path, default in ((LABELS, "tuning"), (HOLDOUT, "holdout"),
+                          (SAMPLE, "sample")):
         if not os.path.exists(path):
             continue
         with io.open(path, encoding="utf-8", newline="") as f:
@@ -136,7 +144,7 @@ def _pct(x):
 def summary_text(rows, mode, meta):
     out = [f"M2 exam - {mode}", f"run {meta['stamp']}, code {meta['commit']}",
            f"settings: {json.dumps(meta['settings'], sort_keys=True)}", ""]
-    for split in ("tuning", "holdout"):
+    for split in ("tuning", "holdout", "sample"):
         rs = [r for r in rows if r["split"] == split]
         if not rs:
             out.append(f"{split}: no labelled case\n")
@@ -305,7 +313,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--agent", action="store_true")
     ap.add_argument("--online", action="store_true")
-    ap.add_argument("--split", choices=["all", "tuning", "holdout"],
+    ap.add_argument("--split", choices=["all", "tuning", "holdout", "sample"],
                     default="all")
     ap.add_argument("--only", action="append", default=[], metavar="REF",
                     help="only this tender (repeatable); marks the run "

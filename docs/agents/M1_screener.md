@@ -16,11 +16,11 @@ Say, in seconds, which tenders deserve the expensive work (reading documents, as
 
 | Signal | Meaning | Kind |
 |---|---|---|
-| Advance Contract Award Notice (ACAN) | the buyer announces in advance the supplier it will choose | declared |
+| Advance Contract Award Notice (ACAN) | the buyer announces in advance the supplier it will choose. Since 2026-11-24 an ACAN is **not an audit case**: the run records it and does not read it (`is_acan`, used by the gate) | declared |
 | Limited-tendering method | the procedure itself skips open competition | declared |
 | Limited-tendering reason | the buyer's written justification (e.g. "Exclusive Rights"); the literal value "None" is ignored | declared |
-| Short bidding window | days to respond, compared with **tenders run the same way** (not an absolute number) | from the notice dates |
-| No trade agreement | the rule against naming brands does not apply | context |
+| Short bidding window | days to respond, compared with **tenders run the same way** (not an absolute number). In **selective tendering** (only pre-qualified suppliers bid) it is shown but does not count | from the notice dates |
+| No trade agreement | the rule against naming brands does not apply. Ranks a case, never puts it in the queue | context |
 
 ## Tools
 None external. Statistics on bidding windows are computed once over the whole feed (`method_windows`).
