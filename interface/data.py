@@ -2,8 +2,9 @@
 
 It reads what the runs wrote - the knowledge bases (reports/kb/<group>/), the
 extracted documents (reports/text/) and the synthetic test runs - and computes
-no case itself. It writes one thing: the auditor's verdict, recorded in
-feedback.csv and applied to the register at once, as `run --feedback` does.
+no case itself. It writes two things: the auditor's verdict, recorded in
+feedback.csv and applied to the register at once, as `run --feedback` does;
+and the trash (move a tender there, restore it, delete it for good).
 """
 
 import collections
@@ -16,8 +17,9 @@ import os
 import re
 import time
 
-from pipeline.stream import (FB_COLS, KB, apply_verdict, installation,
-                             known_groups)
+from pipeline.stream import (FB_COLS, KB, apply_verdict,
+                             delete_forever, installation, known_groups,
+                             restore, to_trash)
 from tools import documents
 from tools.report import ROUTE_ORDER
 
@@ -60,22 +62,26 @@ def _cases(kb):
     return _logged[kb.case_log][1]
 
 
-def tenders(group):
+def tenders(group, trash=False):
     """Every registered tender: where it is now, the auditor's verdict, the
     case the register points to (None for a tender processed before cases
     were logged - re-running the category gives it one), and whether the
-    installation (rules only) put it there."""
+    installation (rules only) put it there. trash=True: the tenders in the
+    trash instead, with when they went there."""
     kb = KB(group, KB_ROOT)
     cases = _cases(kb)
     installed = installation(kb)[0]
     out = []
     for ref, ev in kb.state().items():
+        if (ev["status"] == "trashed") != trash or ev["status"] == "deleted":
+            continue
         case = cases.get(ref, {}).get(ev["run_id"])
         out.append({"reference": ref, "pub_date": ev["pub_date"],
                     "pile": ev["pile"], "status": ev["status"],
                     "verdict": JUDGED.get(ev["status"]), "case": case,
                     "installed": ev["run_id"][:15] in installed,
-                    "score": case["score"] if case else int(ev["score"] or 0)})
+                    "score": case["score"] if case else int(ev["score"] or 0),
+                    "since": ev["at"]})
     return out
 
 
@@ -132,7 +138,30 @@ def unawarded(group):
 
 
 def find(group, ref):
-    return next((t for t in tenders(group) if t["reference"] == ref), None)
+    """One tender, in the trash or not."""
+    return next((t for t in tenders(group) + tenders(group, trash=True)
+                 if t["reference"] == ref), None)
+
+
+def trashed():
+    """Every tender in the trash, newest first, with its family."""
+    rows = [dict(t, group=g) for g in groups()
+            for t in tenders(g, trash=True)]
+    return sorted(rows, key=lambda t: t["since"], reverse=True)
+
+
+TRASH_ACTIONS = {"trash": to_trash, "restore": restore,
+                 "delete": delete_forever}
+
+
+def trash_action(group, ref, action, note=""):
+    """Move a tender to the trash, restore it, or delete it for good; says
+    what happened ("skip: ..." when refused)."""
+    if action not in TRASH_ACTIONS:
+        return "skip: unknown action"
+    kb = KB(group, KB_ROOT)
+    args = (note,) if action == "trash" else ()
+    return TRASH_ACTIONS[action](kb, kb.state(), ref, *args)
 
 
 def record_verdict(group, ref, verdict, note=""):

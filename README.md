@@ -152,12 +152,13 @@ Measurements: `python tenderlens.py eval synth --run` (synthetic rigged tenders 
 python tenderlens.py serve          # opens http://127.0.0.1:8000 (this computer only)
 ```
 
-A top bar leads to four places; the model mode (Rules, Hybrid, Replay) sits on its right.
+A top bar leads to four places.
 
-- **Mode** for every command: **Rules** (no model called); **Hybrid**: rules + the agents, live (the Groq quota; the rules assistant uses the local model); **Replay**: the agents' answers from the cache (no network, no quota: the demo).
+- **Commands** run with the agents (rules + agents, the Groq quota; the rules assistant uses the local model). If the day's quota is spent, the command's page says **Model quota used up** and offers **Continue with rules only**. Replaying the agents from the cache (no network, no quota) is for the demo and the tests: `--offline` on the command line.
 - **To decide:** every flagged purchase in one list, most serious first: cases from every family, and split purchases waiting for your verdict.
-- **Case:** the tender's own words, marked as with a highlighter, opening the document at that line; the rule each reason rests on; the brand names checked and who settled each; your verdict (Mark clean / Confirm); how each component reached it (folded).
-- **Families:** one row per family: to review, confirmed, cleared, awards not found (check by hand), re-run, all tenders; recent commands with their live output.
+- **Case:** the tender's own words, marked as with a highlighter, opening the document at that line; the rule each reason rests on; the brand names checked and who settled each; your verdict (Mark clean / Confirm); **Move to trash**; how each component reached it (folded).
+- **Families:** one row per family: to review, confirmed, cleared, awards not found (check by hand), all tenders; recent commands with their live output.
+- **Trash:** tenders taken out. Their requirements leave the knowledge base at once (later tenders are no longer compared with them), they leave the queues, and runs skip them. **Restore** puts one back where it was; **Delete forever** erases its lines (one "deleted" line stays in the register so the next run does not read it again).
 - **Split purchases:** each group under the $25,000 limit as a table of contracts, the rules', the agent's and your verdict; **Split** / **Separate**.
 - **Rules:** a question box (the rules assistant) and the rules of law behind each signal, with their sources.
 - **How it works:** the four agents (what each decides, its tools, what the code keeps, what was measured), with links to agent activity and the synthetic test.

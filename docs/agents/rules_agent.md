@@ -43,7 +43,7 @@ Measured 2026-11-25 (EmbeddingGemma, 926 passages embedded in 84 s). Keywords fa
 - No model (Rules mode, Ollama not running, replay without the answer): the passages the search finds are shown instead.
 
 ## Where
-- The auditor's page, **Rules**: the question box. Mode **Rules**: passages only, no model; **Hybrid**: Gemma, live; **Replay**: Gemma's cached answers only.
+- The auditor's page, **Rules**: the question box. It always asks Gemma (local and free); if Ollama is not running, the passages the search finds are shown instead.
 - A terminal: `python tenderlens.py ask "Can a buyer split a purchase?"` (`--search-only`, or `--offline ask ...`).
 
 ## How it is checked

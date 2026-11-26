@@ -52,13 +52,6 @@ code{font-family:var(--mono);font-size:13px}
 .places a.on{border-bottom-color:var(--blue);font-weight:700}
 .places .n{display:inline-block;margin-left:6px;font-size:13px;font-weight:700;color:var(--sheet);
   background:var(--watch);border-radius:9px;padding:0 7px;line-height:18px}
-.mode{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
-.seg{display:inline-grid;grid-template-columns:repeat(3,auto);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
-.seg input{position:absolute;opacity:0;pointer-events:none}
-.seg label{font-size:14px;padding:5px 12px;cursor:pointer;color:var(--muted)}
-.seg label+input+label,.seg input+label~label{border-left:1px solid var(--rule)}
-.seg input:checked+label{background:var(--blue);color:#fff;font-weight:600}
-.seg input:focus-visible+label{outline:2px solid var(--blue);outline-offset:-2px}
 .running{font-size:14px}
 .running a{font-weight:600}
 
@@ -81,6 +74,8 @@ section{margin-bottom:38px}
 .btn.clean{border-color:var(--close);color:var(--close)}
 .btn.confirm{border-color:var(--alert);color:var(--alert)}
 .btn.clean:hover{background:var(--close-soft)}.btn.confirm:hover{background:var(--alert-soft)}
+.btn.danger{border-color:var(--alert);color:var(--alert)}.btn.danger:hover{background:var(--alert-soft)}
+td .btn+.btn{margin-left:6px}
 .tabs{display:inline-flex;gap:2px;border-bottom:1px solid var(--rule)}
 .tabs a{padding:6px 12px;text-decoration:none;color:var(--muted);font-size:15px;border-bottom:2px solid transparent;margin-bottom:-1px}
 .tabs a.on{color:var(--ink);font-weight:700;border-bottom-color:var(--blue)}
@@ -143,6 +138,9 @@ td.nowrap{white-space:nowrap}
 .box h3{margin-bottom:10px}
 .box .row{display:flex;gap:8px;margin-top:10px}
 .box .row .btn{flex:1;justify-content:center}
+.box.warn{background:var(--watch-soft);border:1px solid var(--watch);border-radius:8px;margin-bottom:18px}
+.box.warn h3{color:var(--watch)}
+.box.warn .row .btn{flex:0 0 auto}
 .lists .box{background:var(--sheet);border:1px solid var(--rule);border-radius:8px}
 dl.facts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;margin:0;font-size:15px}
 dl.facts dt{color:var(--muted)}dl.facts dd{margin:0;overflow-wrap:anywhere}

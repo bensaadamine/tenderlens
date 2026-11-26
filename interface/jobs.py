@@ -74,6 +74,16 @@ def output(job_id, tail=40000):
     return text[-tail:], current() == job_id
 
 
+# What a command prints when no model answers (pipeline/stream.py, the split
+# agent): the page then offers to go on with the rules only.
+MODEL_DOWN = ("the agents have no model", "no verdict: model unavailable")
+
+
+def model_down(text):
+    """Did the command stop, or skip work, because no model answered?"""
+    return any(sign in text for sign in MODEL_DOWN)
+
+
 def recent(n=8):
     """The last commands started, newest first."""
     if not os.path.isdir(LOG_DIR):

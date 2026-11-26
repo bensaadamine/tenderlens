@@ -201,7 +201,7 @@ Runs a family tender by tender, against its **knowledge base** (`reports/kb/<fam
 - **Rules:** the rules of law and the rules assistant.
 - **How it works:** the 4 agents.
 
-A case shows the tender's own words marked as evidence, the rule of law behind each reason, and **Mark clean / Confirm** buttons.
+A case shows the tender's own words marked as evidence, the rule of law behind each reason, and **Mark clean / Confirm** buttons, plus **Move to trash**. Commands always run with the agents; if the quota is spent, the command's page offers **Continue with rules only**.
 
 ### Secondary functions
 - `m1_screener.is_acan` — is this an advance contract award notice?
@@ -213,6 +213,7 @@ A case shows the tender's own words marked as evidence, the rule of law behind e
 - `install_cut` — the 70% cut.
 - `todo_list` — tenders not yet processed.
 - `apply_verdict` — applies the auditor's clean / confirmed.
+- `to_trash` / `restore` / `delete_forever` — the trash: a tender's requirements leave the base, come back, or are erased (`KB.erase`).
 - `pipeline/update.py` — the weekly update: download, then run the new tenders.
 - `data.tenders` / `summary` / `ranked` — read the knowledge base for the page.
 - `jobs.start` — runs a command from the page, as if typed, with its output live.

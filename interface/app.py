@@ -14,14 +14,16 @@
     /splits                 purchases split under the $25,000 limit (agent 3)
     /rules                  the rules of law the system checks, with sources
     /how                    the four agents: what each decides, its tools
+    /trash                  tenders taken out: restore, or delete for good
     /jobs/<id>              a command started from the page, its output live
 
-Every command runs in the MODE chosen in the top bar: rules only; hybrid
-(rules + agents, live: uses the model's quota); or hybrid replayed from the
-cache (no network, no quota - for the demo). The page reads what the runs
-wrote (interface/data.py) and starts commands as if typed by hand
-(interface/jobs.py). It listens on this computer only. Styles and script:
-interface/static/.
+Every command runs with the agents (rules + agents: uses the model's quota).
+When no model answers - the day's quota is spent - the command's page says
+so and offers to go on with the rules only. Replaying the agents from the
+cache (no network, no quota) is for the demo and the tests: the command
+line's --offline. The page reads what the runs wrote (interface/data.py) and
+starts commands as if typed by hand (interface/jobs.py). It listens on this
+computer only. Styles and script: interface/static/.
 """
 
 import argparse
@@ -45,32 +47,27 @@ app = FastAPI(title="TenderLens")
 app.mount("/static", StaticFiles(directory=os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "static")), name="static")
 
-MODES = {"rules": "Rules", "hybrid": "Hybrid", "replay": "Replay"}
-AGENT_FLAGS = ["--agent", "--m3-agent", "--m4-checks"]
+# hybrid: rules + agents, the default; rules: the fallback when the quota is
+# spent. "replay" only names commands started before the page dropped it.
+MODES = {"hybrid": "With the agents", "rules": "Rules only",
+         "replay": "Replay"}
 
 
-def command(name, g, ref, mode):
-    """What a button runs, as a person would type it; None when the mode
-    makes no sense for it (new tenders are in no cache to replay)."""
-    agents = AGENT_FLAGS if mode != "rules" else []
+def command(name, mode="hybrid"):
+    """What a button runs, as a person would type it; None for an unknown
+    command."""
+    agents = mode == "hybrid"
     if name == "update":
-        if mode == "replay":
-            return None
-        return ["update"] + (["--rules-only"] if mode == "rules" else [])
-    if name in ("rerun", "tender"):
-        args = ["run", "--group", g, "--reprocess",
-                "all" if name == "rerun" else ref] + agents
-        return ["--offline"] + args if mode == "replay" else args + ["--online"]
+        return ["update"] + ([] if agents else ["--rules-only"])
     if name == "splits":
-        args = ["splits", "--labels", SPLIT_LABELS] + (
+        return ["splits", "--labels", SPLIT_LABELS] + (
             ["--agent"] if agents else [])
-        return ["--offline"] + args if mode == "replay" else args
     if name == "synth":
-        args = ["eval", "synth", "--run"] + (["--agent"] if agents else [])
-        return ["--offline"] + args if mode == "replay" else args
+        return ["eval", "synth", "--run"] + (["--agent"] if agents else [])
     return None
 
 
+# rerun and tender: buttons removed, still named for the older commands' pages
 COMMAND_NAMES = {"update": "Get new tenders", "rerun": "Re-run every tender",
                  "tender": "Run one tender again", "synth": "Synthetic test",
                  "splits": "Split purchases"}
@@ -122,7 +119,8 @@ def state(t):
         return "<span class='state clean'>Clean</span>"
     return ("<span class=state>"
             + {"quarantine": "To review", "base": "In the base",
-               "none": "No documents"}.get(t["pile"], e(t["pile"]))
+               "none": "No documents", "trash": "In the trash"}.get(
+                   t["pile"], e(t["pile"]))
             + "</span>")
 
 
@@ -150,12 +148,8 @@ def known(g):
         raise HTTPException(404, "unknown family")
 
 
-PLACE_OF = {"agents": "how", "synth": "how", "splits": "home"}
-MODE_TIPS = {"rules": "No model is called: free and fast.",
-             "hybrid": "Agents live: uses the Groq quota (the rules "
-                       "assistant uses the local model).",
-             "replay": "Agents' answers from the cache: no network, no "
-                       "quota."}
+PLACE_OF = {"agents": "how", "synth": "how", "splits": "home",
+            "trash": "families"}
 
 
 def pending_splits():
@@ -177,8 +171,8 @@ def static_version():
 
 
 def layout(title, head, body, on=""):
-    """The page: a top bar (four places, the model mode, a running
-    command) and the page."""
+    """The page: a top bar (four places, a running command) and the
+    page."""
     v = static_version()
     on = "families" if on in data.groups() else PLACE_OF.get(on, on)
     todo = (sum(data.summary(g)["to_review"] for g in data.groups())
@@ -190,10 +184,6 @@ def layout(title, head, body, on=""):
                            ("families", "/families", "Families", 0),
                            ("rules", "/rules", "Rules", 0),
                            ("how", "/how", "How it works", 0)))
-    seg = "".join(f"<input type=radio name=mode id=m-{k} value={k}"
-                  f"{' checked' if k == 'rules' else ''}><label for=m-{k} "
-                  f"title='{e(MODE_TIPS[k])}'>{v}</label>"
-                  for k, v in MODES.items())
     live = jobs.current()
     running = (f"<span class=running><span class='pill live'>Running</span> "
                f"<a href='/jobs/{live}'>{e(describe(live)[0])}</a></span>"
@@ -205,7 +195,6 @@ def layout(title, head, body, on=""):
         f"<link rel=stylesheet href='/static/style.css?v={v}'></head><body>"
         f"<header class=top><div class=top-in><a class=brand href='/'>"
         f"TenderLens</a><nav class=places>{places}</nav>{running}"
-        f"<div class=mode><span>Models</span><div class=seg>{seg}</div></div>"
         f"</div></header>"
         f"<main class=page>{head}<div id=msg></div>{body}</main>"
         f"<dialog id=ask><h2></h2><div class=text></div><div class=row>"
@@ -220,13 +209,19 @@ def page_head(title, lede="", acts=""):
             + f"</div><div class=acts>{acts}</div></header>")
 
 
-def describe(job_id):
-    """A command's id -> (what it is, mode, when)."""
-    stamp, _, name = (job_id or "").partition("_")
-    parts = name.split("-")
+def job_parts(job_id):
+    """A command's id -> (command, family, mode)."""
+    parts = (job_id or "").partition("_")[2].split("-")
     mode = parts[-1] if parts[-1] in MODES else ""
     group = parts[1] if len(parts) > 1 and parts[1] not in MODES else ""
-    what = COMMAND_NAMES.get(parts[0], parts[0])
+    return parts[0], group, mode
+
+
+def describe(job_id):
+    """A command's id -> (what it is, mode, when)."""
+    stamp = (job_id or "").partition("_")[0]
+    name, group, mode = job_parts(job_id)
+    what = COMMAND_NAMES.get(name, name)
     return (what + (f" ({group})" if group else ""),
             MODES.get(mode, ""), when(stamp))
 
@@ -244,8 +239,8 @@ def home():
                 rows.append((2, f"<div class=item><div class=edge></div><div "
                                 f"class=body><a class=title href='/group/{g}'>"
                                 f"{e(ref)}</a><div class=kind>"
-                                f"{e(data.NAMES.get(g, g))}: no evidence yet, "
-                                f"re-run the family</div></div></div>"))
+                                f"{e(data.NAMES.get(g, g))}: processed before "
+                                f"cases were saved</div></div></div>"))
                 continue
             why = reasons(c, 1)
             rows.append((0 if c["route"] == "alert" else 1,
@@ -291,8 +286,7 @@ def families():
             f"<td class=r><a href='/group/{g}/unawarded'>{s['no_award']}</a>"
             f"</td><td class='muted nowrap'>{when(s['last_run'])}</td>"
             f"<td class='r nowrap'><a class='btn small' href='/group/{g}/"
-            f"base'>All tenders</a> <button class='btn small' onclick=\"run("
-            f"'rerun','{g}')\">Re-run</button></td></tr>")
+            f"base'>All tenders</a></td></tr>")
     recent = []
     for j in jobs.recent(6):
         what, mode, at = describe(j)
@@ -311,8 +305,11 @@ def families():
             + (f"<section><h2>Recent commands</h2>"
                + tbl(["Command", "Mode", "Started", "Result"], recent)
                + "</section>" if recent else ""))
-    head = page_head("Families", "", "<button class='btn primary' onclick="
-                     "\"run('update')\">Get new tenders</button>")
+    n_trash = len(data.trashed())
+    head = page_head("Families", "", f"<a class=btn href='/trash'>Trash"
+                     f"<span class=count>{n_trash}</span></a><button class='btn "
+                     f"primary' onclick=\"run('update')\">Get new tenders"
+                     f"</button>")
     return layout("Families", head, body, "families")
 
 
@@ -371,11 +368,10 @@ def queue(g: str, show: str = "review"):
             f"<details class='component bare'><summary><b>{len(bare)} "
             f"case{'s' if len(bare) != 1 else ''} without evidence yet</b>"
             f"<span class=muted>made before cases were saved</span></summary>"
-            f"<div class=inner><p class=muted>Re-run every tender of the "
-            f"family to rebuild them with today's rules. Tenders you already "
-            f"judged keep your verdict.</p><p><button class=btn onclick=\"run("
-            f"'rerun','{g}')\">Re-run every tender</button></p><div "
-            f"class=queue>{''.join(bare)}</div></div></details>")
+            f"<div class=inner><p class=muted>Read before the evidence was "
+            f"kept. Judge them as they are, or move them to the trash from "
+            f"their page.</p><div class=queue>{''.join(bare)}</div></div>"
+            f"</details>")
     head = page_head(
         f"{g} {data.NAMES.get(g, '')}",
         "Alert first, then watch. Mark clean returns a tender to the base; "
@@ -449,8 +445,7 @@ def base(g: str, pile: str = "all"):
     lines = []
     for t in shown:
         ref, c = t["reference"], t["case"]
-        name = (f"<a href='/group/{g}/case/{quote(ref)}'>{e(ref)}</a>"
-                if c else e(ref))
+        name = f"<a href='/group/{g}/case/{quote(ref)}'>{e(ref)}</a>"
         read_as = "Installation" if t["installed"] else "New tender"
         lines.append(f"<tr><td class=mono>{name}</td><td>{e(t['pub_date'])}"
                      f"</td><td>{e(c['title'] if c else '')}</td><td>"
@@ -634,17 +629,26 @@ def case(g: str, ref: str):
     if not t:
         raise HTTPException(404, "unknown tender")
     c, docs = t["case"], data.document_names(ref)
-    judge = (f"<div class=box><h3>Your verdict</h3><p>Now: {state(t)}</p>"
-             f"<textarea id=note placeholder='Why (optional)'></textarea>"
-             f"<div class=row>{verdict_buttons(g, t, small=False)}</div></div>"
-             f"<div class=box><button class='btn small' onclick=\"run("
-             f"'tender','{g}','{e(ref)}')\">Run this tender again</button>"
-             f"</div>")
+    if t["pile"] == "trash":
+        judge = (f"<div class=box><h3>In the trash</h3><p>Since "
+                 f"{e(when(t['since']))}. Its requirements are out of the "
+                 f"knowledge base.</p><div class=row>{trash_buttons(g, t)}"
+                 f"</div></div>")
+    else:
+        judge = (f"<div class=box><h3>Your verdict</h3><p>Now: {state(t)}</p>"
+                 f"<textarea id=note placeholder='Why (optional)'></textarea>"
+                 f"<div class=row>{verdict_buttons(g, t, small=False)}</div>"
+                 f"</div><div class=box><button class='btn small' onclick="
+                 f"\"trash('{g}','{e(ref)}','trash')\">Move to trash</button>"
+                 f"<p class='small muted'>It leaves the queue, and its "
+                 f"requirements leave the knowledge base. You can restore it "
+                 f"from the trash.</p></div>")
     if not c:
-        body = (f"<div class=case><div><p class=muted>This tender was processed "
-                f"before cases were saved. Run it again to see its evidence."
-                f"</p></div><aside class=panel>{judge}{docs_box(ref, docs)}"
-                f"</aside></div>")
+        what = ("Nothing to read: no documents." if t["pile"] == "none" else
+                "This tender was processed before cases were saved, so its "
+                "evidence was not kept.")
+        body = (f"<div class=case><div><p class=muted>{what}</p></div><aside "
+                f"class=panel>{judge}{docs_box(ref, docs)}</aside></div>")
         return layout(ref, page_head(ref), body, g)
     body = (f"<div class=case><div>{case_main(c, ref, docs)}</div>"
             f"<aside class=panel>{judge}{facts_box(c, ref)}"
@@ -985,6 +989,35 @@ def answer_html(r):
     return "".join(out)
 
 
+def trash_buttons(g, t):
+    ref = e(t["reference"])
+    return (f"<button class='btn small' onclick=\"trash('{g}','{ref}',"
+            f"'restore')\">Restore</button><button class='btn small danger' "
+            f"onclick=\"trash('{g}','{ref}','delete')\">Delete forever"
+            f"</button>")
+
+
+@app.get("/trash", response_class=HTMLResponse)
+def trash_page():
+    lines = []
+    for t in data.trashed():
+        g, ref, c = t["group"], t["reference"], t["case"]
+        lines.append(
+            f"<tr><td class=mono><a href='/group/{g}/case/{quote(ref)}'>"
+            f"{e(ref)}</a></td><td>{e(c['title'] if c else '')}</td><td>"
+            f"{e(data.NAMES.get(g, g))}</td><td class=nowrap>"
+            f"{e(when(t['since']))}</td><td class='r nowrap'>"
+            f"{trash_buttons(g, t)}</td></tr>")
+    body = (tbl(["Reference", "Title", "Family", "In the trash since", ""],
+                lines, right=(4,)) if lines else
+            "<div class='inbox empty'>The trash is empty.</div>")
+    head = page_head(
+        "Trash", "Tenders taken out of the knowledge base: their "
+        "requirements no longer count, and runs skip them. Restore puts one "
+        "back where it was; Delete forever erases it.")
+    return layout("Trash", head, body, "trash")
+
+
 @app.get("/jobs/{job_id}", response_class=HTMLResponse)
 def job_page(job_id: str):
     out = jobs.output(job_id)
@@ -999,8 +1032,18 @@ def job_page(job_id: str):
     acts = ("<button class=btn onclick=\"post('/api/stop')\">Stop</button>"
             if live else "") + "<a class=btn href='/'>To decide</a>"
     head = page_head(what, f"{status} Started {at}"
-                     + (f", mode {mode}." if mode else "."), acts)
-    body = (f"<pre class=console id=log data-job='{e(job_id)}'"
+                     + (f", {mode.lower()}." if mode else "."), acts)
+    name, _, run_mode = job_parts(job_id)
+    down = ""
+    if not live and run_mode == "hybrid" and jobs.model_down(text):
+        down = (f"<div class='box warn'><h3>Model quota used up</h3><p>The "
+                f"agents got no answer from the model, so the command stopped "
+                f"where it was. Continue with the rules only? Tenders then "
+                f"get no agent reading; nothing is read twice.</p><div "
+                f"class=row><button class='btn primary' onclick=\"run('{name}',"
+                f"'','','rules')\">Continue with rules only</button></div>"
+                f"</div>")
+    body = (down + f"<pre class=console id=log data-job='{e(job_id)}'"
             f"{' data-live=1' if live else ''}>{e(text)}</pre>")
     return layout(what, head, body)
 
@@ -1031,13 +1074,26 @@ async def api_ask(request: Request):
     from agents import rules_agent
     import asyncio
     b = await request.json()
-    q, mode = (b.get("question") or "").strip()[:500], b.get("mode") or "rules"
+    q = (b.get("question") or "").strip()[:500]
     if not q:
         return refuse("Type a question.")
-    # the local model is free: every mode uses it, Replay from its cache only
-    r = await asyncio.to_thread(rules_agent.ask_rules, q, model=True,
-                                cache_only=mode == "replay")
+    # the local model is free and on this computer: always used
+    r = await asyncio.to_thread(rules_agent.ask_rules, q, model=True)
     return {"html": answer_html(r)}
+
+
+@app.post("/api/trash")
+async def api_trash(request: Request):
+    b = await request.json()
+    g, ref = b.get("group") or "", b.get("reference") or ""
+    if g not in data.groups() or not data.find(g, ref):
+        return refuse("Unknown tender.")
+    if jobs.running():
+        return refuse("A command is running. The trash waits until it ends.",
+                      409)
+    said = data.trash_action(g, ref, b.get("action") or "")
+    return (refuse(said[6:].capitalize() + ".") if said.startswith("skip")
+            else {"done": said})
 
 
 @app.post("/api/split_verdict")
@@ -1051,17 +1107,11 @@ async def api_split_verdict(request: Request):
 @app.post("/api/jobs/{name}")
 async def api_job(name: str, request: Request):
     b = await request.json()
-    g, ref, mode = (b.get("group") or "", b.get("reference") or "",
-                    b.get("mode") or "rules")
-    if (mode not in MODES
-            or (name in ("rerun", "tender") and g not in data.groups())
-            or (name == "tender" and not data.find(g, ref))):
-        return refuse("Unknown command.")
-    args = command(name, g, ref, mode)
+    mode = b.get("mode") or "hybrid"
+    args = command(name, mode) if mode in ("hybrid", "rules") else None
     if not args:
-        return refuse("New tenders are in no cache, so they cannot be "
-                      "replayed. Choose Rules or Hybrid to get them.")
-    job_id = jobs.start("-".join(x for x in (name, g, mode) if x), args)
+        return refuse("Unknown command.")
+    job_id = jobs.start(f"{name}-{mode}", args)
     return {"id": job_id} if job_id else refuse(
         "A command is already running. Wait for it to end, or stop it.", 409)
 

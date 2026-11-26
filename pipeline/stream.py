@@ -61,6 +61,14 @@ STORAGE  reports/kb/<group>/  - append-only, so a crash loses at most the
   Base and quarantine are two piles decided by the register, not two files:
   moving a tender is one appended line, never a rewrite.
 
+  TRASH  The auditor can move a tender to the trash (pile = trash): one
+  appended line. Its requirements leave the base at once (level 2 reads the
+  base pile only), it leaves every queue, and runs skip it. Restore appends
+  the line it had before. Delete forever is the one rewrite: every line of
+  the tender is erased from the files above and the batch queues, and one
+  "deleted" line stays in the register so the next run does not read the
+  tender again.
+
   The attribute map is applied ON READ, so labels 05 learns later improve
   the base retroactively. Labels not yet in the map are kept as written.
 """
@@ -110,6 +118,9 @@ REG_COLS = ["at", "reference", "run_id", "pub_date", "event", "status",
 FB_COLS = ["reference", "verdict", "note", "reviewer", "date"]
 QUARANTINE_ROUTES = {"alert", "watch"}
 RECHECK = {"still_open", "award_not_found"}     # gated again on every run
+# A tender the auditor took out: in the trash, or deleted for good. Runs,
+# queues and verdicts leave it alone.
+GONE = {"trashed", "deleted"}
 # The installation reads the oldest 70% of the tenders to process; the newest
 # 30% play the new tenders, so the platform is tested on tenders it never saw.
 INSTALL_SHARE = 0.7
@@ -186,6 +197,55 @@ class KB:
                 except ValueError:
                     bad += 1
         return out, bad
+
+    def events(self, ref):
+        """Every register line of one tender, oldest first."""
+        with io.open(self.reg, encoding="utf-8", newline="") as f:
+            return [r for r in csv.DictReader(f) if r["reference"] == ref]
+
+    def erase(self, ref):
+        """Delete forever: every line of `ref` out of the knowledge base's
+        files and batch queues. Each file is written to a copy first and
+        swapped in whole, so a crash leaves the old file or the new one."""
+        for path, cols in ((self.obs, OBS_COLS), (self.reg, REG_COLS),
+                           (self.fb, FB_COLS)):
+            with io.open(path, encoding="utf-8", errors="replace",
+                         newline="") as f:
+                rows = [r for r in csv.DictReader(f)
+                        if (r.get("reference") or "").strip() != ref]
+            with io.open(path + ".tmp", "w", encoding="utf-8",
+                         newline="") as f:
+                w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
+                w.writeheader()
+                w.writerows(rows)
+            os.replace(path + ".tmp", path)
+        for path, where in ((self.case_log, lambda e: e["case"]["reference"]),
+                            (self.unawarded, lambda e: e["reference"])):
+            if not os.path.exists(path):
+                continue
+            keep = []
+            with io.open(path, encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        if where(json.loads(line)) == ref:
+                            continue
+                    except (ValueError, KeyError, TypeError):
+                        pass             # a cut line stays as it was
+                    keep.append(line)
+            with io.open(path + ".tmp", "w", encoding="utf-8") as f:
+                f.writelines(keep)
+            os.replace(path + ".tmp", path)
+        queues = glob.glob(os.path.join(self.batches, "*_queue.json")) + [
+            os.path.join(self.dir, "current_queue.json")]
+        for path in queues:
+            if not os.path.exists(path):
+                continue
+            with io.open(path, encoding="utf-8") as f:
+                q = json.load(f)
+            cases = [c for c in q["cases"] if c["reference"] != ref]
+            if len(cases) != len(q["cases"]):
+                q["meta"]["tenders"] = len(cases)
+                report.write_outputs(cases, q["meta"], path[:-len(".json")])
 
     def observations(self, state, pile):
         """Current-run rows of every tender now in `pile`, raw labels."""
@@ -390,9 +450,12 @@ def reprocess_list(kb, notices, group, state, which):
         refs = [r for r, ev in state.items() if ev["pile"] == "quarantine"]
     else:
         refs = list(which)
-    out, skipped, unknown = [], [], []
+    out, skipped, unknown, gone = [], [], [], []
     for ref in refs:
-        if ref not in notices or one_tender.select({ref: notices[ref]},
+        if (state.get(ref) or {}).get("status") in GONE:
+            if not ("all" in which or "quarantine" in which):
+                gone.append(ref)
+        elif ref not in notices or one_tender.select({ref: notices[ref]},
                                                    group) != [ref]:
             unknown.append(ref)
         elif ref in judged:
@@ -403,6 +466,8 @@ def reprocess_list(kb, notices, group, state, which):
         print(f"  not re-run - judged by the auditor: {', '.join(skipped)}")
     if unknown:
         print(f"  not in category {group}: {', '.join(unknown)}")
+    if gone:
+        print(f"  not re-run - in the trash or deleted: {', '.join(gone)}")
     return [ref for _, ref in sorted(out)]
 
 
@@ -452,8 +517,7 @@ def run(a):
                                                   list, type(None)))},
                    "reprocessed": list(a.reprocess or []),
                    "models": {p["name"]: llm.models_for(p)
-                              for p in llm.PROVIDERS},
-                   "share": llm.SHARE},
+                              for p in llm.PROVIDERS}},
                   f, indent=1)
     cases, piles, gated = [], collections.Counter(), collections.Counter()
     for i, ref in enumerate(todo, 1):
@@ -545,7 +609,8 @@ def queue(a):
         pick = {}
         for e in logged:                 # the case the register points to
             ev = state.get(e["case"]["reference"])
-            if ev and ev["run_id"] == e["run_id"]:
+            if (ev and ev["run_id"] == e["run_id"]
+                    and ev["status"] not in GONE):
                 pick[e["case"]["reference"]] = dict(
                     e["case"], pile=ev["pile"], status=ev["status"])
         cases = list(pick.values())
@@ -578,6 +643,8 @@ def apply_verdict(kb, state, ref, verdict, note=""):
         return "skip: verdict must be 'clean' or 'confirmed'"
     if not ev:
         return "skip: not in the register"
+    if ev["status"] in GONE:
+        return "skip: the tender is in the trash"
     status = "reviewed_clean" if verdict == "clean" else "confirmed"
     if ev["status"] == status:
         return "already applied"
@@ -592,6 +659,53 @@ def apply_verdict(kb, state, ref, verdict, note=""):
                     observations=ev["observations"], note=note[:200])
     state[ref] = {**ev, "status": status, "pile": pile}
     return f"{verdict} -> {pile}"
+
+
+def to_trash(kb, state, ref, note=""):
+    """Take a tender out: its requirements leave the base, it leaves the
+    queues, runs skip it. One appended line; says what happened."""
+    ev = state.get(ref)
+    if not ev:
+        return "skip: not in the register"
+    if ev["status"] in GONE:
+        return "skip: already in the trash"
+    kb.append_event(reference=ref, run_id=ev["run_id"],
+                    pub_date=ev["pub_date"], event="trashed",
+                    status="trashed", pile="trash", score=ev["score"],
+                    observations=ev["observations"], note=note[:200])
+    state[ref] = {**ev, "status": "trashed", "pile": "trash"}
+    return "moved to the trash"
+
+
+def restore(kb, state, ref):
+    """Back out of the trash: the line the tender had before, appended
+    again, so it returns to the pile it left (its requirements to the base
+    if it was there)."""
+    ev = state.get(ref)
+    if not ev or ev["status"] != "trashed":
+        return "skip: not in the trash"
+    before = [r for r in kb.events(ref) if r["status"] != "trashed"]
+    if not before:
+        return "skip: nothing to restore it to"
+    back = dict(before[-1], at=time.strftime("%Y-%m-%d %H:%M:%S"),
+                event="restored", note="restored from the trash")
+    kb.append_event(**back)
+    state[ref] = back
+    return f"restored -> {back['pile']}"
+
+
+def delete_forever(kb, state, ref):
+    """Erase a tender in the trash from the knowledge base. One "deleted"
+    line is kept so the next run does not read the tender again."""
+    ev = state.get(ref)
+    if not ev or ev["status"] != "trashed":
+        return "skip: only a tender in the trash can be deleted"
+    kb.erase(ref)
+    kb.append_event(reference=ref, run_id="", pub_date=ev["pub_date"],
+                    event="deleted", status="deleted", pile="none", score=0,
+                    observations=0, note="deleted by the auditor")
+    state[ref] = {**ev, "status": "deleted", "pile": "none"}
+    return "deleted"
 
 
 def feedback(a):

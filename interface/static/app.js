@@ -1,40 +1,4 @@
-// TenderLens - the auditor's page: the mode, verdicts, commands, live output.
-
-const MODE_NOTES = {
-  rules: "No model is called: free and fast.",
-  hybrid: "Rules + the M2 and M3 agents and M4's checks, live. Uses the model's daily quota.",
-  replay: "The agents' answers come from the cache: no network, no quota, the same result every time.",
-};
-const CONFIRM_NOTES = {
-  rules: "No model is called.",
-  hybrid: "The M2 and M3 agents and M4's checks call the model (Groq). Its free quota " +
-    "is about 200,000 tokens a day per key: one tender takes about a minute, a whole " +
-    "family can take days. A run that spends the quota stops; the next one resumes there.",
-  replay: "The agents' answers come from the cache: no network, no quota, the same " +
-    "result every time. A tender the agents have never seen stops the run.",
-};
-const MODE_NAMES = {rules: "Rules only", hybrid: "Hybrid, live", replay: "Hybrid, replayed"};
-
-function mode() {
-  const r = document.querySelector("input[name=mode]:checked");
-  return r ? r.value : "rules";
-}
-function showMode() {
-  const n = document.getElementById("mode-note");
-  if (n) n.textContent = MODE_NOTES[mode()];
-}
-(function () {
-  let saved = null;
-  try { saved = localStorage.getItem("mode"); } catch (e) {}
-  const r = saved && document.querySelector(`input[name=mode][value=${saved}]`);
-  if (r) r.checked = true;
-  document.querySelectorAll("input[name=mode]").forEach((el) =>
-    el.addEventListener("change", () => {
-      try { localStorage.setItem("mode", el.value); } catch (e) {}
-      showMode();
-    }));
-  showMode();
-})();
+// TenderLens - the auditor's page: verdicts, the trash, commands, live output.
 
 async function post(url, body) {
   const m = document.getElementById("msg");
@@ -56,7 +20,7 @@ async function askRules(ev) {
   ev.preventDefault();
   const q = document.getElementById("q").value, out = document.getElementById("answer");
   out.innerHTML = "<p class='small muted'>Searching the texts and asking the local model. A first answer can take a minute.</p>";
-  const j = await post("/api/ask", {question: q, mode: mode()});
+  const j = await post("/api/ask", {question: q});
   out.innerHTML = j ? j.html : "";
 }
 
@@ -74,17 +38,34 @@ function ask(title, html, go, label) {
   d.showModal();
 }
 
-// Start a command in the chosen mode. Hybrid and anything with an
-// explanation ask first; the page then follows the command's output.
-function run(name, group, ref, title, html) {
-  const m = mode();
+// Start a command: with the agents, unless the page offers the rules only
+// (the quota is spent). An explanation, when given, is asked first; the page
+// then follows the command's output.
+function run(name, title, html, m) {
   const go = async () => {
-    const j = await post("/api/jobs/" + name, {group: group || "", reference: ref || "", mode: m});
+    const j = await post("/api/jobs/" + name, {mode: m || "hybrid"});
     if (j) location.href = "/jobs/" + j.id;
   };
-  if (m !== "hybrid" && !html) return go();
-  ask(title || "Run with the agents?",
-      (html || "") + `<p><b>Mode: ${MODE_NAMES[m]}.</b> ${CONFIRM_NOTES[m]}</p>`, go);
+  if (!html) return go();
+  ask(title, html, go);
+}
+
+const TRASH_ASK = {
+  trash: ["Move to trash?", "<p>The tender leaves the queue and its requirements " +
+    "leave the knowledge base: later tenders are no longer compared with it. " +
+    "Restore brings it back.</p>", "Move to trash"],
+  delete: ["Delete forever?", "<p>Every line of this tender is erased from the " +
+    "knowledge base. This cannot be undone. The next runs will not read it again.</p>",
+    "Delete forever"],
+};
+
+async function trash(group, ref, action) {
+  const go = async () => {
+    if (await post("/api/trash", {group, reference: ref, action})) location.reload();
+  };
+  const a = TRASH_ASK[action];
+  if (!a) return go();
+  ask(a[0], a[1], go, a[2]);
 }
 
 // A command's output, followed while it runs.
