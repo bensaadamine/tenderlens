@@ -130,35 +130,28 @@ def test_llm():
         for k, v in saved.items():
             setattr(llm, k, v)
 
-    # a cached answer from a model this run may not call (Gemini, no
-    # sharing): not used live; used by an offline replay, which says so
+    # an agent's asker counts which model answered each call
     saved = {k: getattr(llm, k) for k in ("_post", "_load_cache", "_log_usage",
                                           "available")}
-    gem = llm.PROVIDERS[-1]["strong"]                # Gemini
-    llm._load_cache = lambda path=None: {llm._key(gem, "s", "q"):
-                                         {"answer": '{"from": "gemini"}'}}
+    groq_model = llm.PROVIDERS[0]["strong"]
+    llm._load_cache = lambda path=None: {llm._key(groq_model, "s", "q"):
+                                         {"answer": '{"from": "groq"}'}}
     llm._log_usage = lambda *a, **k: None
     llm.available = lambda: []
     llm._post = lambda *a, **k: ("paid", {})
     try:
-        try:
-            llm.ask("s", "q", strong=True)
-            live = "used"
-        except llm.NoProvider:
-            live = "not used"
         os.environ["TENDERLENS_OFFLINE"] = "1"
         meta = {}
         got = llm.ask("s", "q", strong=True, meta=meta)
         models = collections.Counter()
         parsed = llm.json_asker(models, strong=True)("s", "q")
-        check("a live run ignores another model's cached answer; a replay "
-              "uses it and says which model",
-              live == "not used" and got == '{"from": "gemini"}'
-              and meta == {"provider": "gemini", "model": gem,
+        check("a replay says which model answered",
+              got == '{"from": "groq"}'
+              and meta == {"provider": "groq", "model": groq_model,
                            "cached": True})
         check("an agent's asker counts which model answered each call",
-              parsed == {"from": "gemini"}
-              and models == {f"gemini/{gem}": 1})
+              parsed == {"from": "groq"}
+              and models == {f"groq/{groq_model}": 1})
     finally:
         os.environ.pop("TENDERLENS_OFFLINE", None)
         for k, v in saved.items():
@@ -168,23 +161,22 @@ def test_llm():
     saved = {k: getattr(llm, k) for k in ("_post", "_load_cache", "_save_cache",
                                           "_log_usage", "_log_error",
                                           "available", "_throttle_p")}
-    saved_sleep, saved_share = time.sleep, llm.SHARE
+    saved_sleep = time.sleep
     store, script, seen = {}, [], []
     llm._load_cache = lambda path=None: store
     llm._save_cache = lambda c, path=None: None
     llm._log_usage = llm._log_error = lambda *a, **k: None
     llm._throttle_p = lambda *a, **k: None
     time.sleep = lambda s: None
-    g, m = llm.PROVIDERS[0], llm.PROVIDERS[-1]      # Groq, Gemini
-    llm.available = lambda: [g, m]
-    llm.SHARE = False                    # fixed order: Groq, then Gemini
+    g, g2 = llm.PROVIDERS[0], llm.PROVIDERS[1]      # Groq's two keys
+    llm.available = lambda: [g, g2]
 
     def err(code, body, headers=None):
         return urllib.error.HTTPError("u", code, "x", headers or {},
                                       io.BytesIO(body.encode()))
 
     def fake_post(p, model, system, user, mt, temp, timeout, tools=None):
-        seen.append((p["name"], mt))
+        seen.append((llm._id(p), mt))
         r = script.pop(0)
         if isinstance(r, Exception):
             raise r
@@ -209,10 +201,10 @@ def test_llm():
         got = run("q2", err(429, "slow down", {"retry-after": "1"}), "ok2")
         check("a rate limit is waited out and retried", got == "ok2"
               and len(seen) == 2)
-        got = run("q3", err(429, "tokens per day exceeded"), "from gemini")
-        check("a daily quota moves on to the next provider",
-              got == "from gemini" and [n for n, _t in seen] == ["groq",
-                                                                 "gemini"])
+        got = run("q3", err(429, "tokens per day exceeded"), "from key 2")
+        check("a daily quota moves on to the second key",
+              got == "from key 2" and [n for n, _t in seen] == [
+                  llm._id(g), llm._id(g2)])
         got = run("q4", err(404, "model not found"), err(404, "model not found"))
         check("a retired model says so, never switches model",
               "pinned model openai/gpt-oss-20b is not served" in got
@@ -220,53 +212,27 @@ def test_llm():
         got = run("q5", OSError("down"), OSError("down"))
         check("a network error on every provider is an error, not an "
               "empty answer", got.startswith("raised: every provider failed")
-              and "groq: OSError" in got and "gemini: OSError" in got)
+              and "groq: OSError" in got)
         got = run("q6", "", "", "", "", "", "")
         check("an answer still empty after the retries is never cached",
               got.startswith("raised:") and "empty answer" in got
               and not any(k for k, v in store.items()
                           if v["answer"] == ""))
     finally:
-        time.sleep, llm.SHARE = saved_sleep, saved_share
+        time.sleep = saved_sleep
         llm._down_until.clear()
         for k, v in saved.items():
             setattr(llm, k, v)
 
-    groq, groq2, gemini = llm.PROVIDERS
-    check("the pinned models are the ones the cache was filled with",
-          llm.models_for(groq) == ("openai/gpt-oss-20b",
-                                   "openai/gpt-oss-120b")
+    groq, groq2 = llm.PROVIDERS
+    check("the pinned models are the ones the cache was filled with; Groq "
+          "only", llm.models_for(groq) == ("openai/gpt-oss-20b",
+                                         "openai/gpt-oss-120b")
           and llm.models_for(groq2) == llm.models_for(groq)
-          and llm.models_for(gemini)[1] == "models/gemini-3-flash-preview")
-    keys = {k: os.environ.get(k) for k in ("GROQ_API_KEY", "GROQ_API_KEY2",
-                                           "GEMINI_API_KEY")}
-    os.environ.update(GROQ_API_KEY="g", GEMINI_API_KEY="m")
-    os.environ.pop("GROQ_API_KEY2", None)
-    try:
-        only = [p["name"] for p in llm.available()]
-        llm.SHARE = True
-        shared = [p["name"] for p in llm.available()]
-    finally:
-        llm.SHARE = False
-        for k, v in keys.items():
-            if v is None:
-                os.environ.pop(k, None)
-            else:
-                os.environ[k] = v
-    check("Groq only, even with a Gemini key; both when sharing",
-          only == ["groq"] and shared == ["groq", "gemini"])
-    saved_win = dict(llm._windows)
-    llm._windows["groq"] = [(time.time(), 10 ** 6)]     # Groq's minute is full
-    try:
-        llm.SHARE = True
-        check("TENDERLENS_SHARE=1 restores sharing: the free one first",
-              llm._order([groq, gemini], 100) == [gemini, groq])
-    finally:
-        llm.SHARE = False
-        llm._windows.clear()
-        llm._windows.update(saved_win)
+          and {p["name"] for p in llm.PROVIDERS} == {"groq"})
 
     # A second Groq key: same provider and model, its own limits.
+    saved_win = dict(llm._windows)
     saved_down = dict(llm._down_until)
     llm._windows["groq"] = [(time.time(), 10 ** 6)]     # key 1's minute is full
     try:

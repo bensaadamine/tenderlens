@@ -4,11 +4,8 @@ LLM access for TenderLens: one pinned model.
 Groq's gpt-oss-120b answers every agent call ("strong"); gpt-oss-20b the
 label map's quick calls ("fast"). When Groq's daily quota is spent the run
 stops, and the next run resumes where it stopped - every verdict comes from
-the same model. TENDERLENS_SHARE=1 also sends calls to Gemini (twice the
-calls a minute, for a first run of a whole category; verdicts can then
-differ between runs). Both speak the OpenAI chat-completions format (Gemini
-through its compatibility endpoint), so there is one code path and no SDK to
-install: urllib only.
+the same model. Groq speaks the OpenAI chat-completions format, so there is
+one code path and no SDK to install: urllib only.
 
 Keys go in .env (never committed):
 
@@ -17,7 +14,6 @@ Keys go in .env (never committed):
                               verdicts do not change; each call goes to the
                               key that can take it soonest - twice the calls
                               a minute, twice the daily quota)
-    GEMINI_API_KEY=...        (optional, used only with TENDERLENS_SHARE=1)
 
 With no key, ask() raises NoProvider; when every provider fails, a
 RuntimeError. The agents then stop the run (the next run resumes there) or,
@@ -58,7 +54,7 @@ ERRORS_PATH = "reports/llm_errors.csv"
 # Tokens per minute each provider may take, a little under its free tier: a
 # 429 costs the Retry-After wait plus a round trip, and the retry spends the
 # tokens again.
-BUDGETS = {"groq": 5500, "gemini": 5500}
+BUDGETS = {"groq": 5500}
 # Throttle, rest and quota are counted per KEY (_id): two Groq keys are two
 # accounts, each with its own limits.
 _windows = {}         # key -> [(unix_time, tokens)]
@@ -66,11 +62,8 @@ _last_call = {}       # key -> unix_time
 _down_until = {}      # key -> unix_time; a key that errored rests
 DOWN_FOR = 60         # seconds
 DAY_OUT = 6 * 3600    # seconds a provider is skipped after "quota per day"
-# Groq only, by default: two models answer differently, so mixing them made
-# verdicts differ between runs. TENDERLENS_SHARE=1 shares calls with Gemini
-# (user decision 2026-10-19): the provider that can take a call soonest gets
-# it - twice the calls a minute, for a first run of a whole category.
-SHARE = os.environ.get("TENDERLENS_SHARE") == "1"
+# Groq only: two models answer differently, so mixing them made verdicts
+# differ between runs (a second provider, Gemini, was removed 2026-11-26).
 # Native tool calling: the request carries a schema per tool and the model's
 # tool call comes back as {"thought", "action", "args"} - the shape the
 # agents read, so a JSON reply still works. Before it, about half the agent
@@ -89,10 +82,6 @@ GROQ = {"name": "groq", "base": "https://api.groq.com/openai/v1",
 PROVIDERS = [
     dict(GROQ, env="GROQ_API_KEY"),
     dict(GROQ, env="GROQ_API_KEY2", key="groq#2"),
-    {"name": "gemini", "env": "GEMINI_API_KEY", "shared_only": True,
-     "base": "https://generativelanguage.googleapis.com/v1beta/openai",
-     "fast": "models/gemini-2.5-flash",
-     "strong": "models/gemini-3-flash-preview"},
 ]
 
 
@@ -166,11 +155,8 @@ def _key(model, system, user):
 
 # -------------------------------------------------------------- the one call
 def allowed():
-    """The providers whose model may answer this run: Groq, and Gemini only
-    when sharing (TENDERLENS_SHARE=1). A cached answer from another model is
-    not used - except in an offline replay, which reuses whatever answered
-    before and says which (meta, json_asker)."""
-    return [p for p in PROVIDERS if SHARE or not p.get("shared_only")]
+    """The providers whose model may answer: Groq's keys."""
+    return list(PROVIDERS)
 
 
 def available():
@@ -287,8 +273,7 @@ def _wait_needed(name, est, now=None):
 
 def _order(provs, est):
     """The key that can take this call soonest first: one not resting, with
-    room in its minute, used least recently. (Groq's keys only, unless
-    sharing with Gemini.)"""
+    room in its minute, used least recently."""
     if len(provs) < 2:
         return provs
     now = time.time()
@@ -683,8 +668,7 @@ def main():
                   f"{d['cached']:7d} {d['tok']:9,}")
         return 0
 
-    print("calls go to"
-          + (" (sharing calls: TENDERLENS_SHARE=1)" if SHARE else "") + ":")
+    print("calls go to:")
     for p in provs:
         fast, strong = models_for(p)
         print(f"  {_id(p):10s} fast={fast}  strong={strong}")

@@ -9,9 +9,9 @@ another module.
     s = Settings.from_args(a)                 # the command's arguments
     case = one_tender.run_one(ref, shared, s)
 
-Two choices belong to the LLM client and are read there (tools/llm.py):
+One choice belongs to the LLM client and is read there (tools/llm.py):
 TENDERLENS_OFFLINE=1 (answers from the cache only: python tenderlens.py
---offline ...) and TENDERLENS_SHARE=1 (calls shared with Gemini).
+--offline ...).
 """
 
 from dataclasses import dataclass

@@ -10,7 +10,7 @@ TENDERLENS - the one command. Every part of the system starts here.
     python tenderlens.py serve                     the auditor's page (to decide, families,
                                                    rules, how it works)
     python tenderlens.py test                      every offline test (no data, no network)
-    python tenderlens.py eval m2|m4|synth [...]    the measurements
+    python tenderlens.py eval m2|synth|laws [...]  the measurements
     python tenderlens.py update [--groups 2510,4110]
                                                    download the latest notices, awards
                                                    and documents, then run the new
@@ -54,7 +54,6 @@ COMMANDS = {
     "llm": "tools.llm",
 }
 EVALS = {"m2": "tests.m2_eval", 
-         "m4": "tests.m4_eval",
          "synth": "tests.synth_rig",
          "laws": "tests.law_eval"}
 PREPARE = {"profile": "prepare.profile_tenders", 

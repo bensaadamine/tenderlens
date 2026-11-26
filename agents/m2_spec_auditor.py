@@ -138,8 +138,8 @@ def run_level1(reference, online=False, agent=False, trace=None, title="",
             l1 = _agent_pass(reference, l1, online, trace, title,
                              on_outage, agent_only)
         elif on_outage == "stop":
-            raise AgentUnavailable("no LLM key is set (GROQ_API_KEY, "
-                                   "GEMINI_API_KEY in .env)")
+            raise AgentUnavailable("no LLM key is set (GROQ_API_KEY in "
+                                   ".env)")
         else:
             trace.append("--agent asked but no LLM key is set - rules only")
     return l1

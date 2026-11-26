@@ -30,12 +30,12 @@ def write_outputs(cases, meta, prefix):
         json.dump({"meta": meta, "cases": cases}, f, indent=1, default=str)
     with io.open(out_csv, "w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["rank", "reference", "route", "score", "m1_route",
+        w.writerow(["rank", "reference", "route", "score",
                     "readable", "verified_claims", "title", "entity",
                     "supplier"])
         for i, c in enumerate(cases, 1):
             w.writerow([i, c["reference"], c["route"], c["score"],
-                        c["m1_route"], int(c["readable"]),
+                        int(c["readable"]),
                         sum(1 for x in c["claims"] if x["verified"]),
                         c["title"], c["entity"],
                         (c.get("award") or {}).get("supplier", "")])

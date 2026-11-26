@@ -132,12 +132,14 @@ def has_documents(reference, text_dir=None):
 
 
 def screen(reference, notices=None, wstats=None, text_dir=None):
-    """Screen ONE tender. Returns route, signals and the reason for each."""
+    """Screen ONE tender. Returns its signals and the reason for each. The
+    signals only rank a case (M4); they never decide whether a tender is
+    read (decision 28)."""
     notices = load_notices() if notices is None else notices
     row = notices.get(reference)
     if row is None:
         return {"reference": reference, "error": "not in the notice feed",
-                "route": "close", "signals": []}
+                "signals": []}
     wstats = method_windows(notices) if wstats is None else wstats
 
     method = (row.get(C_METHOD) or "").strip()
@@ -197,17 +199,6 @@ def screen(reference, notices=None, wstats=None, text_dir=None):
     weak = [s for s in signals if s["weight"] == "weak"]
 
     docs = has_documents(reference, text_dir)
-    if strong or len(weak) >= 2:
-        route = "deep"
-    elif weak:
-        route = "watch"
-    else:
-        route = "close"
-
-    # A tender M2 cannot read cannot be analysed, however it screened. Say
-    # so plainly rather than sending it on to fail quietly downstream.
-    if route == "deep" and not docs:
-        route = "deep_unreadable"
 
     return {
         "reference": reference,
@@ -218,7 +209,6 @@ def screen(reference, notices=None, wstats=None, text_dir=None):
         "published": (row.get(C_PUB) or "")[:10],
         "window_days": round(d, 1) if d is not None else None,
         "documents": docs,
-        "route": route,
         "strong": len(strong), "weak": len(weak),
         "signals": signals,
     }
@@ -243,9 +233,7 @@ def screen_all(notices=None, only_unspsc4=None, only_with_docs=False,
         if only_with_docs and not res.get("documents"):
             continue
         out.append(res)
-    order = {"deep": 0, "deep_unreadable": 1, "watch": 2, "close": 3}
-    out.sort(key=lambda r: (order.get(r["route"], 9), -r["strong"],
-                            -r["weak"]))
+    out.sort(key=lambda r: (-r["strong"], -r["weak"]))
     return out
 
 
@@ -268,19 +256,16 @@ def main():
         if args.json:
             print(json.dumps(q[:args.limit], indent=2))
             return
-        counts = collections.Counter(r["route"] for r in q)
+        with_sig = sum(1 for r in q if r["strong"] or r["weak"])
         print(f"\nscreened {len(q):,} notices"
-              + (f" in UNSPSC-4 {args.group}" if args.group else ""))
-        for k in ("deep", "deep_unreadable", "watch", "close"):
-            if counts[k]:
-                print(f"   {k:16} {counts[k]:6,}  "
-                      f"{100.0*counts[k]/len(q):5.1f}%")
-        print(f"\n{'route':16} {'docs':>4}  tender                 signals")
+              + (f" in UNSPSC-4 {args.group}" if args.group else "")
+              + f": {with_sig:,} with a signal")
+        print(f"\n{'strong weak':12} {'docs':>4}  tender                 signals")
         print("-" * 78)
         for r in q[:args.limit]:
             sig = ",".join(s["signal"] for s in r["signals"]
                            if s["weight"] != "info")
-            print(f"{r['route']:16} {r['documents']:4d}  "
+            print(f"{r['strong']:6} {r['weak']:4} {r['documents']:5d}  "
                   f"{r['reference']:22} {sig[:34]}")
         return
 
@@ -293,14 +278,13 @@ def main():
     if res.get("error"):
         print(res["error"])
         return
-    print(f"\n{res['reference']}  ->  {res['route'].upper()}")
+    print(f"\n{res['reference']}")
     print(f"  {res['title']}")
     print(f"  {res['entity']}")
     print(f"  {res['method']}  |  published {res['published']}  |  "
           f"window {res['window_days']} d  |  {res['documents']} document(s)\n")
     if not res["signals"]:
-        print("  no cheap signal fires. Nothing here says spend the "
-              "expensive readers on it.")
+        print("  no signal on the notice.")
     for s in res["signals"]:
         print(f"  [{s['weight']:6}] {s['signal']}")
         print(f"           {s['why']}")

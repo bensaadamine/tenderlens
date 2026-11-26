@@ -158,7 +158,6 @@ def run_one(ref, shared, s=None):
         case = m4_checks.check_case(ref, m1, m2, m3, hooks)
     else:
         case = m4_case_builder.build_case(m1, m2, m3)
-    case["m1_route"] = m1.get("route")
     if why_none:
         case["route"] = "close"
         case["no_contract"] = why_none
@@ -204,7 +203,7 @@ def main():
         print(f"\nstopped: {e}")
         return 1
     print(f"\n{c['reference']}  ->  {c['route'].upper()}  "
-          f"(score {c['score']}, M1 {c['m1_route']})\n")
+          f"(score {c['score']})\n")
     print(c["narrative"])
     print()
     for x in c["claims"]:

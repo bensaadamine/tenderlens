@@ -27,8 +27,10 @@ None external. Statistics on bidding windows are computed once over the whole fe
 ## Output
 `screen(reference)` returns a dict:
 - `signals` — each with `signal`, `weight` (strong / weak), `why`, `evidence` (the notice field)
-- `route` — `deep`, `watch`, `close` or `deep_unreadable`: shown by M1's own command only; the pipeline does not use it (every awarded tender with documents is read, decision 28)
+- `strong`, `weak` — how many signals of each weight (they only rank a case)
 - `documents`, `title`, `entity`, `method`, `published`, `window_days`
+
+M1 gives no verdict of its own: every awarded tender with documents is read anyway (decision 28). Its old route (deep / watch / close), which nothing used, was removed on 2026-11-26.
 
 Each signal links, on the case page, to its rule of law: limited tendering to the Government Contracts Regulations s. 5–6 and the Canadian Free Trade Agreement art. 513; the bidding window to art. 511; "no trade agreement" to art. 504 (`tools/laws.py`).
 
@@ -44,4 +46,3 @@ python -m agents.m1_screener --all --group 2510 --limit 25
 
 ## Open work
 - The limited-tendering reason field is not read: limited tendering never carries a filed reason in the data (0 of 232), so its absence says nothing (decision 51).
-- M1's own route is not used by the pipeline; kept for its command line.

@@ -27,7 +27,7 @@ What stays in code: all scoring and routing (`build_case`); M2's and M3's own ch
 
 **History of the checks.**
 - Until 2026-11-26 a first check sent each brand finding back to the M2 agent for a second read. The system always runs with the M2 agent, which already letters every finding, so that re-read had nothing to do: removed (user decision).
-- It mattered only with M2 on rules alone. Measured there (`tests/m4_eval.py`, 73 labelled tenders, 2026-11-04): rules only 9 flagged, 7 false; every check in a fixed order 2 flagged, 0 false; a model choosing the checks 4 flagged, 2 false (it skipped two re-reads). That is why the order is fixed and not chosen by a model (removed 2026-11-24).
+- It mattered only with M2 on rules alone. Measured there (73 labelled tenders, 2026-11-04; the measurement script was removed with the re-read): rules only 9 flagged, 7 false; every check in a fixed order 2 flagged, 0 false; a model choosing the checks 4 flagged, 2 false (it skipped two re-reads). That is why the order is fixed and not chosen by a model (removed 2026-11-24).
 - M4 does not find lock-ins the rules missed; that is the M2 agent's job (8 of 8 on the held-out set).
 
 ## How it decides

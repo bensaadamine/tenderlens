@@ -45,7 +45,7 @@ tools/                 documents.py, sections.py, brands.py (brand rules), wikid
                        of law), law_index.py (search over the law texts), level2.py (dormant), report.py
 prepare/               data preparation: profile → docs → text → labels; laws (the official law texts)
 interface/             the auditor's page (app.py, data.py, jobs.py, static/)
-tests/                 offline tests (test_*.py), evaluations (m2_eval.py, m4_eval.py, synth_rig.py), labels
+tests/                 offline tests (test_*.py), evaluations (m2_eval.py, synth_rig.py, law_eval.py), labels
 docs/agents/           one page per component; docs/DECISIONS.md (the numbered decisions the code cites);
                        docs/PLAN.md (what is done, what is left)
 data/                  not in git: tenders.csv, awards.csv, documents, law pages
@@ -64,7 +64,7 @@ pip install -r requirements.txt     # requests, pdfminer.six, langgraph, fastapi
 
 No `pandas` needed: the pipeline is the standard library plus those packages.
 
-**Agents 1–3 (Groq).** Keys go in `.env` (never committed): `GROQ_API_KEY=...`, optionally `GROQ_API_KEY2=...` (a second account: same model, twice the calls a minute and the daily quota). Groq's gpt-oss-120b answers every call (`tools/llm.py`); when its daily quota is spent the run stops and the next run resumes there. `TENDERLENS_SHARE=1` also sends calls to Gemini (`GEMINI_API_KEY`; verdicts can then differ between runs). `python tenderlens.py llm` shows the models; `--usage` the tokens spent.
+**Agents 1–3 (Groq).** Keys go in `.env` (never committed): `GROQ_API_KEY=...`, optionally `GROQ_API_KEY2=...` (a second account: same model, twice the calls a minute and the daily quota). Groq's gpt-oss-120b answers every call (`tools/llm.py`); when its daily quota is spent the run stops and the next run resumes there. `python tenderlens.py llm` shows the models; `--usage` the tokens spent.
 
 **The rules assistant (local).** Install [Ollama](https://ollama.com), then `ollama pull gemma4:e4b` (answers) and `ollama pull embeddinggemma` (search by meaning). `TENDERLENS_LOCAL_MODEL`, `TENDERLENS_EMBED_MODEL` and `OLLAMA_URL` can be set in `.env`. Nothing leaves the computer.
 
@@ -140,7 +140,7 @@ One tender, with every agent's reasoning: `python tenderlens.py tender cb-425-92
 **Split purchases** (award file only, every goods category): `python tenderlens.py splits` (groups and the rules' verdict) · `splits --agent --labels tests/split_labels.csv` (with the agent, compared with blind labels).
 
 Tests (no data, no network): `python tenderlens.py test` runs every `tests/test_*.py`; one alone: `python -m tests.test_agents`.
-Measurements: `python tenderlens.py eval synth --run` (synthetic rigged tenders over 6 families; each run in its own folder `reports/synth/families/runs/<stamp>/`; `--review` lists the bases' "equivalent" lines to check by hand) · `python tenderlens.py eval m2 [--agent --online] [--split tuning|holdout|sample]` (M2 against labelled names: tuning, held-out, and a random sample of 102 real tenders) · `python tenderlens.py eval m4 --online` (M4: no checks / fixed checks, 73 labelled tenders).
+Measurements: `python tenderlens.py eval synth --run` (synthetic rigged tenders over 6 families; each run in its own folder `reports/synth/families/runs/<stamp>/`; `--review` lists the bases' "equivalent" lines to check by hand) · `python tenderlens.py eval m2 [--agent --online] [--split tuning|holdout|sample]` (M2 against labelled names: tuning, held-out, and a random sample of 102 real tenders).
 
 **Long runs** (agents over a whole category) are done **once, at the end of a category** — not after each fix. Fixes are checked offline on the affected tenders and on the synthetic set.
 

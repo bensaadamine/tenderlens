@@ -30,7 +30,7 @@ def check(name, ok):
 
 def case(ref, route, score):
     return {"reference": ref, "route": route, "score": score, "claims": [],
-            "m1_route": "standard", "readable": True, "title": ref,
+            "readable": True, "title": ref,
             "entity": "", "narrative": "", "award": None, "method": "",
             "published": "", "trace": {}}
 

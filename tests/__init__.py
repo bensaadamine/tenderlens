@@ -1,1 +1,1 @@
-"""Offline tests (test_*) and measurements (m2_eval, m4_eval, synth_rig)."""
+"""Offline tests (test_*) and measurements (m2_eval, synth_rig, law_eval)."""

@@ -466,7 +466,6 @@ def run(a):
         found = [n["name"] for n in checked if n["result"] == "finding"]
         res = dict(m)
         res.update({"route": case["route"], "score": case["score"],
-                    "m1_route": case.get("m1_route"),
                     "outcomes": "|".join(brand_outcome(checked, b)
                                          for b in added),
                     "brand_cache": "|".join(_cache_status(cache, b)

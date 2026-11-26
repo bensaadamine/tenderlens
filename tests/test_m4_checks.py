@@ -17,7 +17,7 @@ from agents import m4_checks
 
 FAILS = 0
 DOC = "01_rfp.pdf"
-M1 = {"reference": "t-1", "route": "standard", "signals": []}
+M1 = {"reference": "t-1", "signals": []}
 
 
 def finding(brand, line, text, letter=None):
