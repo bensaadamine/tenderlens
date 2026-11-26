@@ -67,6 +67,12 @@ def parse_action(reply):
     if "action" not in reply and "name" in reply:
         reply = {"action": reply.get("name"),
                  "args": reply.get("arguments") or {}}
+    # a model sometimes wraps its whole reply in a made-up "json" tool:
+    # {"action": "json", "args": {"thought", "action", "args"}} - unwrap it
+    inner = reply.get("args")
+    if (str(reply.get("action", "")).strip().lower() in ("json", "response")
+            and isinstance(inner, dict) and "action" in inner):
+        reply = inner
     action = str(reply.get("action", "")).strip().lower().split(".")[-1]
     args = reply.get("args") if isinstance(reply.get("args"), dict) else {}
     return action, args, str(reply.get("thought", ""))[:300]

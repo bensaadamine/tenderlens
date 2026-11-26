@@ -21,7 +21,7 @@ Around them: M1 (rules, the notice) and the rules assistant (local Gemma, the la
 - The auditor's page redesigned: top bar with four places (To decide, Families, Rules, How it works), one list of everything to decide, the tender's own words marked as evidence.
 
 ## Left (needs the Groq quota, run on Windows)
-1. `python tenderlens.py splits --agent --labels tests/split_labels.csv` — agent 3 against the blind labels.
+1. `python tenderlens.py splits --agent --redo --labels tests/split_labels.csv` — agent 3 again, with the specific-quote rule (first run: 9 of 12, 2 false splits).
 2. `python tenderlens.py run --group 4111 --reprocess cb-981-22811944 --online --agent --m3-agent --m4-checks` — the 4111 false alert should close.
 3. `python tenderlens.py eval synth --run --online --agent --variants A,G,D` — the agent's 5 wrong clearances.
 4. `python tenderlens.py eval m2 --agent --online --split sample` — agent 1 on the random sample.

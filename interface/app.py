@@ -854,9 +854,10 @@ AGENTS = [
      "code_keeps": "Rules find the groups and compute every number; "
                    "\u201csplit\u201d needs a quote found in two of the "
                    "contracts' own titles; it reaches watch, never alert.",
-     "measured": "15 groups; blind labels 2 split, 10 separate, 3 unclear; "
-                 "rules alone 10 of 15 (3 false splits). Agent: being "
-                 "measured.",
+     "measured": "15 groups; blind labels 2 split, 10 separate, 3 unclear. "
+                 "Rules alone 10 of 15 (3 false splits); the agent 9 of the "
+                 "12 it decided (2 false splits), the quote check stopping "
+                 "2 more.",
      "doc": "docs/agents/split_agent.md", "rule": "no-splitting"},
     {"name": "Coordinator", "code": "M4", "reads": "what M1, M2 and M3 found",
      "decides": "Alert, watch or close \u2013 and what the auditor reads.",

@@ -30,6 +30,10 @@ What stays in CODE, never left to the model:
   * the groups, every number and every date;
   * "split" needs a quote found, word for word, in at least two of the
     group's own titles or descriptions: the words that make it one need;
+    and the quote must be SPECIFIC to these contracts: found in fewer than
+    1 in 10 of this buyer and supplier's other contracts ("Office Seating"
+    is what they usually trade, a reference code is one purchase);
+  * a split the agent never backs with such a quote ends as "unclear";
   * a "split" ranks a WATCH, never an alert: the award file cannot show
     intent, the auditor opens the files;
   * every verdict is stored (reports/splits/verdicts.csv) and never asked
@@ -69,6 +73,8 @@ VERDICT_COLS = ["group", "verdict", "reason", "quote", "decided_by", "date"]
 LIMIT = 25_000          # goods, Government Contracts Regulations s. 6(b)(i)
 WINDOW_DAYS = 30
 NEAR = 0.95             # a contract at 95% of the limit or more is "just under"
+SPECIFIC = 0.10         # a split quote found in this share of the pair's
+                        # other contracts or more describes their usual trade
 MAX_STEPS = 5
 HISTORY_SHOWN = 15
 VERDICTS_ALLOWED = ("split", "separate", "unclear")
@@ -259,14 +265,28 @@ class Index:
             "region", "start", "end") if r[k]) + f"\nvalue: ${r['value']:,.2f}"
 
 
-def quote_holds(g, quote):
-    """The quote appears, word for word, in two or more of the group's own
-    titles or descriptions."""
+def quote_holds(g, quote, index=None):
+    """None if the quote can back a split, else why not: it must appear,
+    word for word, in two or more of the group's own titles or descriptions,
+    and (with the index) in fewer than SPECIFIC of this buyer and supplier's
+    other contracts."""
     if len(names.words(quote)) < 2 and not codes(quote):
-        return False
-    hits = sum(1 for r in g["records"]
-               if names.says(r["title"] + " \n " + r["desc"], quote))
-    return hits >= 2
+        return "quote two or more words, or a reference code"
+    says = lambda r: names.says(r["title"] + " \n " + r["desc"], quote)
+    if sum(map(says, g["records"])) < 2:
+        return ("the quote is not in two or more of the group's titles or "
+                "descriptions")
+    if index is not None:
+        inside = {r["id"] for r in g["records"]}
+        others = [r for r in index.by_pair[(g["buyer_key"],
+                                            g["supplier_key"])]
+                  if r["id"] not in inside]
+        common = sum(map(says, others))
+        if others and common / len(others) >= SPECIFIC:
+            return (f"the quote is in {common} of this buyer and supplier's "
+                    f"{len(others)} other contracts: it describes what they "
+                    f"usually trade, not one need")
+    return None
 
 
 # ------------------------------------------------------------------ prompt
@@ -407,10 +427,11 @@ def make_nodes(g, index, ask):
             quote = str(args.get("quote", ""))[:200]
             if v not in VERDICTS_ALLOWED:
                 obs = "refused: verdict must be split, separate or unclear"
-            elif v == "split" and not quote_holds(g, quote):
-                obs = ("refused: for split, quote words that appear in two "
-                       "or more of the group's titles or descriptions; "
-                       "otherwise say separate or unclear")
+            elif v == "split" and quote_holds(g, quote, index):
+                obs = (f"refused: {quote_holds(g, quote, index)}. For split, "
+                       f"quote words specific to these contracts (a "
+                       f"reference code, the same items for the same place);"
+                       f" otherwise say separate or unclear")
             else:
                 obs, done = f"verdict: {v}", True
                 out = {"verdict": v, "reason": reason,
@@ -453,6 +474,16 @@ def judge(g, index, ask=None, use_graph=True):
              f"{json.dumps(h['args'], ensure_ascii=False)[:160]} -> "
              f"{h['observation'].replace(chr(10), ' | ')[:300]}"
              for h in state["history"]]
+    if not state["verdict"] and any(h["observation"].startswith(
+            "refused:") and str(h["args"].get("verdict", "")).lower()
+            == "split" for h in state["history"]):
+        # the agent wanted a split it could never back with a quote
+        state = {**state, "verdict": "unclear",
+                 "reason": "The agent saw a possible split but could not "
+                           "quote words specific to these contracts.",
+                 "stop_reason": "split without a specific quote: unclear"}
+        trace.append("code: a split never backed by a specific quote is "
+                     "unclear")
     return {"verdict": state["verdict"], "reason": state["reason"],
             "quote": state["quote"], "steps": state["steps"],
             "stop_reason": state["stop_reason"], "engine": engine,
@@ -500,6 +531,9 @@ def main():
                          "goods category - no documents are needed)")
     ap.add_argument("--agent", action="store_true",
                     help="judge each group not yet decided with the agent")
+    ap.add_argument("--redo", action="store_true",
+                    help="with --agent: ask the agent again on every group "
+                         "(the auditor's verdicts are kept)")
     ap.add_argument("--labels", help="a labels CSV (group,label): compare")
     ap.add_argument("--export", help="write the groups, without any verdict, "
                                      "to this file (for blind labelling)")
@@ -527,7 +561,7 @@ def main():
         st = stored.get(g["id"], {}).get("agent")
         aud = stored.get(g["id"], {}).get("auditor")
         res = None
-        if a.agent and not st:
+        if a.agent and (a.redo or not st):
             res = judge(g, index)
             if res["verdict"]:
                 st = {"group": g["id"], "verdict": res["verdict"],

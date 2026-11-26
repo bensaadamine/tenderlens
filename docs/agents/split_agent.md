@@ -33,7 +33,7 @@ A goods contract may be given to a supplier without bids only if it is **$25,000
 
 ## Kept in code, never left to the model
 - The groups, every number and every date; the model never computes.
-- `split` needs a **quote found word for word in two or more of the group's own titles or descriptions**: the words that make it one need. Otherwise it is refused and the model is told why.
+- `split` needs a **quote found word for word in two or more of the group's own titles or descriptions**, and **specific to these contracts**: found in fewer than 1 in 10 of the same buyer and supplier's other contracts. Otherwise it is refused and the model is told why. A split the agent never backs with such a quote ends as **unclear** (code).
 - A `split` routes to **watch, never alert**: the award file cannot show intent; the auditor opens the files.
 - Every verdict is stored in `reports/splits/verdicts.csv` and never asked again. **The auditor's verdict decides the route.**
 
@@ -43,12 +43,16 @@ Groups a rule or the agent calls split appear in **To decide**, with the cases. 
 ## How it is checked
 - `python -m tests.test_split_agent`: the rules and the agent's code checks with a scripted fake model (no network).
 - `python tenderlens.py splits --agent --labels tests/split_labels.csv`: rules vs agent against labels. **The labels were written blind** by a separate agent that saw only the groups, never the rules' or the agent's answers: 2 split, 10 separate, 3 unclear.
-- Rules alone: **10 of 15 as labelled, 3 false splits, 0 missed.** Agent: to be measured (needs the Groq quota).
+- Rules alone: **10 of 15 as labelled, 3 false splits, 0 missed.**
+- **Agent, first run (2026-11-25):** 9 of the 12 it decided as labelled, 2 false splits, 0 missed; the rules on the same 12: also 9 of 12 (1 false split). The agent cleared the rules' false split (MBH: different items on the same day). 3 groups had no verdict: each time the agent said split, the quote check refused it ("furniture", "LDV Teknion" are not phrases shared by two titles) — 2 of those 3 are labelled separate, so the check stopped 2 false splits.
+- **What the run taught, fixed as general rules:** the 2 false splits passed with generic quotes ("Office Seating" is in 29% of that buyer and supplier's other contracts; the real splits quote a reference code found in none) → a quote must be specific to the group; a split never backed by a quote → unclear, not "no verdict"; a reply wrapped in a made-up "json" tool is unwrapped (shared loop). The 1-in-10 threshold was set on these 15 groups, with no held-out set: say so when presenting.
+- Next run: `python tenderlens.py splits --agent --redo --labels tests/split_labels.csv` (asks again on every group).
 
 ## Run it
 ```bash
 python tenderlens.py splits                                   # groups + rules
 python tenderlens.py splits --agent --labels tests/split_labels.csv   # + agent (Groq)
+python tenderlens.py splits --agent --redo --labels tests/split_labels.csv   # ask again on every group
 python tenderlens.py splits --families 5610                   # one family
 python tenderlens.py splits --export reports/splits/to_label.md       # groups only, for labelling
 ```

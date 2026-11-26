@@ -1,0 +1,4 @@
+# Blind labels (2026-11-25): family 4015 (pumps and compressors), never used to build or tune the rules. Two separate agents read the 50 tenders' requirement text only, never the rules' output.
+reference,name,kind,quote,why
+cb-179-49806650,Flygt,lockin,Unit must be a Flygt Submersible Pump. This is a No-Substitution requirement,"Bidder must supply a Xylem Flygt CS222-3 pump with substitution explicitly barred; only equivalent lines concern Net-Zero, not the product."
+cb-893-26044770,Elektronikon,lockin,Elektronikon Swipe Controller,Atlas Copco branded controller listed in the compressor specifications; the tender has no equivalent wording at all.

@@ -36,6 +36,12 @@ ROWS = [
      "Big Co", "*GD"),                                   # over the limit
     ("K9", "2024-06-02", "1000", "Non-competitive", "One small chair",
      "Big Co", "*GD"),
+    ("K12", "2023-01-10", "90000", "Competitive - Open bidding",
+     "Sole Source chairs", "Teknion Limited", "*GD"),    # the pair's
+    ("K13", "2023-05-10", "80000", "Competitive - Open bidding",
+     "Sole Source desks", "Teknion Limited", "*GD"),     # other contracts
+    ("K14", "2023-08-10", "70000", "Competitive - Open bidding",
+     "Lockers", "Teknion Limited", "*GD"),
     ("K10", "2024-08-01", "13000", "Non-competitive", "Tables", "Late Co",
      "*GD"),
     ("K11", "2024-09-15", "13000", "Non-competitive", "Tables", "Late Co",
@@ -111,6 +117,30 @@ def main():
     check("split refused when the quote is in one title only; the model "
           "then says separate",
           out["verdict"] == "separate" and "refused" in out["trace"][0])
+
+    out = sa.judge(t, index, ask=script(
+        {"action": "decide", "args": {"verdict": "split", "reason": "x",
+                                      "quote": "Sole Source"}},
+        {"action": "decide", "args": {"verdict": "split", "reason": "x",
+                                      "quote": "EP916-240077"}}),
+        use_graph=False)
+    check("a quote common in the pair's other contracts is refused; a "
+          "reference code passes", out["verdict"] == "split"
+          and "usually trade" in out["trace"][0])
+    replies = [{"action": "decide", "args": {"verdict": "split",
+                                             "reason": "x",
+                                             "quote": "Sole Source"}}] * (
+        sa.MAX_STEPS + 2)
+    out = sa.judge(t, index, ask=script(*replies), use_graph=False)
+    check("a split never backed by a specific quote ends as unclear",
+          out["verdict"] == "unclear" and "unclear" in out["trace"][-1])
+    out = sa.judge(a, index, ask=script(
+        {"action": "json", "args": {"thought": "t", "action": "decide",
+                                    "args": {"verdict": "separate",
+                                             "reason": "different items"}}}),
+        use_graph=False)
+    check("a reply wrapped in a made-up 'json' tool is unwrapped",
+          out["verdict"] == "separate" and out["steps"] == 1)
 
     out = sa.judge(a, index, ask=script(
         {"action": "decide", "args": {"verdict": "fraud", "reason": "x"}},

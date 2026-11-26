@@ -200,7 +200,7 @@ Six families, each with a base (oldest 70%, rules) and its newest 30% read with 
 - **Real lock-ins are rare.** In 102 tenders drawn at random (17 per family), 2 by reading the requirements. The rules raise one of them for the agent ("approved distributor of Applied Test Systems"); the other names a model by part number only.
 - **Spec auditor on the held-out names** (never used for tuning): 34 of 35 right, 7 of 7 lock-ins (2 names wait for a fresh answer).
 - **Synthetic test (6 families, 148 rigged copies):** the brand is found in 83 (56%, offline), 0 false alarms on the 111 copies that should close.
-- **Split purchases:** 15 groups in all goods. Against blind labels (2 split, 10 separate, 3 unclear) the rules alone get 10 of 15, with 3 false splits; the agent is to be measured.
+- **Split purchases:** 15 groups in all goods, blind labels 2 split, 10 separate, 3 unclear. Rules alone: 10 of 15, 3 false splits. Agent (first run): 9 of the 12 it decided, 2 false splits; the quote check stopped 2 more. Its two errors quoted generic phrases ("Office Seating"), so a split quote must now be specific to the group; to re-run.
 - **General rules added from measured errors:** furniture call-ups flagged on deadline + "no trade agreement"; French words and measurements read as brands; equivalents accepted in other words; awards matched by a reused solicitation number; lists the buyer calls approved products.
 - **Dropped, with reasons:** contract value growth (the award file keeps one row per contract, old values overwritten); complaints to the trade tribunal as ground truth (about 70 a year for all federal purchasing, too few in our families: future work); level 2, the comparison with peer tenders (dormant: few product groups have 8 comparable tenders).
 
