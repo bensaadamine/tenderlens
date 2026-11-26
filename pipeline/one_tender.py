@@ -125,8 +125,7 @@ def gate(ref, row, graph):
 # Raised when --agent is on and no model answers; a run stops on them and
 # the next run resumes from that tender.
 AGENT_DOWN = (m2_spec_auditor.AgentUnavailable,
-              m3_investigator.AgentUnavailable,
-              m4_checks.AgentUnavailable)
+              m3_investigator.AgentUnavailable)
 
 
 def run_one(ref, shared, s=None):
@@ -155,7 +154,7 @@ def run_one(ref, shared, s=None):
                                          on_outage=s.on_outage)
     if s.m4_checks and not why_none:
         hooks = m4_checks.default_hooks(ref, notices.get(ref), graph, m3,
-                                        s.online, s.on_outage)
+                                        s.on_outage)
         case = m4_checks.check_case(ref, m1, m2, m3, hooks)
     else:
         case = m4_case_builder.build_case(m1, m2, m3)

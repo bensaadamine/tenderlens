@@ -4,10 +4,13 @@ Runs the labelled tenders (tests/m2_labels.csv
 and tests/m2_holdout.csv) two ways and compares the routes:
 
     off     M4 rules only
-    fixed   every M4 follow-up, in a fixed order
+    fixed   M4's checks, in a fixed order (the winner's spellings, the
+            winner's other awards)
 
-M2 runs on rules only, so M4's follow-ups (re-reading a finding, the
-winner's spellings) are what changes a case. A tender counts as "should be
+M2 runs on rules only, so M4's checks are what changes a case. The 2026-11-04
+measurement (fixed 0 false alarms, a model choosing 2) included a re-read of
+each finding by the M2 agent, removed on 2026-11-26: the system always runs
+with the M2 agent, which already letters every finding. A tender counts as "should be
 flagged" when one of its names is labelled f (brand required, no
 equivalent); "flagged" means watch or alert.
 

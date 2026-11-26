@@ -93,7 +93,7 @@ Puts the rules and the agent together for one tender and returns the findings, e
 - `agent_loop.parse_action` — reads the model's reply as a tool and its arguments.
 
 ### Show live
-`python tenderlens.py demo --offline`: 7 tenders, three setups side by side (rules only, rules + re-check, every agent). Point at the Gamry case: the rules miss it, the agent finds it.
+`python tenderlens.py demo --offline`: 7 tenders, two setups side by side (rules only, every agent). Point at the Gamry case: the rules miss it, the agent finds it. And at the Hitachi/JEOL case: the rules raise a false alert, the agent clears it.
 
 ### Likely questions
 - **"Why not let the model do everything?"** It is good at judging, bad at being exact. The rules find names and settle what the text decides exactly. The agent judges the rest, and code checks every quote.
@@ -163,7 +163,7 @@ Describes a tool to the model in the provider's native format ("function calling
 ## Person 3 — The Coordinator (agent 4), the knowledge base and the auditor's page
 
 ### What you say in one sentence
-"The Coordinator gathers what the others found, sends brand findings back to agents 1 and 2 for a second look, checks every quote, and decides alert, watch or close. We tested letting a model choose those checks: it was worse, so the order is fixed."
+"The Coordinator is the judge at the end. It gathers what the others found, has agent 2 check whether the required brand is the winner under another name, verifies every quote, gives points, and decides alert, watch or close."
 
 ### Files
 `agents/m1_screener.py` · `agents/m4_case_builder.py` · `agents/m4_checks.py` · `pipeline/stream.py` · `interface/app.py` · `interface/data.py` · `interface/jobs.py`
@@ -175,11 +175,10 @@ The **notice rules** (M1). It lists what the buyer declared: an advance award no
 
 **`check_case(reference, m1, m2, m3, hooks)`** — `agents/m4_checks.py`
 Runs only when a case has a brand finding, in a **fixed order**:
-1. Agent 1 re-reads each finding.
-2. Agent 2 checks the winner's spellings.
-3. The winner's other award titles are shown.
+1. Agent 2 checks the winner's other spellings. If the required brand is the winner under another name, the case becomes an alert.
+2. The winner's other award titles that mention the brand are shown to the auditor (never scored).
 
-Then it calls `build_case`. The checks only ask; the code decides.
+Then it calls `build_case`. The checks only ask; the code decides. (An earlier first check, agent 1 re-reading each finding, was removed: agent 1 always runs before M4 and has already judged every finding.)
 
 **`build_case(m1, m2, m3)`** — `agents/m4_case_builder.py`
 Builds the case in three steps:
@@ -226,7 +225,8 @@ A case shows the tender's own words marked as evidence, the rule of law behind e
 3. Show **Mark clean / Confirm**.
 
 ### Likely questions
-- **"Why fixed checks and not an agent choosing them?"** Measured on 73 labelled tenders: fixed order 0 false alarms, the model choosing 2. Cheaper is not better if it skips a re-read.
+- **"Is M4 really an agent?"** It has no model of its own: it coordinates the agents. We tested letting a model choose which checks to run: it skipped some and left 2 false alarms, against 0 with a fixed order. So the order is fixed.
+- **"Where do the routing rules come from?"** From measured errors: declared signals alone sent 194 of 200 tenders to watch, so they only rank; the first real alert was false (one brand + notice points), so an alert needs document evidence alone.
 - **"Are the points probabilities?"** No. They only order the queue; there is no ground truth to fit them yet.
 - **"Why files, not a database?"** 21 MB for 6 families, every page loads in under a third of a second, and append-only files cannot be corrupted by a crash. A database would pay off only at a much larger scale.
 
@@ -307,7 +307,7 @@ Without the embedding model, it falls back to keywords.
 | Real brand lock-ins in a random sample | 2 in 102 tenders (they are rare) |
 | Spec auditor, held-out names | 34 of 35 right |
 | Synthetic test | brand found in 83 of 148 rigged copies, 0 false alarms in 111 copies that should close |
-| Coordinator: fixed checks vs model choosing | 0 vs 2 false alarms (73 tenders) |
+| Coordinator: fixed checks vs a model choosing them | 0 vs 2 false alarms (73 tenders) |
 | Unseen family (pumps), rules | 1 of 2 lock-ins caught, 0 wrongly cleared |
 | Split purchases | 15 groups; rules 10 of 15; agent 9 of the 12 it decided |
 | Law search, top 6 | keywords 8, meaning 14, hybrid 13 (of 15) |

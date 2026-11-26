@@ -8,7 +8,7 @@ An assistant for a federal auditor: it clears most purchases with quoted evidenc
 | 1. Spec auditor (M2) | a brand required without "or equivalent"? | held-out 34 of 35 |
 | 2. Supplier identity (M3) | are these spellings one company? | stored decisions, auditor can overrule |
 | 3. Split-purchase agent | one need cut into contracts under $25,000? | rules alone 10 of 15 against blind labels; agent to measure |
-| 4. Coordinator (M4) | the order of the checks, alert / watch / close | fixed order 0 false alarms, model choosing 2 |
+| 4. Coordinator (M4) | alert / watch / close, after the winner's spellings are checked | routing rules from measured errors; a model choosing the checks was worse (2 false alarms vs 0) |
 
 Around them: M1 (rules, the notice) and the rules assistant (local Gemma, the law texts).
 

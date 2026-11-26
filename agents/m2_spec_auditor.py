@@ -316,7 +316,7 @@ def _finish(reference, rows, l1, trace, docs=None, level2_on=True):
             decided_by=f.get("decided_by", ""),
             detail=f.get("llm_reason") or "",
             source=src,
-            # for M4's re-read: where it is, whether the agent lettered it
+            # where it is, and whether the agent lettered it
             line_no=f.get("line_no"), agent_letter=f.get("agent_letter"),
         ).to_dict())
 

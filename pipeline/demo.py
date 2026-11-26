@@ -1,18 +1,15 @@
 """
-THE DEMO - the system on seven chosen tenders, three ways, side by side.
+THE DEMO - the system on seven chosen tenders, two ways, side by side.
 
     python tenderlens.py demo             # Windows: online; the first run fills the caches
     python tenderlens.py demo --offline   # anywhere: replays from the caches, no network
 
-Each tender is here for one reason (TENDERS below). The three setups:
+Each tender is here for one reason (TENDERS below). The two setups:
 
     rules     M1-M4 on rules only (brand names checked on Wikidata)
-    recheck   the same, then M4 hands every brand finding back to the M2
-              agent before ranking - the cheap setup: the model runs only
-              on cases that are already flagged
     agents    every agent: M2 letters every open brand name, M3 decides
-              which spellings are the winner's company, M4 re-checks
-              what is left - the thorough setup
+              which spellings are the winner's company, M4 runs its checks
+              before ranking
 
 Writes reports/demo/<stamp>/: summary.txt (the table below) and, per setup,
 <setup>_queue.html / .csv / .json - the case pages an auditor would open.
@@ -45,7 +42,6 @@ TENDERS = [
 
 SETUPS = {
     "rules":   dict(),
-    "recheck": dict(m4_checks="fixed"),
     "agents":  dict(agent=True, m3_agent=True, m4_checks="fixed"),
 }
 

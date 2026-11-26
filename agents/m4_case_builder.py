@@ -139,7 +139,7 @@ WATCH = 2
 # A claim scores only if its words were CHECKED against its source
 # (source["checked"]), not merely attached: M2 found them in the document
 # text, M1 and M3 copied them by code from the notice field / award record,
-# the M2 agent and M4's re-read passed their quote test.
+# the M2 agent passed its quote test.
 
 LEVEL2_KINDS = {"narrow_band", "extreme_threshold", "within_document_bands"}
 CONTEXT_KINDS = {"recurring_supplier", "dependent_supplier"}

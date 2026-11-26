@@ -3,7 +3,7 @@
 **Code:** `agents/m4_case_builder.py` 
 
 ## Role
-The coordinator of the chain. Takes what M1, M2 and M3 found about one tender, sends each brand finding back to agent 1 and the winner's spellings to agent 2 (in a fixed order), checks that every claim can be verified, scores it, decides **alert / watch / close**, and writes the case the auditor reads. It has no model of its own: its point is the measured choice of **who decides the order of the checks** (below).
+The coordinator of the chain. Takes what M1, M2 and M3 found about one tender, has agent 2 check the winner's other spellings, shows the winner's other awards, checks that every claim can be verified, scores it, decides **alert / watch / close**, and writes the case the auditor reads. It has no model of its own.
 
 ## Goal
 A ranked queue an auditor can trust: every line in a case points to a source a person can open.
@@ -14,29 +14,21 @@ The three results: `m1` (notice signals), `m2` (document findings), `m3` (award 
 ## Tools
 Rules (`m4_case_builder.py`): one check of its own, **is the brand the specification requires the company that won?** (`brand_matches_winner`), against the winner's name and the other spellings M3 accepted as the same company.
 
-Checks (`m4_checks.py`, `--m4-checks`): before ranking a case **that has a brand finding**, three checks run in a fixed order, and `build_case` re-scores the case after them:
+Checks (`m4_checks.py`, `--m4-checks`): before ranking a case **that has a brand finding**, two checks run in a fixed order, and `build_case` re-scores the case after them:
 
 | check | asks | can change |
 |---|---|---|
-| 1. re-read | the M2 agent re-reads each finding it has not lettered yet (a–f letter, verified quote) | non-f letter → finding removed; no letter → unresolved |
-| 2. spellings | the M3 agent checks the winner's other spellings; M3's counts redone (skipped when `--m3-agent` already did, or no brand finding is left) | brand matches a spelling → alert; recurring supplier (context) |
-| 3. winner's awards | titles of the winner's other awards mentioning each brand | nothing — shown, never scored |
+| 1. spellings | the M3 agent checks the winner's other spellings; M3's counts redone (skipped when `--m3-agent` already did) | brand matches a spelling → alert; recurring supplier (context) |
+| 2. winner's awards | titles of the winner's other awards mentioning each brand | nothing — shown, never scored |
 
-No brand finding → nothing runs. With `--agent` every finding is already lettered, so check 1 has nothing to do: it matters in the cheap setup (M2 on rules, the model only on flagged cases).
+No brand finding → nothing runs.
 
-What stays in code: all scoring and routing (`build_case`, unchanged); M2's and M3's own checks; the case-page text ("Checked again before ranking", written from the check results). The checks add no claim and set no points.
+What stays in code: all scoring and routing (`build_case`); M2's and M3's own checks; the case-page text ("Checked again before ranking", written from the check results). The checks add no claim and set no points.
 
-**Fixed order vs a model choosing, measured** (`tests/m4_eval.py`, 73 labelled tenders, M2 on rules only, 2026-11-04):
-
-| mode | flagged | real lock-ins flagged | false alarms | agent tokens |
-|---|---|---|---|---|
-| off (rules only) | 9 | 2 of 12 | 7 | 0 |
-| **fixed** (every check, fixed order) | 2 | 2 of 12 | **0** | 70k |
-| model (the model chooses) | 4 | 2 of 12 | 2 | 14k |
-
-- Re-reading every finding removes all 7 false alarms and keeps both real lock-ins.
-- Letting the model choose saves tokens but it skipped two re-reads, and those false alarms stayed. So the fixed order was chosen, and the model version was removed (2026-11-24).
-- No mode finds a lock-in the rules missed: M4 only re-checks what is already flagged. Finding the others is the M2 agent's job (8 of 8 on the held-out set).
+**History of the checks.**
+- Until 2026-11-26 a first check sent each brand finding back to the M2 agent for a second read. The system always runs with the M2 agent, which already letters every finding, so that re-read had nothing to do: removed (user decision).
+- It mattered only with M2 on rules alone. Measured there (`tests/m4_eval.py`, 73 labelled tenders, 2026-11-04): rules only 9 flagged, 7 false; every check in a fixed order 2 flagged, 0 false; a model choosing the checks 4 flagged, 2 false (it skipped two re-reads). That is why the order is fixed and not chosen by a model (removed 2026-11-24).
+- M4 does not find lock-ins the rules missed; that is the M2 agent's job (8 of 8 on the held-out set).
 
 ## How it decides
 | Claim | Points |

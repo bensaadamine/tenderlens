@@ -21,7 +21,7 @@ A **hybrid multi-agent system**: **rules where exactness matters** (what a notic
 | **1. Spec auditor** (M2) | the tender documents | is this name a brand the bidder must supply, with no "or equivalent"? Rules find the names and settle what the text decides exactly; the agent letters the rest a–f with a checked quote. Held-out: 34 of 35 right | [M2_spec_auditor.md](docs/agents/M2_spec_auditor.md) |
 | **2. Supplier identity** (M3) | the award file | are these spellings of the winner one company? Who won, and does this buyer keep choosing them (context) | [M3_investigator.md](docs/agents/M3_investigator.md) |
 | **3. Split-purchase agent** | the award file alone | are these contracts, each under the $25,000 limit for buying without bids, one need cut into pieces? | [split_agent.md](docs/agents/split_agent.md) |
-| **4. Coordinator** (M4) | what M1–M3 found | sends each brand finding back to agent 1 and the winner's spellings to agent 2, in a fixed order; checks every quote; scores; alert / watch / close. A model choosing the checks was measured worse (2 false alarms vs 0) | [M4_case_builder.md](docs/agents/M4_case_builder.md) |
+| **4. Coordinator** (M4) | what M1–M3 found | gathers the evidence, has agent 2 check the winner's other spellings (the brand may be the winner's under another name), shows the winner's other awards, checks every quote, scores, decides alert / watch / close. Its routing rules come from measured errors (declared signals alone sent 194 of 200 tenders to watch) | [M4_case_builder.md](docs/agents/M4_case_builder.md) |
 
 Around them: **M1** (rules) reads the notice: procedure, bidding window, trade agreement ([M1_screener.md](docs/agents/M1_screener.md)). The **rules assistant** answers the auditor's questions from the official law texts (RAG: hybrid search, keywords + local embeddings, then Gemma on a local model), with quotes checked word for word ([rules_agent.md](docs/agents/rules_agent.md)).
 
@@ -76,7 +76,7 @@ No `pandas` needed: the pipeline is the standard library plus those packages.
 
 ## Running
 
-**The demo** — seven chosen tenders (real lock-ins, false alarms, an ordinary tender), each run three ways side by side: rules only; rules + M4 sending flagged findings back to the M2 agent; every agent.
+**The demo** — seven chosen tenders (real lock-ins, false alarms, an ordinary tender), each run two ways side by side: rules only; every agent.
 
 ```bash
 python tenderlens.py demo               # Windows, online: the first run fills the caches

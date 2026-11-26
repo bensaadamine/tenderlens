@@ -862,14 +862,16 @@ AGENTS = [
     {"name": "Coordinator", "code": "M4", "reads": "what M1, M2 and M3 found",
      "decides": "Alert, watch or close \u2013 and what the auditor reads.",
      "tools_label": "Checks, in a fixed order",
-     "tools": "M2 re-reads each brand finding, M3 checks the winner's "
-              "spellings, the winner's other awards are shown",
+     "tools": "M3 checks the winner's other spellings (the brand may be "
+              "the winner's under another name), then the winner's other "
+              "awards are shown",
      "code_keeps": "Every quote is checked against its document; only a "
                    "verified brand can alert; declared signals and context "
                    "only rank.",
-     "measured": "A model choosing the checks was tried on 73 labelled "
-                 "tenders: 2 false alarms, against 0 with the fixed order. "
-                 "So the order is fixed.",
+     "measured": "Its routing rules come from measured errors: declared "
+                 "signals alone sent 194 of 200 tenders to watch, so they "
+                 "only rank. A model choosing the checks was worse (2 "
+                 "false alarms vs 0), so the order is fixed.",
      "doc": "docs/agents/M4_case_builder.md", "rule": ""},
 ]
 
